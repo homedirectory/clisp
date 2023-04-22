@@ -32,9 +32,10 @@ bool List_isempty(List *);
  * 2. symbol  - string (max len 255) = char sym[256]
  * 3. list    - List *
  * 4. string  - pointer to dynamic char array
+ * 5. procedures
  */
 typedef enum MalType {
-    INT, SYMBOL, LIST, STRING
+    INT, SYMBOL, LIST, STRING, INTPROC2
 } MalType;
 
 char *MalType_tostr(MalType type);
@@ -48,6 +49,8 @@ Symbol *Symbol_new(char *name);
 void Symbol_free(Symbol *);
 bool Symbol_eq(Symbol *sym1, Symbol *sym2);
 
+// Procedures ----------------------------------------
+typedef int (*intproc2_t)(int,int);
 
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
@@ -57,6 +60,7 @@ typedef struct MalDatum {
         Symbol *sym;
         List *list;
         char *string;
+        intproc2_t intproc2;
     } value;
 } MalDatum;
 
@@ -65,6 +69,7 @@ MalDatum *MalDatum_new_int(const int);
 MalDatum *MalDatum_new_sym(Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
+MalDatum *MalDatum_new_intproc2(const intproc2_t);
 
 bool MalDatum_istype(MalDatum *, MalType);
 void MalDatum_free(MalDatum *);

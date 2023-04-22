@@ -95,6 +95,9 @@ char *MalType_tostr(MalType type) {
         case STRING:
             buf = "STRING";
             break;
+        case INTPROC2:
+            buf = "INTPROC2";
+            break;
         default:
             buf = "*unknown*";
             break;
@@ -130,6 +133,13 @@ MalDatum *MalDatum_new_string(const char *str) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->type = STRING;
     mdp->value.string = dyn_strcpy(str);
+    return mdp;
+}
+
+MalDatum *MalDatum_new_intproc2(const intproc2_t proc) {
+    MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->type = INTPROC2;
+    mdp->value.intproc2 = proc;
     return mdp;
 }
 
