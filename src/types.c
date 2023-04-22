@@ -30,7 +30,6 @@ void List_add(List *list, void *ptr) {
     list->len += 1;
 }
 
-// TODO accept a function to pointer to free Node values
 void List_free(List *list) {
     if (list == NULL) return;
     else if (list->head == NULL) {
@@ -39,7 +38,7 @@ void List_free(List *list) {
     else {
         struct Node *node = list->head;
         while (node) {
-            free(node->value);
+            MalDatum_free(node->value);
             struct Node *p = node;
             node = node->next;
             free(p);
