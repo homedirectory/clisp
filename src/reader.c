@@ -40,11 +40,7 @@ static char *parse_until(const char *str, const char *set) {
         return dyn_strcpy(str);
     }
     else {
-        size_t n = p - str;
-        char *out = calloc(n + 1, sizeof(char));
-        memcpy(out, str, n);
-        out[n] = '\0';
-        return out;
+        return dyn_strncpy(str, p - str);
     }
 }
 
@@ -66,10 +62,7 @@ static char *parse_string(const char *str) {
         fprintf(stderr, "ERR: unbalanced string: %s\n", str);
         return NULL;
     }
-    char *out = calloc(i + 2, sizeof(char));
-    strncat(out, str, i + 1);
-    out[i + 1] = '\0';
-    return out;
+    return dyn_strncpy(str, i + 1);
 }
 
 // Splits the input string into tokens. Returns NULL upon failure.
@@ -77,8 +70,6 @@ static char *parse_string(const char *str) {
 // (i.e. delegate any validation of tokens)
 static Arr *tokenize(const char *str) {
     Arr *arr = Arr_new();
-
-    // skip whitespace
     size_t i = 0;
     char c;
     while ((c = str[i]) != '\0') {
@@ -111,7 +102,8 @@ static Arr *tokenize(const char *str) {
         else {
             // read until whitespace or paren
             tok = parse_until(str + i, WHITESPACE_CHARS "()");
-            n = strlen(tok);
+            if (tok)
+                n = strlen(tok);
         }
 
         if (tok == NULL) {
@@ -145,10 +137,8 @@ Reader *read_str(const char *str) {
 }
 
 char *Reader_next(Reader *rdr) {
-    if (rdr->pos >= rdr->tokens->len)
-        return NULL;
-
     char *tok = Reader_peek(rdr);
+    if (tok == NULL) return NULL;
     rdr->pos += 1;
     return tok;
 }

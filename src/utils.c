@@ -50,6 +50,13 @@ char *dyn_strcpy(const char *s) {
     return cpy;
 }
 
+char *dyn_strncpy(const char *s, size_t n) {
+    char *cpy = calloc(n + 1, sizeof(char));
+    memcpy(cpy, s, n);
+    cpy[n] = '\0';
+    return cpy;
+}
+
 /* Like strchr but looks for the first occurence of one of the chars.  
  * *chars must be a null-terminated string.
  * */
