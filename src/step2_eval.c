@@ -62,7 +62,7 @@ static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
             MalDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
                 // given symbol is not associated with any datum
-                fprintf(stderr, "ERR: undefined symbol '%s'\n", sym->name);
+                ERROR(eval_ast, "undefined symbol '%s'", sym->name);
             } else {
                 out = MalDatum_copy(assoc);
             }
@@ -106,7 +106,7 @@ MalDatum *eval(MalDatum *datum, MalEnv *env) {
             } else {
                 // NOTE: currently we only support arity of 2 
                 if (elist->len != 3) {
-                    fprintf(stderr, "ERR: only procedures of arity 2 are supported\n");
+                    ERROR(eval, "only procedures of arity 2 are supported");
                     //List_free(elist);
                     MalDatum_free(evaled);
                     return NULL;

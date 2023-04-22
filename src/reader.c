@@ -6,6 +6,7 @@
 #include "types.h"
 #include <ctype.h>
 #include <stdbool.h>
+#include "common.h"
 
 #define WHITESPACE_CHARS " \t\n\r"
 #define SYMBOL_INV_CHARS WHITESPACE_CHARS "[]{}('\"`,;)"
@@ -59,7 +60,7 @@ static char *parse_string(const char *str) {
         i++;
     }
     if (c == '\0') {
-        fprintf(stderr, "ERR: unbalanced string: %s\n", str);
+        ERROR(parse_string, "unbalanced string: %s", str);
         return NULL;
     }
     return dyn_strncpy(str, i + 1);
@@ -177,7 +178,7 @@ static MalDatum *read_atom(char *token) {
     // TODO false
     // TODO true
     else {
-        fprintf(stderr, "Unknown atom: %s\n", token);
+        ERROR(read_atom, "Unknown atom: %s", token);
         return NULL;
     }
 }
@@ -196,7 +197,7 @@ static MalDatum *read_list(Reader *rdr) {
         MalDatum *form = read_form(rdr);
         if (form == NULL) {
             List_free(list);
-            //fprintf(stderr, "ERR: Illegal form\n");
+            ERROR(read_list, "Illegal form");
             return NULL;
         }
         List_add(list, form);
@@ -204,7 +205,7 @@ static MalDatum *read_list(Reader *rdr) {
     }
 
     if (!closed) {
-        fprintf(stderr, "ERR: unbalanced open paren '('\n");
+        ERROR(read_list, "unbalanced open paren '('");
         List_free(list);
         return NULL;
     }
@@ -220,7 +221,7 @@ MalDatum *read_form(Reader *rdr) {
         return read_list(rdr);
     } 
     else if (token[0] == ')') {
-        fprintf(stderr, "ERR: unbalanced closing paren '%c'\n", token[0]);
+        ERROR(read_form, "unbalanced closing paren '%c'", token[0]);
         return NULL;
     }
     // atom

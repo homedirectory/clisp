@@ -5,7 +5,7 @@
 #include "types.h"
 #include <string.h>
 #include <stdlib.h>
-
+#include "common.h"
 
 char *pr_str(MalDatum *datum) {
     if (datum == NULL) return NULL;
@@ -29,7 +29,7 @@ char *pr_str(MalDatum *datum) {
             break;
         default:
             char *s = MalType_tostr(datum->type);
-            fprintf(stderr, "Unknown MalType: %s\n", s);
+            ERROR(pr_str, "Unknown MalType");
             free(s);
             str = NULL;
             break;
