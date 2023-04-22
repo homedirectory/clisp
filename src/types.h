@@ -7,31 +7,22 @@
 // signed int
 #define MAX_INT_DIGITS 10
 
-struct Node {
-    void *value; // this is always MalDatum *
-    struct Node *next;
-};
-
+typedef struct MalDatum MalDatum;
 
 // mal linked list
+struct Node {
+    MalDatum *value;
+    struct Node *next;
+};
 typedef struct List {
     size_t len;
     struct Node *head;
     struct Node *tail;
 } List;
 
-
 List *List_new();
 void List_add(List *, void *);
 void List_free(List *);
-
-
-typedef struct Symbol {
-    char name[256];
-} Symbol;
-
-Symbol *Symbol_new(char *name);
-void Symbol_free(Symbol *);
 
 
 /*
@@ -47,6 +38,15 @@ typedef enum MalType {
 
 char *MalType_tostr(MalType type);
 
+// Symbol ----------------------------------------
+typedef struct Symbol {
+    char name[256];
+} Symbol;
+
+Symbol *Symbol_new(char *name);
+void Symbol_free(Symbol *);
+
+/* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
     MalType type;
     union {
@@ -57,11 +57,11 @@ typedef struct MalDatum {
     } value;
 } MalDatum;
 
+// constructors
 MalDatum *MalDatum_new_int(const int);
 MalDatum *MalDatum_new_sym(Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 
 bool MalDatum_istype(MalDatum *, MalType);
-
 void MalDatum_free(MalDatum *);
