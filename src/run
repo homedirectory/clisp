@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
 
-exec $(dirname $0)/${STEP:-stepA_mal} "${@}"
+DIR=$(dirname $0)
+
+STEP=${STEP:-stepA_mal}
+make -C "$DIR" -B -s -i $STEP &>/dev/null
+exec $DIR/$STEP "${@}"

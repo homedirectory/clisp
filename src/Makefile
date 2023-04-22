@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -Wall -std=c99
+CFLAGS = -g -Wall -std=c99 $(DBG)
 
 step0_repl: step0_repl.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
