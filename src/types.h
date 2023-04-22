@@ -75,3 +75,4 @@ MalDatum *MalDatum_new_intproc2(const intproc2_t);
 
 bool MalDatum_istype(MalDatum *, MalType);
 void MalDatum_free(MalDatum *);
+MalDatum *MalDatum_copy(MalDatum *);

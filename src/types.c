@@ -199,3 +199,35 @@ void MalDatum_free(MalDatum *datum) {
 bool MalDatum_istype(MalDatum *datum, MalType type) {
     return datum->type == type;
 }
+
+MalDatum *MalDatum_copy(MalDatum *datum) {
+    if (datum == NULL) {
+        LOG_NULL(datum, MalDatum_copy);
+        return NULL;
+    };
+
+    MalDatum *out = NULL;
+
+    switch (datum->type) {
+        case INT:
+            out = MalDatum_new_int(datum->value.i);
+            break;
+        case SYMBOL:
+            out = MalDatum_new_sym(Symbol_new(datum->value.sym->name));
+            break;
+        case STRING:
+            out = MalDatum_new_string(datum->value.string);
+            break;
+        case INTPROC2:
+            out = MalDatum_new_intproc2(datum->value.intproc2);
+            break;
+        case LIST:
+            out = MalDatum_new_list(List_copy(datum->value.list));
+            break;
+        default:
+            fprintf(stderr, "MalDatum_copy: unknown MalType\n");
+            break;
+    }
+
+    return out;
+}
