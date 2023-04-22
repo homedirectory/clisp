@@ -24,7 +24,6 @@ typedef struct List List;
 List *List_new();
 void List_add(List *, void *);
 void List_free(List *);
-char *List_tostr(List *);
 
 
 /*
@@ -37,6 +36,8 @@ enum MalType {
     INT, SYMBOL, LIST
 };
 typedef enum MalType MalType;
+
+char *MalType_tostr(MalType type);
 
 struct MalDatum {
     MalType type;
@@ -55,4 +56,3 @@ MalDatum *MalDatum_new_list(List *);
 bool MalDatum_istype(MalDatum *, MalType);
 
 void MalDatum_free(MalDatum *);
-char *MalDatum_tostr(MalDatum *);

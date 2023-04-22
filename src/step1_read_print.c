@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include "reader.h"
 #include "types.h"
+#include "printer.h"
 
 #define PROMPT "user> "
 
@@ -30,7 +31,7 @@ static char *print(MalDatum *datum) {
         return NULL;
     }
 
-    char *str = MalDatum_tostr(datum);
+    char *str = pr_str(datum);
     return str;
 }
 

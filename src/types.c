@@ -48,36 +48,26 @@ void List_free(List *list) {
     }
 }
 
-char *List_tostr(List *list) {
-    if (list == NULL) return NULL;
-    int cap = 256;
-    char *str = calloc(cap, sizeof(char));
-    str[0] = '(';
-    int len = 1;
-
-    struct Node *node = list->head;
-    while (node) {
-        char *s = MalDatum_tostr((MalDatum*) node->value);
-        int slen = strlen(s);
-        if (len + slen >= cap) {
-            cap = slen + cap * 1.5;
-            str = realloc(str, cap * sizeof(char));
-        }
-        strcat(str, s);
-        len += slen;
-        strcat(str, " ");
-        len++;
-        free(s);
-        node = node->next;
+char *MalType_tostr(MalType type) {
+    char *buf;
+    switch (type) {
+        case INT:
+            buf = "INT";
+            break;
+        case SYMBOL:
+            buf = "SYMBOL";
+            break;
+        case LIST:
+            buf = "LIST";
+            break;
+        case STRING:
+            buf = "STRING";
+            break;
+        default:
+            buf = "*unknown*";
+            break;
     }
-    // if non-empty replace last redundant ' '
-    if (len > 1) {
-        len--;
-    }
-    str[len] = ')';
-    str[len + 1] = '\0';
-
-    return str;
+    return dyn_strcpy(buf);
 }
 
 MalDatum *MalDatum_new_int(const int i) {
@@ -112,34 +102,10 @@ void MalDatum_free(MalDatum *datum) {
         case LIST:
             List_free(datum->value.list);
             break;
+            break;
         default:
             break;
     }
-    free(datum);
-}
-
-char *MalDatum_tostr(MalDatum *datum) {
-    if (datum == NULL) return NULL;
-
-    char *str;
-    switch (datum->type) {
-        case INT:
-            str = malloc(MAX_INT_DIGITS + 1);
-            sprintf(str, "%d", datum->value.i);
-            break;
-        case SYMBOL:
-            str = dyn_strcpy(datum->value.sym);
-            break;
-        case LIST:
-            str = List_tostr(datum->value.list);
-            break;
-        default:
-            fprintf(stderr, "Unknown MalType: %d\n", datum->type);
-            str = NULL;
-            break;
-    }
-
-    return str;
 }
 
 bool MalDatum_istype(MalDatum *datum, MalType type) {
