@@ -2,13 +2,11 @@
 
 #include <stddef.h>
 
-struct Arr {
+typedef struct Arr {
     size_t len;
     size_t cap;
     void **items;
-};
-
-typedef struct Arr Arr;
+} Arr;
 
 Arr *Arr_new();
 Arr *Arr_newn(const size_t);

@@ -3,11 +3,10 @@
 #include "utils.h"
 #include "types.h"
 
-struct Reader {
+typedef struct Reader {
     size_t pos;
     Arr *tokens;
-};
-typedef struct Reader Reader;
+} Reader;
 
 Reader *read_str(const char *str);
 char *Reader_next(Reader *rdr);

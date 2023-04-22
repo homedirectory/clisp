@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 
-// unsigned int
+// signed int
 #define MAX_INT_DIGITS 10
 
 struct Node {
@@ -14,12 +14,11 @@ struct Node {
 
 
 // mal linked list
-struct List {
+typedef struct List {
     size_t len;
     struct Node *head;
     struct Node *tail;
-};
-typedef struct List List;
+} List;
 
 
 List *List_new();
@@ -27,10 +26,9 @@ void List_add(List *, void *);
 void List_free(List *);
 
 
-struct Symbol {
+typedef struct Symbol {
     char name[256];
-};
-typedef struct Symbol Symbol;
+} Symbol;
 
 Symbol *Symbol_new(char *name);
 void Symbol_free(Symbol *);
@@ -43,14 +41,13 @@ void Symbol_free(Symbol *);
  * 3. list    - List *
  * 4. string  - pointer to dynamic char array
  */
-enum MalType {
+typedef enum MalType {
     INT, SYMBOL, LIST, STRING
-};
-typedef enum MalType MalType;
+} MalType;
 
 char *MalType_tostr(MalType type);
 
-struct MalDatum {
+typedef struct MalDatum {
     MalType type;
     union {
         int i;
@@ -58,8 +55,7 @@ struct MalDatum {
         List *list;
         char *string;
     } value;
-};
-typedef struct MalDatum MalDatum;
+} MalDatum;
 
 MalDatum *MalDatum_new_int(const int);
 MalDatum *MalDatum_new_sym(Symbol *);
