@@ -65,6 +65,20 @@ void Symbol_free(Symbol *symbol) {
     free(symbol);
 }
 
+// TODO intern all symbols
+bool Symbol_eq(Symbol *sym1, Symbol *sym2) {
+    if (sym1 == NULL) {
+        LOG_NULL(sym1, Symbol_eq);
+        return false;
+    }
+    if (sym2 == NULL) {
+        LOG_NULL(sym1, Symbol_eq);
+        return false;
+    }
+
+    return strcmp(sym1->name, sym2->name) == 0;
+}
+
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
     char *buf;

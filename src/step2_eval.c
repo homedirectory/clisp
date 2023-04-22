@@ -37,28 +37,28 @@ static char *print(MalDatum *datum) {
     return str;
 }
 
-int mal_add(int x, int y) {
+static int mal_add(int x, int y) {
     return x + y;
 }
 
-int mal_sub(int x, int y) {
+static int mal_sub(int x, int y) {
     return x - y;
 }
 
-int mal_mul(int x, int y) {
+static int mal_mul(int x, int y) {
     return x * y;
 }
 
-int mal_div(int x, int y) {
+static int mal_div(int x, int y) {
     return x / y;
 }
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new();
-    MalEnv_put(env, Symbol_new("+"), mal_add);
-    MalEnv_put(env, Symbol_new("-"), mal_sub);
-    MalEnv_put(env, Symbol_new("*"), mal_mul);
-    MalEnv_put(env, Symbol_new("/"), mal_div);
+    MalEnv_put(env, Symbol_new("+"), MalDatum_new_intproc2(mal_add));
+    MalEnv_put(env, Symbol_new("-"), MalDatum_new_intproc2(mal_sub));
+    MalEnv_put(env, Symbol_new("*"), MalDatum_new_intproc2(mal_mul));
+    MalEnv_put(env, Symbol_new("/"), MalDatum_new_intproc2(mal_div));
 
     while (1) {
         //char *sp = malloc(50);
@@ -85,4 +85,6 @@ int main(int argc, char **argv) {
             free(p);
         }
     }
+
+    MalEnv_free(env);
 }

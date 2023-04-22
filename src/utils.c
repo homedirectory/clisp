@@ -3,6 +3,7 @@
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define CAPACITY_INCR_RATIO 1.5
 #define DEFAULT_CAPACITY 10
@@ -55,6 +56,14 @@ void Arr_free(const Arr *arr) {
 size_t Arr_find(Arr *arr, void *ptr) {
     for (size_t i = 0; i < arr->len; i++) {
         if (arr->items[i] == ptr)
+            return i;
+    }
+    return -1;
+}
+
+size_t Arr_findf(Arr *arr, void *ptr, equals_t eq) {
+    for (size_t i = 0; i < arr->len; i++) {
+        if (eq(arr->items[i], ptr))
             return i;
     }
     return -1;

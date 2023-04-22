@@ -2,22 +2,20 @@
 
 #include "types.h"
 
-typedef int (*intfun)(int,int);
-
-/* This environment is an associative structure that maps symbols (or symbol
- * names) to numeric functions */
+/* This environment is an associative structure that maps symbols to mal values */
 typedef struct MalEnv {
-    Arr *symbols;
-    Arr *funcs;
+    Arr *symbols; // of Symbol*
+    Arr *datums;  // of MalDatum*
 } MalEnv;
 
 MalEnv *MalEnv_new();
+void MalEnv_free(MalEnv *env);
 
-/* Associates a numeric function with a symbol.
- * If the given symbol was already associated with some function, returns that function,
+/* Associates a MalDatum with a symbol.
+ * If the given symbol was already associated with some datum, returns that datum,
  * otherwise returns NULL.
  */
-intfun MalEnv_put(MalEnv *env, Symbol *sym, intfun fun);
+MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum);
 
-/* Returns the function associated with the given symbol or NULL. */
-intfun MalEnv_get(MalEnv *env, Symbol *sym);
+/* Returns the MalDatum associated with the given symbol or NULL. */
+MalDatum *MalEnv_get(MalEnv *env, Symbol *sym);

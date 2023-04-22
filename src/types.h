@@ -46,6 +46,8 @@ typedef struct Symbol {
 
 Symbol *Symbol_new(char *name);
 void Symbol_free(Symbol *);
+bool Symbol_eq(Symbol *sym1, Symbol *sym2);
+
 
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
