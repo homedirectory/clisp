@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "common.h"
 
 
 List *List_new() {
@@ -12,6 +13,12 @@ List *List_new() {
     list->head = NULL;
     list->tail = NULL;
     return list;
+}
+
+bool List_isempty(List *list) {
+    if (list == NULL)
+        LOG_NULL(list, List_isempty);
+    return list->len == 0;
 }
 
 void List_add(List *list, void *ptr) {

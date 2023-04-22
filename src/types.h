@@ -21,8 +21,9 @@ typedef struct List {
 } List;
 
 List *List_new();
-void List_add(List *, void *);
 void List_free(List *);
+void List_add(List *, void *);
+bool List_isempty(List *);
 
 
 /*
