@@ -13,7 +13,9 @@
 
 static MalDatum *read(char* in) {
     Reader *rdr = read_str(in);
-    if (rdr == NULL || rdr->tokens->len == 0) {
+    if (rdr == NULL) return NULL;
+    if (rdr->tokens->len == 0) {
+        Reader_free(rdr);
         return NULL;
     }
     MalDatum *form = read_form(rdr);
@@ -27,7 +29,6 @@ static MalDatum *eval(MalDatum *datum) {
 
 static char *print(MalDatum *datum) {
     if (datum == NULL) {
-        fprintf(stderr, "ERROR!\n");
         return NULL;
     }
 
@@ -47,6 +48,7 @@ int main(int argc, char **argv) {
 
         MalDatum *r = read(line);
         free(line);
+        if (r == NULL) continue;
         MalDatum *e = eval(r);
         //MalDatum_free(r);
         char *p = print(e);

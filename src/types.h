@@ -12,7 +12,8 @@ struct Node {
     struct Node *next;
 };
 
-// linked list
+
+// mal linked list
 struct List {
     size_t len;
     struct Node *head;

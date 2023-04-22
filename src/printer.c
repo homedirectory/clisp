@@ -20,10 +20,12 @@ char *pr_str(MalDatum *datum) {
             str = dyn_strcpy(datum->value.sym);
             break;
         case LIST:
-            str = pr_list(datum->value.list);
+            List *list = datum->value.list;
+            str = list ? pr_list(list) : NULL;
             break;
         case STRING:
-            str = dyn_strcpy(datum->value.string);
+            char *string = datum->value.string;
+            str = string ? dyn_strcpy(string) : NULL;
             break;
         default:
             char *s = MalType_tostr(datum->type);
@@ -36,6 +38,8 @@ char *pr_str(MalDatum *datum) {
     return str;
 }
 
+// returns a new string with the contents of the given list separeted by spaces 
+// and wrapped in parens
 char *pr_list(List *list) {
     if (list == NULL) return NULL;
     size_t cap = 256;

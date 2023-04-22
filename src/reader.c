@@ -14,6 +14,7 @@
  * parses an int from *str and stores it as a string in *out
  * returns the length of the parsed int (digits count + minus sign optionally) or -1 on failure
  */
+/*
 static int parse_int(const char *str, char *out) {
     int d;
     int ret = sscanf(str, "%d", &d);
@@ -24,6 +25,7 @@ static int parse_int(const char *str, char *out) {
         return strlen(out);
     }
 }
+*/
 
 /*
  * Read characters from *str until one of characters in string *set is encountered or end
@@ -88,6 +90,7 @@ static Arr *tokenize(const char *str) {
         char *tok; // token to be added
         size_t n;  // read step
 
+        // paren
         if (c == '(' || c == ')') {
             tok = malloc(2);
             sprintf(tok, "%c", c);
@@ -103,6 +106,8 @@ static Arr *tokenize(const char *str) {
 
         // TODO special characters
         // TODO comments
+
+        // int | symbol
         else {
             // read until whitespace or paren
             tok = parse_until(str + i, WHITESPACE_CHARS "()");
@@ -126,10 +131,12 @@ Reader *read_str(const char *str) {
     if (tokens == NULL)
         return NULL;
 
-    //puts("tokens:");
-    //for (size_t i = 0; i < tokens->len; i++) {
-    //    printf("%s\n", (char*) tokens->items[i]);
-    //}
+#ifdef DEBUG
+    puts("tokens:");
+    for (size_t i = 0; i < tokens->len; i++) {
+        printf("%s\n", (char*) tokens->items[i]);
+    }
+#endif
 
     Reader *rdr = malloc(sizeof(Reader));
     rdr->pos = 0;
@@ -185,7 +192,7 @@ static MalDatum *read_atom(char *token) {
     }
 }
 
-// TODO make sure all parens are balanced (during tokenization?)
+// current Reader token should be the next one after an open paren
 static MalDatum *read_list(Reader *rdr) {
     bool closed = false;
     List *list = List_new();
@@ -198,7 +205,8 @@ static MalDatum *read_list(Reader *rdr) {
         }
         MalDatum *form = read_form(rdr);
         if (form == NULL) {
-            fprintf(stderr, "ERR: Illegal form\n");
+            List_free(list);
+            //fprintf(stderr, "ERR: Illegal form\n");
             return NULL;
         }
         List_add(list, form);
@@ -206,12 +214,12 @@ static MalDatum *read_list(Reader *rdr) {
     }
 
     if (!closed) {
-        fprintf(stderr, "ERR: Unclosed list\n");
+        fprintf(stderr, "ERR: unbalanced open paren '('\n");
         List_free(list);
         return NULL;
     }
 
-    Reader_next(rdr); // skip over ')'
+    Reader_next(rdr); // skip over closing paren
     return MalDatum_new_list(list);
 }
 
@@ -222,10 +230,11 @@ MalDatum *read_form(Reader *rdr) {
         return read_list(rdr);
     } 
     else if (token[0] == ')') {
-        fprintf(stderr, "ERR: Unopened list\n");
+        fprintf(stderr, "ERR: unbalanced closing paren '%c'\n", token[0]);
         return NULL;
     }
     // atom
+    // TODO allow multiple atoms (in a top-level expression)
     else {
         return read_atom(token);
     }

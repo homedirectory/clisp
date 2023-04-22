@@ -116,6 +116,7 @@ void MalDatum_free(MalDatum *datum) {
         default:
             break;
     }
+    free(datum);
 }
 
 bool MalDatum_istype(MalDatum *datum, MalType type) {
