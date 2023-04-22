@@ -22,7 +22,7 @@ typedef struct List {
 
 List *List_new();
 void List_free(List *);
-void List_add(List *, void *);
+void List_add(List *, MalDatum *);
 bool List_isempty(List *);
 
 

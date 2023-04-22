@@ -21,9 +21,9 @@ bool List_isempty(List *list) {
     return list->len == 0;
 }
 
-void List_add(List *list, void *ptr) {
+void List_add(List *list, MalDatum *datum) {
     struct Node *node = malloc(sizeof(struct Node));
-    node->value = ptr;
+    node->value = datum;
     node->next = NULL;
 
     if (list->tail == NULL) {
