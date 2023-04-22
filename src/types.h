@@ -31,9 +31,10 @@ void List_free(List *);
  * 1. integer - 32-bit signed int
  * 2. symbol  - string (max len 255) = char sym[256]
  * 3. list    - List *
+ * 4. string  - pointer to dynamic char array
  */
 enum MalType {
-    INT, SYMBOL, LIST
+    INT, SYMBOL, LIST, STRING
 };
 typedef enum MalType MalType;
 
@@ -45,6 +46,7 @@ struct MalDatum {
         int i;
         char sym[256];
         List *list;
+        char *string;
     } value;
 };
 typedef struct MalDatum MalDatum;
@@ -52,6 +54,7 @@ typedef struct MalDatum MalDatum;
 MalDatum *MalDatum_new_int(const int);
 MalDatum *MalDatum_new_sym(const char *);
 MalDatum *MalDatum_new_list(List *);
+MalDatum *MalDatum_new_string(const char *);
 
 bool MalDatum_istype(MalDatum *, MalType);
 

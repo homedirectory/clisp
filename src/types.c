@@ -96,12 +96,22 @@ MalDatum *MalDatum_new_list(List *list) {
     return mdp;
 }
 
+// *char is copied
+MalDatum *MalDatum_new_string(const char *str) {
+    MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->type = STRING;
+    mdp->value.string = dyn_strcpy(str);
+    return mdp;
+}
+
 void MalDatum_free(MalDatum *datum) {
     if (datum == NULL) return;
     switch (datum->type) {
         case LIST:
             List_free(datum->value.list);
             break;
+        case STRING:
+            free(datum->value.string);
             break;
         default:
             break;

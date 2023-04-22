@@ -46,7 +46,31 @@ static char *parse_until(const char *str, const char *set) {
     }
 }
 
-// splits the input string into tokens
+// parses a string from *str that must start with '"'
+// the resulting string is wrapped with double quotes
+static char *parse_string(const char *str) {
+    // str[0] is '"', so start from str + 1
+    size_t i = 1;
+    char c;
+    bool escaped = false;
+    while ((c = str[i]) != '\0' && (c != '"' || escaped)) {
+        if (c == '\\')
+            escaped = !escaped;
+        else if (escaped)
+            escaped = false;
+        i++;
+    }
+    if (c == '\0') {
+        fprintf(stderr, "ERR: unbalanced string: %s\n", str);
+        return NULL;
+    }
+    char *out = calloc(i + 2, sizeof(char));
+    strncat(out, str, i + 1);
+    out[i + 1] = '\0';
+    return out;
+}
+
+// Splits the input string into tokens. Returns NULL upon failure.
 // NOTE: keep this procedure as simple as possible
 // (i.e. delegate any validation of tokens)
 static Arr *tokenize(const char *str) {
@@ -69,13 +93,25 @@ static Arr *tokenize(const char *str) {
             sprintf(tok, "%c", c);
             n = 1;
         }
+        // string
+        else if (c == '"') {
+            tok = parse_string(str + i);
+            if (tok) {
+                n = strlen(tok);
+            }
+        }
+
         // TODO special characters
-        // TODO strings
         // TODO comments
         else {
             // read until whitespace or paren
             tok = parse_until(str + i, WHITESPACE_CHARS "()");
             n = strlen(tok);
+        }
+
+        if (tok == NULL) {
+            Arr_free(arr);
+            return NULL;
         }
 
         Arr_add(arr, tok);
@@ -132,6 +168,10 @@ static MalDatum *read_atom(char *token) {
         int i = strtol(token, NULL, 10);
         return MalDatum_new_int(i);
     }
+    // string
+    else if (token[0] == '"') {
+        return MalDatum_new_string(token);
+    }
     // symbol
     else if (strchr(SYMBOL_INV_CHARS, token[0]) == NULL) {
         return MalDatum_new_sym(token);
@@ -139,7 +179,6 @@ static MalDatum *read_atom(char *token) {
     // TODO nil
     // TODO false
     // TODO true
-    // TODO string
     else {
         fprintf(stderr, "Unknown atom: %s\n", token);
         return NULL;

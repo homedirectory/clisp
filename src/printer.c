@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "printer.h"
+#include "reader.h"
 #include "utils.h"
+#include "types.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -19,6 +21,9 @@ char *pr_str(MalDatum *datum) {
             break;
         case LIST:
             str = pr_list(datum->value.list);
+            break;
+        case STRING:
+            str = dyn_strcpy(datum->value.string);
             break;
         default:
             char *s = MalType_tostr(datum->type);
