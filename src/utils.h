@@ -12,9 +12,11 @@ typedef struct Arr {
 
 Arr *Arr_new();
 Arr *Arr_newn(const size_t);
-size_t Arr_add(Arr*, void*);
-void *Arr_get(Arr*, size_t idx);
 void Arr_free(const Arr*);
+size_t Arr_add(Arr*, void*);
+void *Arr_replace(Arr*, size_t, void*);
+void *Arr_get(Arr*, size_t idx);
+size_t Arr_find(Arr*, void*);
 
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);

@@ -6,3 +6,6 @@ step0_repl: step0_repl.c
 
 step1_read_print: step1_read_print.c printer.c reader.c types.c utils.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
+
+step2_eval: step2_eval.c printer.c reader.c types.c utils.c env.c
+	$(CC) $(CFLAGS) $^ -lreadline -o $@

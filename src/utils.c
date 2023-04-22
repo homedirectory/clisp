@@ -33,6 +33,14 @@ size_t Arr_add(Arr *arr, void *ptr) {
     return arr->len;
 }
 
+void *Arr_replace(Arr *arr, size_t idx, void *ptr) {
+    void *old = Arr_get(arr, idx);
+    if (old) {
+        arr->items[idx] = ptr;
+    }
+    return old;
+}
+
 void *Arr_get(Arr *arr, size_t idx) {
     if (idx >= arr->len)
         return NULL;
@@ -42,6 +50,14 @@ void *Arr_get(Arr *arr, size_t idx) {
 void Arr_free(const Arr *arr) {
     free(arr->items);
     free((void*)arr);
+}
+
+size_t Arr_find(Arr *arr, void *ptr) {
+    for (size_t i = 0; i < arr->len; i++) {
+        if (arr->items[i] == ptr)
+            return i;
+    }
+    return -1;
 }
 
 char *dyn_strcpy(const char *s) {
