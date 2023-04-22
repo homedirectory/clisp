@@ -48,6 +48,18 @@ void List_free(List *list) {
     }
 }
 
+// Symbol ----------------------------------------
+Symbol *Symbol_new(char *name) {
+    Symbol *sym = malloc(sizeof(Symbol));
+    strcpy(sym->name, name);
+    return sym;
+}
+
+void Symbol_free(Symbol *symbol) {
+    free(symbol);
+}
+
+// MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
     char *buf;
     switch (type) {
@@ -77,18 +89,15 @@ MalDatum *MalDatum_new_int(const int i) {
     return mdp;
 }
 
-// *sym is copied
-MalDatum *MalDatum_new_sym(const char *sym) { 
+// *symbol is not copied
+MalDatum *MalDatum_new_sym(Symbol *symbol) { 
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->type = SYMBOL;
-    //char *cpy = dyn_strcpy(sym);
-    //mdp->value.sym = sym;
-    // TODO sym might break the length boundary
-    strcpy(mdp->value.sym, sym);
+    mdp->value.sym = symbol;
     return mdp;
 }
 
-// *list is used, not copied
+// *list is not copied
 MalDatum *MalDatum_new_list(List *list) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->type = LIST;
@@ -113,6 +122,8 @@ void MalDatum_free(MalDatum *datum) {
         case STRING:
             free(datum->value.string);
             break;
+        case SYMBOL:
+            Symbol_free(datum->value.sym);
         default:
             break;
     }

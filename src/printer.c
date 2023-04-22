@@ -17,7 +17,7 @@ char *pr_str(MalDatum *datum) {
             sprintf(str, "%d", datum->value.i);
             break;
         case SYMBOL:
-            str = dyn_strcpy(datum->value.sym);
+            str = dyn_strcpy(datum->value.sym->name);
             break;
         case LIST:
             List *list = datum->value.list;

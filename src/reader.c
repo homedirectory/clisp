@@ -181,7 +181,7 @@ static MalDatum *read_atom(char *token) {
     }
     // symbol
     else if (strchr(SYMBOL_INV_CHARS, token[0]) == NULL) {
-        return MalDatum_new_sym(token);
+        return MalDatum_new_sym(Symbol_new(token));
     }
     // TODO nil
     // TODO false

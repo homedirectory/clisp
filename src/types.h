@@ -27,6 +27,15 @@ void List_add(List *, void *);
 void List_free(List *);
 
 
+struct Symbol {
+    char name[256];
+};
+typedef struct Symbol Symbol;
+
+Symbol *Symbol_new(char *name);
+void Symbol_free(Symbol *);
+
+
 /*
  * supported types:
  * 1. integer - 32-bit signed int
@@ -45,7 +54,7 @@ struct MalDatum {
     MalType type;
     union {
         int i;
-        char sym[256];
+        Symbol *sym;
         List *list;
         char *string;
     } value;
@@ -53,7 +62,7 @@ struct MalDatum {
 typedef struct MalDatum MalDatum;
 
 MalDatum *MalDatum_new_int(const int);
-MalDatum *MalDatum_new_sym(const char *);
+MalDatum *MalDatum_new_sym(Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 
