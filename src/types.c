@@ -15,9 +15,28 @@ List *List_new() {
     return list;
 }
 
+List *List_copy(List *list) {
+    if (list == NULL) {
+        LOG_NULL(list, List_copy);
+        return NULL;
+    }
+
+    List *out = List_new();
+
+    struct Node *node = list->head;
+    while (node) {
+        List_add(out, node->value);
+        node = node->next;
+    }
+
+    return out;
+}
+
 bool List_isempty(List *list) {
-    if (list == NULL)
+    if (list == NULL) {
         LOG_NULL(list, List_isempty);
+        exit(EXIT_FAILURE);
+    }
     return list->len == 0;
 }
 
@@ -35,6 +54,23 @@ void List_add(List *list, MalDatum *datum) {
     }
 
     list->len += 1;
+}
+
+MalDatum *List_ref(List *list, size_t idx) { 
+    if (list == NULL) {
+        LOG_NULL(list, List_ref);
+        return NULL;
+    }
+    if (idx >= list->len)
+        return NULL;
+
+    size_t i = 0;
+    struct Node *node = list->head;
+    while (i < idx) {
+        node = node->next;
+        i++;
+    }
+    return node->value;
 }
 
 void List_free(List *list) {

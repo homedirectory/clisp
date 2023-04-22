@@ -23,7 +23,9 @@ typedef struct List {
 List *List_new();
 void List_free(List *);
 void List_add(List *, MalDatum *);
+MalDatum *List_ref(List *, size_t);
 bool List_isempty(List *);
+List *List_copy(List *);
 
 
 /*
