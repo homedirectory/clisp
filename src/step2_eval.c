@@ -8,9 +8,11 @@
 #include "types.h"
 #include "printer.h"
 #include "env.h"
+#include "common.h"
 
 #define PROMPT "user> "
 
+MalDatum *eval(MalDatum *datum, MalEnv *env);
 
 static MalDatum *read(char* in) {
     Reader *rdr = read_str(in);
@@ -24,8 +26,107 @@ static MalDatum *read(char* in) {
     return form;
 }
 
-static MalDatum *eval(MalDatum *datum, MalEnv *env) {
-    return datum;
+// returns a new list that is the result of calling EVAL on each list element
+static List *eval_list(List *list, MalEnv *env) {
+    if (list == NULL) {
+        LOG_NULL(list, eval_list);
+        return NULL;
+    }
+
+    if (List_isempty(list)) {
+        return List_new(); // TODO use singleton empty list 
+    }
+
+    List *out = List_new();
+    struct Node *node = list->head;
+    while (node) {
+        MalDatum *evaled = eval(node->value, env);
+        if (evaled == NULL) {
+            LOG_NULL(evaled, eval_list);
+            List_free(out);
+            return NULL;
+        }
+        List_add(out, evaled);
+        node = node->next;
+    }
+
+    return out;
+}
+
+static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
+    MalDatum *out = NULL;
+
+    switch (datum->type) {
+        case SYMBOL:
+            Symbol *sym = datum->value.sym;
+            MalDatum *assoc = MalEnv_get(env, sym);
+            if (assoc == NULL) {
+                // given symbol is not associated with any datum
+                fprintf(stderr, "ERR: undefined symbol '%s'\n", sym->name);
+            } else {
+                out = MalDatum_copy(assoc);
+            }
+            break;
+        case LIST:
+            List *elist = eval_list(datum->value.list, env);
+            if (elist == NULL) {
+                LOG_NULL(elist, eval_ast);
+            } else {
+                out = MalDatum_new_list(elist);
+            }
+            break;
+        default:
+            out = MalDatum_copy(datum);
+            break;
+    }
+
+    return out;
+}
+
+MalDatum *eval(MalDatum *datum, MalEnv *env) {
+    if (datum == NULL) return NULL;
+
+    MalDatum *out = NULL;
+
+    switch (datum->type) {
+        case LIST:
+            //List *elist = eval_ast(datum->value.list, env);
+            MalDatum *evaled = eval_ast(datum, env);
+            if (evaled == NULL) {
+                LOG_NULL(evaled, eval);
+                MalDatum_free(evaled);
+                return NULL;
+            }
+            List *elist = evaled->value.list;
+            // empty list? return as is
+            if (List_isempty(elist)) {
+                // TODO use a single global instance of an empty list
+                //out = MalDatum_new_list(List_new());
+                out = evaled;
+            } else {
+                // NOTE: currently we only support arity of 2 
+                if (elist->len != 3) {
+                    fprintf(stderr, "ERR: only procedures of arity 2 are supported\n");
+                    //List_free(elist);
+                    MalDatum_free(evaled);
+                    return NULL;
+                }
+                // Take the first item of the evaluated list and call it as
+                // a function using the rest of the evaluated list as its arguments.
+                intproc2_t proc = List_ref(elist, 0)->value.intproc2;
+                int arg1 = List_ref(elist, 1)->value.i;
+                int arg2 = List_ref(elist, 2)->value.i;
+                int rslt = proc(arg1, arg2);
+                out = MalDatum_new_int(rslt);
+                MalDatum_free(evaled);
+            }
+            break;
+        default:
+            out = eval_ast(datum, env);
+            break;
+    }
+
+    return out;
 }
 
 static char *print(MalDatum *datum) {
