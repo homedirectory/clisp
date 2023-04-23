@@ -33,7 +33,39 @@ static MalDatum *read(const char* in) {
  * return eval(cond) ? eval(if-true) : nil
  */
 static MalDatum *eval_if(const List *list, MalEnv *env) {
-    FATAL(eval_if, "Not implemented");
+    // 1. validate the list
+    int argc = List_len(list) - 1;
+    if (argc < 2) {
+        ERROR(eval_if, "if expects at least 2 arguments, but %d were given", argc);
+        return NULL;
+    }
+    if (argc > 3) {
+        ERROR(eval_if, "if expects at most 3 arguments, but %d were given", argc);
+        return NULL;
+    }
+
+    MalDatum *ev_cond = eval(List_ref(list, 1), env); // own
+    if (ev_cond == NULL)
+        return NULL;
+
+    // eval(cond) is true if it's neither 'nil' nor 'false'
+    if (!MalDatum_isnil(ev_cond) && !MalDatum_isfalse(ev_cond)) {
+        // eval(if-true)
+        MalDatum *ev_iftrue = eval(List_ref(list, 2), env);
+        MalDatum_free(ev_cond);
+        return ev_iftrue;
+    } else {
+        if (argc == 3) {
+            // eval(if-false)
+            MalDatum *ev_iffalse = eval(List_ref(list, 3), env);
+            MalDatum_free(ev_cond);
+            return ev_iffalse;
+        } else {
+            // nil
+            MalDatum_free(ev_cond);
+            return MalDatum_nil();
+        }
+    }
 }
 
 /* 'do' expression evalutes each succeeding expression returning the result of the last one 
@@ -225,7 +257,7 @@ MalDatum *eval(const MalDatum *datum, MalEnv *env) {
                             return eval_def(list, env);
                         else if (Symbol_eq_str(sym, "let*"))
                             return eval_letstar(list, env);
-                        else if (Symbol_eq_str(sym, "id"))
+                        else if (Symbol_eq_str(sym, "if"))
                             return eval_if(list, env);
                         else if (Symbol_eq_str(sym, "do"))
                             return eval_do(list, env);
