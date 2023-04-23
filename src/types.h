@@ -21,11 +21,19 @@ typedef struct List {
 } List;
 
 List *List_new();
+
+/* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *);
+
 void List_add(List *, MalDatum *);
 MalDatum *List_ref(List *, size_t);
 bool List_isempty(List *);
+
+/* Returns a shallow copy of a list: the nodes are copied, but MalDatums they point to are not. */
 List *List_copy(List *);
+
+/* Returns a deep copy of a list: both the nodes and MalDatums they point to are copied. */
+List *List_deep_copy(List *);
 
 
 /*
@@ -76,3 +84,4 @@ MalDatum *MalDatum_new_intproc2(const intproc2_t);
 bool MalDatum_istype(MalDatum *, MalType);
 void MalDatum_free(MalDatum *);
 MalDatum *MalDatum_copy(MalDatum *);
+MalDatum *MalDatum_deep_copy(MalDatum *);

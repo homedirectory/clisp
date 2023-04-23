@@ -53,6 +53,9 @@ static List *eval_list(List *list, MalEnv *env) {
     return out;
 }
 
+/* Evaluates a MalDatum in an environment and returns the result in the form of a 
+ * new dynamically allocted MalDatum.
+ */
 static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
     MalDatum *out = NULL;
 
@@ -64,7 +67,7 @@ static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
                 // given symbol is not associated with any datum
                 ERROR(eval_ast, "undefined symbol '%s'", sym->name);
             } else {
-                out = MalDatum_copy(assoc);
+                out = MalDatum_deep_copy(assoc);
             }
             break;
         case LIST:

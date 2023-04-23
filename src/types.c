@@ -32,6 +32,29 @@ List *List_copy(List *list) {
     return out;
 }
 
+List *List_deep_copy(List *list) {
+    if (list == NULL) {
+        LOG_NULL(list, List_deep_copy);
+        return NULL;
+    }
+
+    List *out = List_new();
+
+    struct Node *node = list->head;
+    while (node) {
+        MalDatum *cpy = MalDatum_deep_copy(node->value);
+        if (cpy == NULL) {
+            LOG_NULL(cpy, List_deep_copy);
+            List_free(out);
+            return NULL;
+        }
+        List_add(out, cpy);
+        node = node->next;
+    }
+
+    return out;
+}
+
 bool List_isempty(List *list) {
     if (list == NULL) {
         LOG_NULL(list, List_isempty);
@@ -73,6 +96,7 @@ MalDatum *List_ref(List *list, size_t idx) {
     return node->value;
 }
 
+/* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *list) {
     if (list == NULL) return;
     else if (list->head == NULL) {
@@ -181,6 +205,7 @@ MalDatum *MalDatum_new_intproc2(const intproc2_t proc) {
 
 void MalDatum_free(MalDatum *datum) {
     if (datum == NULL) return;
+
     switch (datum->type) {
         case LIST:
             List_free(datum->value.list);
@@ -190,9 +215,11 @@ void MalDatum_free(MalDatum *datum) {
             break;
         case SYMBOL:
             Symbol_free(datum->value.sym);
+            break;
         default:
             break;
     }
+
     free(datum);
 }
 
@@ -226,6 +253,26 @@ MalDatum *MalDatum_copy(MalDatum *datum) {
             break;
         default:
             fprintf(stderr, "MalDatum_copy: unknown MalType\n");
+            break;
+    }
+
+    return out;
+}
+
+MalDatum *MalDatum_deep_copy(MalDatum *datum) {
+    if (datum == NULL) {
+        LOG_NULL(datum, MalDatum_deep_copy);
+        return NULL;
+    };
+
+    MalDatum *out = NULL;
+
+    switch (datum->type) {
+        case LIST:
+            out = MalDatum_new_list(List_deep_copy(datum->value.list));
+            break;
+        default:
+            out = MalDatum_copy(datum);
             break;
     }
 
