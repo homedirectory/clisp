@@ -60,7 +60,7 @@ static char *parse_string(const char *str) {
         i++;
     }
     if (c == '\0') {
-        ERROR(parse_string, "unbalanced string: %s", str);
+        ERROR("unbalanced string: %s", str);
         return NULL;
     }
     return dyn_strncpy(str, i + 1);
@@ -178,7 +178,7 @@ static MalDatum *read_atom(const char *token) {
     // TODO false
     // TODO true
     else {
-        DEBUG(read_atom, "Unknown atom: %s", token);
+        DEBUG("Unknown atom: %s", token);
         return NULL;
     }
 }
@@ -197,7 +197,7 @@ static MalDatum *read_list(Reader *rdr) {
         MalDatum *form = read_form(rdr);
         if (form == NULL) {
             List_free(list);
-            DEBUG(read_list, "Illegal form");
+            DEBUG("Illegal form");
             return NULL;
         }
         List_add(list, form);
@@ -205,7 +205,7 @@ static MalDatum *read_list(Reader *rdr) {
     }
 
     if (!closed) {
-        ERROR(read_list, "unbalanced open paren '('");
+        ERROR("unbalanced open paren '('");
         List_free(list);
         return NULL;
     }
@@ -221,7 +221,7 @@ MalDatum *read_form(Reader *rdr) {
         return read_list(rdr);
     } 
     else if (token[0] == ')') {
-        ERROR(read_form, "unbalanced closing paren '%c'", token[0]);
+        ERROR("unbalanced closing paren '%c'", token[0]);
         return NULL;
     }
     // atom

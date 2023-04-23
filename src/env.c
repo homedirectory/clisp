@@ -14,7 +14,7 @@ MalEnv *MalEnv_new(const MalEnv *enclosing) {
 
 void MalEnv_free(MalEnv *env) {
     if (env == NULL) {
-        LOG_NULL(env, MalEnv_free);
+        LOG_NULL(env);
     } else {
         Arr_freep(env->symbols, (free_t) Symbol_free);
         Arr_freep(env->datums, (free_t) MalDatum_free);

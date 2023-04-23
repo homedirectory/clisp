@@ -36,11 +36,11 @@ static MalDatum *eval_if(const List *list, MalEnv *env) {
     // 1. validate the list
     int argc = List_len(list) - 1;
     if (argc < 2) {
-        ERROR(eval_if, "if expects at least 2 arguments, but %d were given", argc);
+        ERROR("if expects at least 2 arguments, but %d were given", argc);
         return NULL;
     }
     if (argc > 3) {
-        ERROR(eval_if, "if expects at most 3 arguments, but %d were given", argc);
+        ERROR("if expects at most 3 arguments, but %d were given", argc);
         return NULL;
     }
 
@@ -75,7 +75,7 @@ static MalDatum *eval_if(const List *list, MalEnv *env) {
 static MalDatum *eval_do(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc == 0) {
-        ERROR(eval_do, "do expects at least 1 argument");
+        ERROR("do expects at least 1 argument");
         return NULL;
     }
 
@@ -98,20 +98,20 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
  * rest is then bound to the list of the remaining arguments
  */
 static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
-    FATAL(eval_fnstar, "Not implemented");
+    FATAL("Not implemented");
 }
 
 // (def! id <MalDatum>)
 static MalDatum *eval_def(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc != 2) {
-        ERROR(eval_def, "def! expects 2 arguments, but %d were given", argc);
+        ERROR("def! expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
     MalDatum *snd = List_ref(list, 1);
     if (snd->type != SYMBOL) {
-        ERROR(eval_def, "def! expects a symbol as a 2nd argument, but %s was given",
+        ERROR("def! expects a symbol as a 2nd argument, but %s was given",
                 MalType_tostr(snd->type));
         return NULL;
     }
@@ -134,24 +134,24 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
     int argc = List_len(list) - 1;
     if (argc != 3) {
-        ERROR(eval_letstar, "let* expects 2 arguments, but %d were given", argc);
+        ERROR("let* expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
     MalDatum *snd = List_ref(list, 1);
     if (snd->type != LIST) {
-        ERROR(eval_letstar, "let* expects a list as a 2nd argument, but %s was given",
+        ERROR("let* expects a list as a 2nd argument, but %s was given",
                 MalType_tostr(snd->type));
         return NULL;
     }
 
     List *bindings = snd->value.list;
     if (List_isempty(bindings)) {
-        ERROR(eval_letstar, "let* expects a non-empty list of bindings");
+        ERROR("let* expects a non-empty list of bindings");
         return NULL;
     }
     if (List_len(bindings) % 2 != 0) {
-        ERROR(eval_letstar, "let*: illegal bindings (expected an even-length list)");
+        ERROR("let*: illegal bindings (expected an even-length list)");
         return NULL;
     }
 
@@ -164,9 +164,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
         // make sure that a symbol is being bound
         if (!MalDatum_istype(id_node->value, SYMBOL)) {
             char *s = MalType_tostr(id_node->value->type); 
-            ERROR(eval_letstar, 
-                    "let*: illegal bindings (expected a symbol to be bound, but %s was given)",
-                    s);
+            ERROR("let*: illegal bindings (expected a symbol to be bound, but %s was given)", s);
             free(s);
             MalEnv_free(let_env);
             return NULL;
@@ -196,7 +194,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
 // returns a new list that is the result of calling EVAL on each list element
 static List *eval_list(const List *list, MalEnv *env) {
     if (list == NULL) {
-        LOG_NULL(list, eval_list);
+        LOG_NULL(list);
         return NULL;
     }
 
@@ -209,7 +207,7 @@ static List *eval_list(const List *list, MalEnv *env) {
     while (node) {
         MalDatum *evaled = eval(node->value, env);
         if (evaled == NULL) {
-            LOG_NULL(evaled, eval_list);
+            LOG_NULL(evaled);
             List_free(out);
             return NULL;
         }
@@ -231,7 +229,7 @@ static MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
             Symbol *sym = datum->value.sym;
             MalDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
-                ERROR(eval_ast, "symbol binding '%s' not found", sym->name);
+                ERROR("symbol binding '%s' not found", sym->name);
             } else {
                 out = MalDatum_deep_copy(assoc);
             }
@@ -239,7 +237,7 @@ static MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
         case LIST:
             List *elist = eval_list(datum->value.list, env);
             if (elist == NULL) {
-                LOG_NULL(elist, eval_ast);
+                LOG_NULL(elist);
             } else {
                 out = MalDatum_new_list(elist);
             }
@@ -286,14 +284,14 @@ MalDatum *eval(const MalDatum *datum, MalEnv *env) {
                 // it's a regular list form
                 MalDatum *evaled = eval_ast(datum, env);
                 if (evaled == NULL) {
-                    LOG_NULL(evaled, eval);
+                    LOG_NULL(evaled);
                     return NULL;
                 }
 
                 List *elist = evaled->value.list;
                 // NOTE: currently we only support arity of 2 
                 if (List_len(elist) != 3) {
-                    ERROR(eval, "only procedures of arity 2 are supported");
+                    ERROR("only procedures of arity 2 are supported");
                     MalDatum_free(evaled);
                     return NULL;
                 }

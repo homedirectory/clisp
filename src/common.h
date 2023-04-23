@@ -4,22 +4,29 @@
 
 typedef void (*free_t)(void *ptr);
 
-#define LOG_NULL(name, loc)\
-    printf(#loc ": " #name " was NULL\n")
+#define LOG(fmt, ...) \
+    do { \
+        fprintf(stderr, "%s:%d in %s: " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    } while (0);
 
-#define ERROR(loc, fmt, ...)\
-    fprintf(stderr, "ERROR in " #loc ": " fmt "\n", ##__VA_ARGS__)
+#define LOG_NULL(name)\
+    LOG(#name " was NULL");
 
-#define FATAL(loc, fmt, ...) {\
+#define ERROR(fmt, ...)\
+    LOG("ERROR: " fmt, ##__VA_ARGS__);
+
+#define FATAL(fmt, ...) \
     do {\
-        fprintf(stderr, "FATAL ERROR in " #loc ": " fmt "\n", ##__VA_ARGS__);\
-        exit(EXIT_FAILURE);\
-    } while (0);\
-}
+        LOG("FATAL ERROR: " fmt, ##__VA_ARGS__); \
+        exit(EXIT_FAILURE); \
+    } while (0);
 
 #ifdef TRACE
-#define DEBUG(loc, fmt, ...)\
-    fprintf(stderr, "[DEBUG] in " #loc ": " fmt "\n", ##__VA_ARGS__)
+#define DEBUG(fmt, ...) \
+    do { \
+    printf("[DEBUG] "); \
+    LOG(fmt, ##__VA_ARGS__); \
+    } while (0);
 #else
 #define DEBUG(loc, fmt, ...) ; // a no-op
 #endif
