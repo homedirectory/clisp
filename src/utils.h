@@ -17,11 +17,11 @@ void Arr_free(const Arr*);
 size_t Arr_add(Arr*, void*);
 void *Arr_replace(Arr*, size_t, void*);
 void *Arr_get(Arr*, size_t idx);
-size_t Arr_find(Arr*, void*);
+int Arr_find(Arr*, void*);
 
 typedef bool (*equals_t)(void*,void*);
 // Finds *ptr in *arr using the equals? function eq
-size_t Arr_findf(Arr *arr, void *ptr, equals_t);
+int Arr_findf(Arr *arr, void *ptr, equals_t);
 
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);

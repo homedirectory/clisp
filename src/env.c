@@ -22,7 +22,7 @@ void MalEnv_free(MalEnv *env) {
 }
 
 MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum) {
-    size_t idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
+    int idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
     if (idx == -1) { // new symbol
         Arr_add(env->symbols, sym);
         Arr_add(env->datums, datum);
