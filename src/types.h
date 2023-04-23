@@ -58,6 +58,8 @@ typedef struct Symbol {
 Symbol *Symbol_new(char *name);
 void Symbol_free(Symbol *);
 bool Symbol_eq(Symbol *sym1, Symbol *sym2);
+bool Symbol_eq_str(Symbol *sym1, const char *str);
+Symbol *Symbol_copy(Symbol *sym);
 
 // Procedures ----------------------------------------
 typedef int (*intproc2_t)(int,int);

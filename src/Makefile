@@ -10,3 +10,6 @@ step1_read_print: step1_read_print.c printer.c reader.c types.c utils.c
 
 step2_eval: step2_eval.c printer.c reader.c types.c utils.c env.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
+
+step3_env: step3_env.c printer.c reader.c types.c utils.c env.c
+	$(CC) $(CFLAGS) $^ -lreadline -o $@

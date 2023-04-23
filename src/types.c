@@ -139,6 +139,28 @@ bool Symbol_eq(Symbol *sym1, Symbol *sym2) {
     return strcmp(sym1->name, sym2->name) == 0;
 }
 
+bool Symbol_eq_str(Symbol *sym, const char *str) {
+    if (sym == NULL) {
+        LOG_NULL(sym, Symbol_eq_str);
+        return false;
+    }
+    if (str == NULL) {
+        LOG_NULL(str, Symbol_eq_str);
+        return false;
+    }
+
+    return strcmp(sym->name, str) == 0;
+}
+
+Symbol *Symbol_copy(Symbol *sym) {
+    if (sym == NULL) {
+        LOG_NULL(sym, Symbol_copy);
+        return NULL;
+    }
+
+    return Symbol_new(sym->name);
+}
+
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
     char *buf;
@@ -252,7 +274,7 @@ MalDatum *MalDatum_copy(MalDatum *datum) {
             out = MalDatum_new_list(List_copy(datum->value.list));
             break;
         default:
-            fprintf(stderr, "MalDatum_copy: unknown MalType\n");
+            DEBUG(MalDatum_copy, "MalDatum_copy: unknown MalType");
             break;
     }
 
