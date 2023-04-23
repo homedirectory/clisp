@@ -29,7 +29,7 @@ char *pr_str(MalDatum *datum) {
             break;
         default:
             char *s = MalType_tostr(datum->type);
-            ERROR(pr_str, "Unknown MalType");
+            DEBUG(pr_str, "Unknown MalType");
             free(s);
             str = NULL;
             break;

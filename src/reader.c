@@ -124,7 +124,7 @@ Reader *read_str(const char *str) {
     if (tokens == NULL)
         return NULL;
 
-#ifdef DEBUG
+#ifdef TRACE
     puts("tokens:");
     for (size_t i = 0; i < tokens->len; i++) {
         printf("%s\n", (char*) tokens->items[i]);
@@ -178,7 +178,7 @@ static MalDatum *read_atom(char *token) {
     // TODO false
     // TODO true
     else {
-        ERROR(read_atom, "Unknown atom: %s", token);
+        DEBUG(read_atom, "Unknown atom: %s", token);
         return NULL;
     }
 }
@@ -197,7 +197,7 @@ static MalDatum *read_list(Reader *rdr) {
         MalDatum *form = read_form(rdr);
         if (form == NULL) {
             List_free(list);
-            ERROR(read_list, "Illegal form");
+            DEBUG(read_list, "Illegal form");
             return NULL;
         }
         List_add(list, form);

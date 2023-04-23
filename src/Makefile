@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -g -Wall -std=c99 $(DBG)
+# use _CFLAGS="-D TRACE" to enable debug messages
+CFLAGS = -g -Wall -std=c99 $(_CFLAGS)
 
 step0_repl: step0_repl.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
