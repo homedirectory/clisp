@@ -15,6 +15,10 @@ List *List_new() {
     return list;
 }
 
+size_t List_len(const List *list) {
+    return list->len;
+}
+
 List *List_copy(List *list) {
     if (list == NULL) {
         LOG_NULL(list, List_copy);

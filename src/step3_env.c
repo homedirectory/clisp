@@ -51,9 +51,69 @@ static MalDatum *eval_def(List *list, MalEnv *env) {
     return new_assoc;
 }
 
+/* (let* (bindings) expr) 
+ * bindings := (id val ...) // must have an even number of elements 
+ */
 static MalDatum *eval_letstar(List *list, MalEnv *env) {
-    ERROR(eval_letstar, "Not implemented!");
-    exit(EXIT_FAILURE);
+    // 1. validate the list
+    if (list->len != 3) {
+        ERROR(eval_letstar, "let* expects 2 arguments, but %ld were given", list->len - 1);
+        return NULL;
+    }
+
+    MalDatum *snd = List_ref(list, 1);
+    if (snd->type != LIST) {
+        ERROR(eval_letstar, "let* expects a list as a 2nd argument, but %s was given",
+                MalType_tostr(snd->type));
+        return NULL;
+    }
+
+    List *bindings = snd->value.list;
+    if (List_isempty(bindings)) {
+        ERROR(eval_letstar, "let* expects a non-empty list of bindings");
+        return NULL;
+    }
+    if (List_len(bindings) % 2 != 0) {
+        ERROR(eval_letstar, "let*: illegal bindings (expected an even-length list)");
+        return NULL;
+    }
+
+    MalDatum *expr = List_ref(list, 2);
+
+    // 2. initialise the let* environment 
+    MalEnv *let_env = MalEnv_new(env); // own
+    // step = 2
+    for (struct Node *id_node = bindings->head; id_node != NULL; id_node = id_node->next->next) {
+        // make sure that a symbol is being bound
+        if (!MalDatum_istype(id_node->value, SYMBOL)) {
+            char *s = MalType_tostr(id_node->value->type); 
+            ERROR(eval_letstar, 
+                    "let*: illegal bindings (expected a symbol to be bound, but %s was given)",
+                    s);
+            free(s);
+            MalEnv_free(let_env);
+            return NULL;
+        }
+        Symbol *id = id_node->value->value.sym; // borrowed
+
+        // it's important to evaluate the bound value using the let* env,
+        // so that previous bindings can be used during evaluation
+        MalDatum *val = eval(id_node->next->value, let_env); // own
+        if (val == NULL) {
+            MalEnv_free(let_env);
+            return NULL;
+        }
+
+        MalEnv_put(let_env, Symbol_copy(id), val);
+    }
+
+    // 3. evaluate the expr using the let* env
+    MalDatum *out = eval(expr, let_env); // own
+
+    // discard the let* env
+    MalEnv_free(let_env);
+
+    return out;
 }
 
 // returns a new list that is the result of calling EVAL on each list element
@@ -195,7 +255,7 @@ static int mal_div(int x, int y) {
 }
 
 int main(int argc, char **argv) {
-    MalEnv *env = MalEnv_new();
+    MalEnv *env = MalEnv_new(NULL);
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_intproc2(mal_add));
     MalEnv_put(env, Symbol_new("-"), MalDatum_new_intproc2(mal_sub));
     MalEnv_put(env, Symbol_new("*"), MalDatum_new_intproc2(mal_mul));

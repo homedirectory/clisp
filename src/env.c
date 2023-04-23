@@ -4,10 +4,11 @@
 #include <stdlib.h>
 #include "common.h"
 
-MalEnv *MalEnv_new() {
+MalEnv *MalEnv_new(MalEnv *enclosing) {
     MalEnv *env = malloc(sizeof(MalEnv));
     env->symbols = Arr_new();
     env->datums = Arr_new();
+    env->enclosing = enclosing;
     return env;
 }
 
@@ -15,8 +16,10 @@ void MalEnv_free(MalEnv *env) {
     if (env == NULL) {
         LOG_NULL(env, MalEnv_free);
     } else {
+        // TODO free each symbol and datum
         Arr_free(env->symbols);
         Arr_free(env->datums);
+        // the enclosing env should not be freed
         free(env);
     }
 }
@@ -34,9 +37,17 @@ MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum) {
 }
 
 MalDatum *MalEnv_get(MalEnv *env, Symbol *sym) {
-    size_t idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
+    MalEnv *e = env;
+    int idx = -1;
+    while (e != NULL) {
+        idx = Arr_findf(e->symbols, sym, (equals_t) Symbol_eq);
+        if (idx != -1)
+            break;
+        e = e->enclosing;
+    }
+
     if (idx == -1)
         return NULL;
     else
-        return env->datums->items[idx];
+        return e->datums->items[idx];
 }
