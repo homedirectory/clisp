@@ -184,12 +184,37 @@ char *MalType_tostr(MalType type) {
         case INTPROC2:
             buf = "INTPROC2";
             break;
+        case NIL:
+            buf = "NIL";
+            break;
+        case TRUE:
+            buf = "TRUE";
+            break;
+        case FALSE:
+            buf = "FALSE";
+            break;
         default:
             buf = "*unknown*";
             break;
     }
+    // TODO use statically allocated memory
     return dyn_strcpy(buf);
 }
+
+// singletons
+static MalDatum _MalDatum_nil = { NIL };
+static MalDatum _MalDatum_true = { TRUE };
+static MalDatum _MalDatum_false = { FALSE };
+
+MalDatum *MalDatum_nil() {
+    return &_MalDatum_nil;
+};
+MalDatum *MalDatum_true() {
+    return &_MalDatum_true;
+};
+MalDatum *MalDatum_false() {
+    return &_MalDatum_false;
+};
 
 MalDatum *MalDatum_new_int(const int i) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
@@ -233,6 +258,10 @@ void MalDatum_free(MalDatum *datum) {
     if (datum == NULL) return;
 
     switch (datum->type) {
+        // NIL, TRUE, FALSE should never be freed
+        case NIL: return;
+        case TRUE: return;
+        case FALSE: return;
         case LIST:
             List_free(datum->value.list);
             break;
@@ -277,6 +306,15 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
         case LIST:
             out = MalDatum_new_list(List_copy(datum->value.list));
             break;
+        case NIL:
+            out = MalDatum_nil();
+            break;
+        case TRUE:
+            out = MalDatum_true();
+            break;
+        case FALSE:
+            out = MalDatum_false();
+            break;
         default:
             DEBUG(MalDatum_copy, "MalDatum_copy: unknown MalType");
             break;
@@ -303,4 +341,20 @@ MalDatum *MalDatum_deep_copy(const MalDatum *datum) {
     }
 
     return out;
+}
+
+bool MalDatum_isnil(MalDatum *datum) {
+    if (datum == NULL) {
+        LOG_NULL(datum, MalDatum_isnil);
+        return false;
+    }
+    return datum->type == NIL;
+}
+
+bool MalDatum_isfalse(MalDatum *datum) {
+    if (datum == NULL) {
+        LOG_NULL(datum, MalDatum_isfalse);
+        return false;
+    }
+    return datum->type == FALSE;
 }

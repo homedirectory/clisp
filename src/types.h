@@ -46,7 +46,7 @@ List *List_deep_copy(const List *);
  * 5. procedures
  */
 typedef enum MalType {
-    INT, SYMBOL, LIST, STRING, INTPROC2
+    INT, SYMBOL, LIST, STRING, INTPROC2, NIL, TRUE, FALSE
 } MalType;
 
 char *MalType_tostr(MalType type);
@@ -77,6 +77,13 @@ typedef struct MalDatum {
     } value;
 } MalDatum;
 
+MalDatum *MalDatum_nil();
+MalDatum *MalDatum_true();
+MalDatum *MalDatum_false();
+
+bool MalDatum_isnil(MalDatum *datum);
+bool MalDatum_isfalse(MalDatum *datum);
+
 // constructors
 MalDatum *MalDatum_new_int(const int);
 MalDatum *MalDatum_new_sym(Symbol *);
@@ -88,3 +95,4 @@ bool MalDatum_istype(const MalDatum *, MalType);
 void MalDatum_free(MalDatum *);
 MalDatum *MalDatum_copy(const MalDatum *);
 MalDatum *MalDatum_deep_copy(const MalDatum *);
+

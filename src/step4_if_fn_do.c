@@ -292,6 +292,11 @@ static int mal_div(int x, int y) {
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
+
+    MalEnv_put(env, Symbol_new("nil"), MalDatum_nil());
+    MalEnv_put(env, Symbol_new("true"), MalDatum_true());
+    MalEnv_put(env, Symbol_new("false"), MalDatum_false());
+
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_intproc2(mal_add));
     MalEnv_put(env, Symbol_new("-"), MalDatum_new_intproc2(mal_sub));
     MalEnv_put(env, Symbol_new("*"), MalDatum_new_intproc2(mal_mul));

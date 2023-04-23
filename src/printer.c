@@ -27,6 +27,15 @@ char *pr_str(MalDatum *datum) {
             char *string = datum->value.string;
             str = string ? dyn_strcpy(string) : NULL;
             break;
+        case NIL:
+            str = dyn_strcpy("nil");
+            break;
+        case TRUE:
+            str = dyn_strcpy("true");
+            break;
+        case FALSE:
+            str = dyn_strcpy("false");
+            break;
         default:
             char *s = MalType_tostr(datum->type);
             DEBUG(pr_str, "Unknown MalType");
