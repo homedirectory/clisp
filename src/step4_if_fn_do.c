@@ -103,8 +103,9 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
 
 // (def! id <MalDatum>)
 static MalDatum *eval_def(const List *list, MalEnv *env) {
-    if (list->len != 3) {
-        ERROR(eval_def, "def! expects 2 arguments, but %ld were given", list->len - 1);
+    int argc = List_len(list) - 1;
+    if (argc != 2) {
+        ERROR(eval_def, "def! expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
@@ -131,8 +132,9 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
  */
 static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
-    if (list->len != 3) {
-        ERROR(eval_letstar, "let* expects 2 arguments, but %ld were given", list->len - 1);
+    int argc = List_len(list) - 1;
+    if (argc != 3) {
+        ERROR(eval_letstar, "let* expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
@@ -290,7 +292,7 @@ MalDatum *eval(const MalDatum *datum, MalEnv *env) {
 
                 List *elist = evaled->value.list;
                 // NOTE: currently we only support arity of 2 
-                if (elist->len != 3) {
+                if (List_len(elist) != 3) {
                     ERROR(eval, "only procedures of arity 2 are supported");
                     MalDatum_free(evaled);
                     return NULL;
