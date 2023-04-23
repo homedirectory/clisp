@@ -12,16 +12,16 @@ typedef struct Arr {
 } Arr;
 
 Arr *Arr_new();
-Arr *Arr_newn(const size_t);
-void Arr_free(const Arr*);
+Arr *Arr_newn(size_t);
+void Arr_free(Arr *arr);
 size_t Arr_add(Arr*, void*);
 void *Arr_replace(Arr*, size_t, void*);
 void *Arr_get(Arr*, size_t idx);
-int Arr_find(Arr*, void*);
+int Arr_find(const Arr*, const void*);
 
-typedef bool (*equals_t)(void*,void*);
+typedef bool (*equals_t)(const void*, const void*);
 // Finds *ptr in *arr using the equals? function eq
-int Arr_findf(Arr *arr, void *ptr, equals_t);
+int Arr_findf(const Arr *arr, const void *ptr, const equals_t);
 
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);

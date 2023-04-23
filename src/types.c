@@ -19,7 +19,7 @@ size_t List_len(const List *list) {
     return list->len;
 }
 
-List *List_copy(List *list) {
+List *List_copy(const List *list) {
     if (list == NULL) {
         LOG_NULL(list, List_copy);
         return NULL;
@@ -36,7 +36,7 @@ List *List_copy(List *list) {
     return out;
 }
 
-List *List_deep_copy(List *list) {
+List *List_deep_copy(const List *list) {
     if (list == NULL) {
         LOG_NULL(list, List_deep_copy);
         return NULL;
@@ -59,7 +59,7 @@ List *List_deep_copy(List *list) {
     return out;
 }
 
-bool List_isempty(List *list) {
+bool List_isempty(const List *list) {
     if (list == NULL) {
         LOG_NULL(list, List_isempty);
         exit(EXIT_FAILURE);
@@ -83,7 +83,7 @@ void List_add(List *list, MalDatum *datum) {
     list->len += 1;
 }
 
-MalDatum *List_ref(List *list, size_t idx) { 
+MalDatum *List_ref(const List *list, size_t idx) { 
     if (list == NULL) {
         LOG_NULL(list, List_ref);
         return NULL;
@@ -119,7 +119,7 @@ void List_free(List *list) {
 }
 
 // Symbol ----------------------------------------
-Symbol *Symbol_new(char *name) {
+Symbol *Symbol_new(const char *name) {
     Symbol *sym = malloc(sizeof(Symbol));
     strcpy(sym->name, name);
     return sym;
@@ -130,7 +130,7 @@ void Symbol_free(Symbol *symbol) {
 }
 
 // TODO intern all symbols
-bool Symbol_eq(Symbol *sym1, Symbol *sym2) {
+bool Symbol_eq(const Symbol *sym1, const Symbol *sym2) {
     if (sym1 == NULL) {
         LOG_NULL(sym1, Symbol_eq);
         return false;
@@ -143,7 +143,7 @@ bool Symbol_eq(Symbol *sym1, Symbol *sym2) {
     return strcmp(sym1->name, sym2->name) == 0;
 }
 
-bool Symbol_eq_str(Symbol *sym, const char *str) {
+bool Symbol_eq_str(const Symbol *sym, const char *str) {
     if (sym == NULL) {
         LOG_NULL(sym, Symbol_eq_str);
         return false;
@@ -156,7 +156,7 @@ bool Symbol_eq_str(Symbol *sym, const char *str) {
     return strcmp(sym->name, str) == 0;
 }
 
-Symbol *Symbol_copy(Symbol *sym) {
+Symbol *Symbol_copy(const Symbol *sym) {
     if (sym == NULL) {
         LOG_NULL(sym, Symbol_copy);
         return NULL;
@@ -249,11 +249,11 @@ void MalDatum_free(MalDatum *datum) {
     free(datum);
 }
 
-bool MalDatum_istype(MalDatum *datum, MalType type) {
+bool MalDatum_istype(const MalDatum *datum, MalType type) {
     return datum->type == type;
 }
 
-MalDatum *MalDatum_copy(MalDatum *datum) {
+MalDatum *MalDatum_copy(const MalDatum *datum) {
     if (datum == NULL) {
         LOG_NULL(datum, MalDatum_copy);
         return NULL;
@@ -285,7 +285,7 @@ MalDatum *MalDatum_copy(MalDatum *datum) {
     return out;
 }
 
-MalDatum *MalDatum_deep_copy(MalDatum *datum) {
+MalDatum *MalDatum_deep_copy(const MalDatum *datum) {
     if (datum == NULL) {
         LOG_NULL(datum, MalDatum_deep_copy);
         return NULL;

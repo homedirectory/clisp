@@ -7,12 +7,12 @@ typedef struct MalEnv {
     // TODO replace Arr by a proper hashmap
     Arr *symbols; // of Symbol*
     Arr *datums;  // of MalDatum*
-    struct MalEnv *enclosing;
+    const struct MalEnv *enclosing;
 } MalEnv;
 
 // Creates a new environment that is enclosed by the given environment.
 // env might be NULL when a top-level environment is created.
-MalEnv *MalEnv_new(MalEnv *env);
+MalEnv *MalEnv_new(const MalEnv *env);
 
 void MalEnv_free(MalEnv *env);
 
@@ -23,4 +23,4 @@ void MalEnv_free(MalEnv *env);
 MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum);
 
 /* Returns the MalDatum associated with the given symbol or NULL. */
-MalDatum *MalEnv_get(MalEnv *env, Symbol *sym);
+MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym);

@@ -9,8 +9,8 @@ typedef struct Reader {
 } Reader;
 
 Reader *read_str(const char *str);
-char *Reader_next(Reader *rdr);
-char *Reader_peek(Reader *rdr);
+const char *Reader_next(Reader *rdr);
+const char *Reader_peek(const Reader *rdr);
 
 void Reader_free(Reader *rdr);
 

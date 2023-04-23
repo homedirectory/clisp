@@ -12,9 +12,9 @@
 
 #define PROMPT "user> "
 
-MalDatum *eval(MalDatum *datum, MalEnv *env);
+MalDatum *eval(const MalDatum *datum, MalEnv *env);
 
-static MalDatum *read(char* in) {
+static MalDatum *read(const char* in) {
     Reader *rdr = read_str(in);
     if (rdr == NULL) return NULL;
     if (rdr->tokens->len == 0) {
@@ -27,7 +27,7 @@ static MalDatum *read(char* in) {
 }
 
 // (def! id <MalDatum>)
-static MalDatum *eval_def(List *list, MalEnv *env) {
+static MalDatum *eval_def(const List *list, MalEnv *env) {
     if (list->len != 3) {
         ERROR(eval_def, "def! expects 2 arguments, but %ld were given", list->len - 1);
         return NULL;
@@ -54,7 +54,7 @@ static MalDatum *eval_def(List *list, MalEnv *env) {
 /* (let* (bindings) expr) 
  * bindings := (id val ...) // must have an even number of elements 
  */
-static MalDatum *eval_letstar(List *list, MalEnv *env) {
+static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
     if (list->len != 3) {
         ERROR(eval_letstar, "let* expects 2 arguments, but %ld were given", list->len - 1);
@@ -117,7 +117,7 @@ static MalDatum *eval_letstar(List *list, MalEnv *env) {
 }
 
 // returns a new list that is the result of calling EVAL on each list element
-static List *eval_list(List *list, MalEnv *env) {
+static List *eval_list(const List *list, MalEnv *env) {
     if (list == NULL) {
         LOG_NULL(list, eval_list);
         return NULL;
@@ -146,7 +146,7 @@ static List *eval_list(List *list, MalEnv *env) {
 /* Evaluates a MalDatum in an environment and returns the result in the form of a 
  * new dynamically allocted MalDatum.
  */
-static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
+static MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
     MalDatum *out = NULL;
 
     switch (datum->type) {
@@ -175,7 +175,7 @@ static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
     return out;
 }
 
-MalDatum *eval(MalDatum *datum, MalEnv *env) {
+MalDatum *eval(const MalDatum *datum, MalEnv *env) {
     if (datum == NULL) return NULL;
 
     switch (datum->type) {

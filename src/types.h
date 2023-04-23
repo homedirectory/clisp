@@ -27,14 +27,14 @@ size_t List_len(const List *list);
 void List_free(List *);
 
 void List_add(List *, MalDatum *);
-MalDatum *List_ref(List *, size_t);
-bool List_isempty(List *);
+MalDatum *List_ref(const List *, size_t);
+bool List_isempty(const List *);
 
 /* Returns a shallow copy of a list: the nodes are copied, but MalDatums they point to are not. */
-List *List_copy(List *);
+List *List_copy(const List *);
 
 /* Returns a deep copy of a list: both the nodes and MalDatums they point to are copied. */
-List *List_deep_copy(List *);
+List *List_deep_copy(const List *);
 
 
 /*
@@ -56,11 +56,11 @@ typedef struct Symbol {
     char name[256];
 } Symbol;
 
-Symbol *Symbol_new(char *name);
+Symbol *Symbol_new(const char *name);
 void Symbol_free(Symbol *);
-bool Symbol_eq(Symbol *sym1, Symbol *sym2);
-bool Symbol_eq_str(Symbol *sym1, const char *str);
-Symbol *Symbol_copy(Symbol *sym);
+bool Symbol_eq(const Symbol *sym1, const Symbol *sym2);
+bool Symbol_eq_str(const Symbol *sym1, const char *str);
+Symbol *Symbol_copy(const Symbol *sym);
 
 // Procedures ----------------------------------------
 typedef int (*intproc2_t)(int,int);
@@ -84,7 +84,7 @@ MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 MalDatum *MalDatum_new_intproc2(const intproc2_t);
 
-bool MalDatum_istype(MalDatum *, MalType);
+bool MalDatum_istype(const MalDatum *, MalType);
 void MalDatum_free(MalDatum *);
-MalDatum *MalDatum_copy(MalDatum *);
-MalDatum *MalDatum_deep_copy(MalDatum *);
+MalDatum *MalDatum_copy(const MalDatum *);
+MalDatum *MalDatum_deep_copy(const MalDatum *);

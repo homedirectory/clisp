@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "common.h"
 
-MalEnv *MalEnv_new(MalEnv *enclosing) {
+MalEnv *MalEnv_new(const MalEnv *enclosing) {
     MalEnv *env = malloc(sizeof(MalEnv));
     env->symbols = Arr_new();
     env->datums = Arr_new();
@@ -36,8 +36,8 @@ MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum) {
     }
 }
 
-MalDatum *MalEnv_get(MalEnv *env, Symbol *sym) {
-    MalEnv *e = env;
+MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym) {
+    const MalEnv *e = env;
     int idx = -1;
     while (e != NULL) {
         idx = Arr_findf(e->symbols, sym, (equals_t) Symbol_eq);

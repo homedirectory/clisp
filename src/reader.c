@@ -137,18 +137,18 @@ Reader *read_str(const char *str) {
     return rdr;
 }
 
-char *Reader_next(Reader *rdr) {
-    char *tok = Reader_peek(rdr);
+const char *Reader_next(Reader *rdr) {
+    const char *tok = Reader_peek(rdr);
     if (tok == NULL) return NULL;
     rdr->pos += 1;
     return tok;
 }
 
-char *Reader_peek(Reader *rdr) {
+const char *Reader_peek(const Reader *rdr) {
     if (rdr->pos >= rdr->tokens->len)
         return NULL;
 
-    char *tok = (char*) Arr_get(rdr->tokens, rdr->pos);
+    const char *tok = (char*) Arr_get(rdr->tokens, rdr->pos);
     return tok;
 }
 
@@ -157,7 +157,7 @@ void Reader_free(Reader *rdr) {
     free(rdr);
 }
 
-static MalDatum *read_atom(char *token) {
+static MalDatum *read_atom(const char *token) {
     //printf("read_atom token: %s\n", token);
     if (token == NULL || token[0] == '\0') return NULL;
 
@@ -188,7 +188,7 @@ static MalDatum *read_list(Reader *rdr) {
     bool closed = false;
     List *list = List_new();
 
-    char *token = Reader_peek(rdr);
+    const char *token = Reader_peek(rdr);
     while (token != NULL) {
         if (token[0] == ')') {
             closed = true;
@@ -215,7 +215,7 @@ static MalDatum *read_list(Reader *rdr) {
 }
 
 MalDatum *read_form(Reader *rdr) {
-    char *token = Reader_next(rdr);
+    const char *token = Reader_next(rdr);
     // list
     if (token[0] == '(') {
         return read_list(rdr);

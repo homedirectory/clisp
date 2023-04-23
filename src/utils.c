@@ -48,12 +48,12 @@ void *Arr_get(Arr *arr, size_t idx) {
     return arr->items[idx];
 }
 
-void Arr_free(const Arr *arr) {
+void Arr_free(Arr *arr) {
     free(arr->items);
-    free((void*)arr);
+    free(arr);
 }
 
-int Arr_find(Arr *arr, void *ptr) {
+int Arr_find(const Arr *arr, const void *ptr) {
     for (size_t i = 0; i < arr->len; i++) {
         if (arr->items[i] == ptr)
             return i;
@@ -61,7 +61,7 @@ int Arr_find(Arr *arr, void *ptr) {
     return -1;
 }
 
-int Arr_findf(Arr *arr, void *ptr, equals_t eq) {
+int Arr_findf(const Arr *arr, const void *ptr, const equals_t eq) {
     for (size_t i = 0; i < arr->len; i++) {
         if (eq(arr->items[i], ptr))
             return i;
