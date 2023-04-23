@@ -93,24 +93,20 @@ MalDatum *eval(MalDatum *datum, MalEnv *env) {
 
     switch (datum->type) {
         case LIST:
-            //List *elist = eval_ast(datum->value.list, env);
             MalDatum *evaled = eval_ast(datum, env);
             if (evaled == NULL) {
                 LOG_NULL(evaled, eval);
-                MalDatum_free(evaled);
                 return NULL;
             }
             List *elist = evaled->value.list;
             // empty list? return as is
             if (List_isempty(elist)) {
                 // TODO use a single global instance of an empty list
-                //out = MalDatum_new_list(List_new());
                 out = evaled;
             } else {
                 // NOTE: currently we only support arity of 2 
                 if (elist->len != 3) {
                     ERROR(eval, "only procedures of arity 2 are supported");
-                    //List_free(elist);
                     MalDatum_free(evaled);
                     return NULL;
                 }
@@ -179,7 +175,7 @@ int main(int argc, char **argv) {
         if (r == NULL) continue;
         // eval
         MalDatum *e = eval(r, env);
-        //MalDatum_free(r);
+        MalDatum_free(r);
         // print
         char *p = print(e);
         MalDatum_free(e);
