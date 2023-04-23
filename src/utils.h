@@ -26,4 +26,4 @@ int Arr_findf(Arr *arr, void *ptr, equals_t);
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);
 
-char *strchrs(char *str, const char *chars);
+const char *strchrs(const char *str, const char *chars);

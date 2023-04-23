@@ -85,7 +85,7 @@ char *dyn_strncpy(const char *s, size_t n) {
 /* Like strchr but looks for the first occurence of one of the chars.  
  * *chars must be a null-terminated string.
  * */
-char *strchrs(char *str, const char *chars) {
+const char *strchrs(const char *str, const char *chars) {
     while (*str != '\0') {
         if (strchr(chars, *str))
             return str;

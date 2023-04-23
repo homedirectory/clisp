@@ -35,7 +35,7 @@ static int parse_int(const char *str, char *out) {
  * Returns a dynamically allocated parsed string. An empty string might be returned.
  */
 static char *parse_until(const char *str, const char *set) {
-    char *p = strchrs(str, set);
+    const char *p = strchrs(str, set);
     if (p == NULL) {
         // read the whole str
         return dyn_strcpy(str);
