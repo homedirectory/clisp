@@ -16,9 +16,8 @@ void MalEnv_free(MalEnv *env) {
     if (env == NULL) {
         LOG_NULL(env, MalEnv_free);
     } else {
-        // TODO free each symbol and datum
-        Arr_free(env->symbols);
-        Arr_free(env->datums);
+        Arr_freep(env->symbols, (free_t) Symbol_free);
+        Arr_freep(env->datums, (free_t) MalDatum_free);
         // the enclosing env should not be freed
         free(env);
     }

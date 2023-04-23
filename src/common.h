@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+typedef void (*free_t)(void *ptr);
+
 #define LOG_NULL(name, loc)\
     printf(#loc ": " #name " was NULL\n")
 

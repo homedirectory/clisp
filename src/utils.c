@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include "common.h"
 
 #define CAPACITY_INCR_RATIO 1.5
 #define DEFAULT_CAPACITY 10
@@ -51,6 +52,13 @@ void *Arr_get(Arr *arr, size_t idx) {
 void Arr_free(Arr *arr) {
     free(arr->items);
     free(arr);
+}
+
+void Arr_freep(Arr *arr, free_t freer) {
+    for (int i = 0; i < arr->len; i++) {
+        freer(arr->items[i]);
+    }
+    Arr_free(arr);
 }
 
 int Arr_find(const Arr *arr, const void *ptr) {
