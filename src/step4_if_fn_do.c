@@ -68,12 +68,25 @@ static MalDatum *eval_if(const List *list, MalEnv *env) {
     }
 }
 
-/* 'do' expression evalutes each succeeding expression returning the result of the last one 
+/* 'do' expression evalutes each succeeding expression returning the result of the last one.
  * (do expr ...)
  * return expr.map(eval).last
  */
 static MalDatum *eval_do(const List *list, MalEnv *env) {
-    FATAL(eval_do, "Not implemented");
+    int argc = List_len(list) - 1;
+    if (argc == 0) {
+        ERROR(eval_do, "do expects at least 1 argument");
+        return NULL;
+    }
+
+    struct Node *node;
+    for (node = list->head->next; node->next != NULL; node = node->next) {
+        MalDatum *ev = eval(node->value, env);
+        if (ev == NULL) return NULL;
+        MalDatum_free(ev);
+    }
+
+    return eval(node->value, env);
 }
 
 /* 'fn*' expression is like the 'lambda' expression, it creates and returns a function
