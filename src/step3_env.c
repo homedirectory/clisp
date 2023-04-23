@@ -42,6 +42,9 @@ static MalDatum *eval_def(List *list, MalEnv *env) {
     Symbol *id = snd->value.sym;
 
     MalDatum *new_assoc = eval(List_ref(list, 2), env);
+    if (new_assoc == NULL) {
+        return NULL;
+    }
 
     MalEnv_put(env, Symbol_copy(id), MalDatum_deep_copy(new_assoc));
 
@@ -91,8 +94,7 @@ static MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
             Symbol *sym = datum->value.sym;
             MalDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
-                // given symbol is not associated with any datum
-                ERROR(eval_ast, "undefined symbol '%s'", sym->name);
+                ERROR(eval_ast, "symbol binding '%s' not found", sym->name);
             } else {
                 out = MalDatum_deep_copy(assoc);
             }
@@ -213,6 +215,7 @@ int main(int argc, char **argv) {
         free(line);
         if (r == NULL) continue;
         // eval
+        // TODO implement an stack trace of error messages
         MalDatum *e = eval(r, env);
         MalDatum_free(r);
         // print
