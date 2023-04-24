@@ -1,6 +1,6 @@
 CC = gcc
 # use _CFLAGS="-D TRACE" to enable debug messages
-CFLAGS = -g -Wall -std=c99 $(_CFLAGS)
+CFLAGS = -ggdb -Wall -std=c99 $(_CFLAGS)
 
 step0_repl: step0_repl.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
@@ -14,5 +14,5 @@ step2_eval: step2_eval.c printer.c reader.c types.c utils.c env.c
 step3_env: step3_env.c printer.c reader.c types.c utils.c env.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
 
-step4_if_fn_do: step4_if_fn_do.c printer.c reader.c types.c utils.c env.c
+step4_if_fn_do: step4_if_fn_do.c printer.c reader.c types.c utils.c env.c core.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
