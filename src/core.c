@@ -141,12 +141,18 @@ static MalDatum *mal_emptyp(const Proc *proc, const Arr *args) {
 static MalDatum *mal_count(const Proc *proc, const Arr *args) {
     // validate arg type
     MalDatum *arg = args->items[0];
-    if (!MalDatum_islist(arg)) {
+
+    int len;
+    if (MalDatum_istype(arg, NIL))
+        len = 0;
+    else if (MalDatum_islist(arg))
+        len = List_len(arg->value.list);
+    else {
         ERROR("count: expected a list, but got %s instead", MalType_tostr(arg->type));
         return NULL;
     }
-    List *list = arg->value.list;
-    return MalDatum_new_int(List_len(list));
+
+    return MalDatum_new_int(len);
 }
 
 void core_def_procs(MalEnv *env) {
