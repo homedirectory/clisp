@@ -4,7 +4,7 @@
 #include "core.h"
 #include "env.h"
 
-static MalDatum *mal_add(Proc *proc, Arr *args) {
+static MalDatum *mal_add(const Proc *proc, const Arr *args) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -23,7 +23,7 @@ static MalDatum *mal_add(Proc *proc, Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
-static MalDatum *mal_sub(Proc *proc, Arr *args) {
+static MalDatum *mal_sub(const Proc *proc, const Arr *args) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -42,7 +42,7 @@ static MalDatum *mal_sub(Proc *proc, Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
-static MalDatum *mal_mul(Proc *proc, Arr *args) {
+static MalDatum *mal_mul(const Proc *proc, const Arr *args) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -61,7 +61,7 @@ static MalDatum *mal_mul(Proc *proc, Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
-static MalDatum *mal_div(Proc *proc, Arr *args) {
+static MalDatum *mal_div(const Proc *proc, const Arr *args) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -85,7 +85,7 @@ static MalDatum *mal_div(Proc *proc, Arr *args) {
  * of the list should be compared for equality and if they are the same return
  * true, otherwise false
  */
-static MalDatum *mal_eq(Proc *proc, Arr *args) {
+static MalDatum *mal_eq(const Proc *proc, const Arr *args) {
     MalDatum *arg1 = args->items[0];
     MalDatum *arg2 = args->items[1];
 
@@ -93,7 +93,7 @@ static MalDatum *mal_eq(Proc *proc, Arr *args) {
 }
 
 /* '>' : compare the first two numeric parameters */
-static MalDatum *mal_gt(Proc *proc, Arr *args) {
+static MalDatum *mal_gt(const Proc *proc, const Arr *args) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -110,6 +110,7 @@ static MalDatum *mal_gt(Proc *proc, Arr *args) {
 }
 
 void core_def_procs(MalEnv *env) {
+    // FIXME memory leak
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
     MalEnv_put(env, Symbol_new("-"), MalDatum_new_proc(Proc_builtin(2, true, mal_sub)));
     MalEnv_put(env, Symbol_new("*"), MalDatum_new_proc(Proc_builtin(2, true, mal_mul)));

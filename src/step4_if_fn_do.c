@@ -202,7 +202,7 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
         return NULL;
     }
 
-    MalEnv_put(env, Symbol_copy(id), MalDatum_deep_copy(new_assoc));
+    MalEnv_put(env, id, new_assoc);
 
     return new_assoc;
 }
@@ -259,7 +259,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             return NULL;
         }
 
-        MalEnv_put(let_env, Symbol_copy(id), val);
+        MalEnv_put(let_env, id, val);
     }
 
     // 3. evaluate the expr using the let* env
@@ -382,6 +382,7 @@ static char *print(MalDatum *datum) {
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
 
+    // FIXME memory leak
     MalEnv_put(env, Symbol_new("nil"), MalDatum_nil());
     MalEnv_put(env, Symbol_new("true"), MalDatum_true());
     MalEnv_put(env, Symbol_new("false"), MalDatum_false());

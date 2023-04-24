@@ -23,14 +23,14 @@ void MalEnv_free(MalEnv *env) {
     }
 }
 
-MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum) {
+MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, const MalDatum *datum) {
     int idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
     if (idx == -1) { // new symbol
-        Arr_add(env->symbols, sym);
-        Arr_add(env->datums, datum);
+        Arr_add(env->symbols, Symbol_copy(sym));
+        Arr_add(env->datums, MalDatum_deep_copy(datum));
         return NULL;
     } else { // existing symbol
-        MalDatum *old = Arr_replace(env->datums, idx, datum);
+        MalDatum *old = Arr_replace(env->datums, idx, MalDatum_deep_copy(datum));
         return old;
     }
 }

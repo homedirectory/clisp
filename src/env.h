@@ -19,8 +19,9 @@ void MalEnv_free(MalEnv *env);
 /* Associates a MalDatum with a symbol.
  * If the given symbol was already associated with some datum, returns that datum,
  * otherwise returns NULL.
+ * Both sym and datum are copied.
  */
-MalDatum *MalEnv_put(MalEnv *env, Symbol *sym, MalDatum *datum);
+MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, const MalDatum *datum);
 
 /* Returns the MalDatum associated with the given symbol or NULL. */
 MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym);
