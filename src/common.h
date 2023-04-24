@@ -9,9 +9,6 @@ typedef void (*free_t)(void *ptr);
         fprintf(stderr, "%s:%d in %s: " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
     } while (0);
 
-#define LOG_NULL(name)\
-    LOG(#name " was NULL");
-
 #define ERROR(fmt, ...)\
     LOG("ERROR: " fmt, ##__VA_ARGS__);
 
@@ -21,13 +18,15 @@ typedef void (*free_t)(void *ptr);
         exit(EXIT_FAILURE); \
     } while (0);
 
-#ifdef TRACE
+#ifdef _MAL_TRACE
 #define DEBUG(fmt, ...) \
     do { \
-    printf("[DEBUG] "); \
+    fprintf(stderr, "[DEBUG] "); \
     LOG(fmt, ##__VA_ARGS__); \
     } while (0);
 #else
-#define DEBUG(loc, fmt, ...) ; // a no-op
+#define DEBUG(fmt, ...) ; // a no-op
 #endif
 
+#define LOG_NULL(name)\
+    DEBUG(#name " was NULL");

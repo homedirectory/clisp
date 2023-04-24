@@ -124,7 +124,7 @@ Reader *read_str(const char *str) {
     if (tokens == NULL)
         return NULL;
 
-#ifdef TRACE
+#ifdef _MAL_TRACE
     puts("tokens:");
     for (size_t i = 0; i < tokens->len; i++) {
         printf("%s\n", (char*) tokens->items[i]);
