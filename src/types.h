@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include "utils.h"
 
 
 // signed int
@@ -43,10 +44,13 @@ List *List_deep_copy(const List *);
  * 2. symbol  - string (max len 255) = char sym[256]
  * 3. list    - List *
  * 4. string  - pointer to dynamic char array
- * 5. procedures
+ * 5. nil
+ * 6. true
+ * 7. false
+ * 8. procedures
  */
 typedef enum MalType {
-    INT, SYMBOL, LIST, STRING, INTPROC2, NIL, TRUE, FALSE
+    INT, SYMBOL, LIST, STRING, INTPROC2, NIL, TRUE, FALSE, PROCEDURE
 } MalType;
 
 char *MalType_tostr(MalType type);
@@ -63,6 +67,43 @@ bool Symbol_eq_str(const Symbol *sym1, const char *str);
 Symbol *Symbol_copy(const Symbol *sym);
 
 // Procedures ----------------------------------------
+// *** A note on procedure application ***
+// Racket and Python evaluate function arguments before checking the arity.
+// I shall do this the other way around
+
+typedef struct Proc Proc;
+typedef struct MalEnv MalEnv; // from env.h
+
+// the type of built-in functions (e.g., list, empty?, numeric ones, etc.)
+// args - array of *MalDatum
+typedef MalDatum* (*builtin_apply_t)(Proc*, Arr *args);
+
+struct Proc {
+    int argc; // amount of mandatory arguments
+    bool variadic; // accepts more arguments after mandatory ones (default: false)
+    /* Declared parameter names, which include mandatory arguments and, if this procedure
+     * is variadic, then the name of the variadic declared parameter. So the amount of these
+     * is given by (+ argc (if variadic 1 0)).
+     */
+    Arr *params; // of *Symbol (makes sense only for MAL procedures) 
+    bool builtin;
+    union {
+        List *body;
+        builtin_apply_t apply; // function pointer for built-in procedures
+    } logic;
+};
+
+// a constructor for language-defined procedures
+// params and body are copied
+Proc *Proc_new(int argc, bool variadic, const Arr *params, const List *body);
+
+// a constructor for built-in procedures
+Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply);
+
+void Proc_free(Proc *proc);
+Proc *Proc_copy(const Proc *proc);
+
+// Deprecated
 typedef int (*intproc2_t)(int,int);
 
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
@@ -74,6 +115,7 @@ typedef struct MalDatum {
         List *list;
         char *string;
         intproc2_t intproc2;
+        Proc *proc;
     } value;
 } MalDatum;
 
@@ -90,6 +132,7 @@ MalDatum *MalDatum_new_sym(Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 MalDatum *MalDatum_new_intproc2(const intproc2_t);
+MalDatum *MalDatum_new_proc(Proc *);
 
 bool MalDatum_istype(const MalDatum *, MalType);
 void MalDatum_free(MalDatum *);

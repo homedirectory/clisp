@@ -36,6 +36,9 @@ char *pr_str(MalDatum *datum) {
         case FALSE:
             str = dyn_strcpy("false");
             break;
+        case PROCEDURE:
+            str = dyn_strcpy("#<procedure>");
+            break;
         default:
             char *s = MalType_tostr(datum->type);
             DEBUG("Unknown MalType");

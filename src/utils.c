@@ -26,6 +26,22 @@ Arr *Arr_newn(const size_t cap) {
     return arr;
 }
 
+Arr *Arr_copy(const Arr *arr, const copier_t copier) {
+    if (arr == NULL) {
+        LOG_NULL(arr);
+        return NULL;
+    }
+
+    Arr *copy = Arr_newn(arr->cap);
+    copy->len = arr->len;
+
+    for (int i = 0; i < arr->len; i++) {
+        copy->items[i] = copier(arr->items[i]);
+    }
+
+    return copy;
+}
+
 size_t Arr_add(Arr *arr, void *ptr) {
     if (arr->cap == arr->len) {
         resize(arr, arr->cap * CAPACITY_INCR_RATIO);

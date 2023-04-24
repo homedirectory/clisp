@@ -20,6 +20,9 @@ void Arr_free(Arr *arr);
 // Like Arr_free but also applies the given free proc to each array item
 void Arr_freep(Arr *arr, free_t freer);
 
+typedef void*(*copier_t)(void*);
+Arr *Arr_copy(const Arr *arr, const copier_t copier);
+
 size_t Arr_add(Arr*, void*);
 void *Arr_replace(Arr*, size_t, void*);
 void *Arr_get(Arr*, size_t idx);

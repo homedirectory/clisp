@@ -165,6 +165,54 @@ Symbol *Symbol_copy(const Symbol *sym) {
     return Symbol_new(sym->name);
 }
 
+// Procedures ----------------------------------------
+Proc *Proc_new(int argc, bool variadic, const Arr *params, const List *body) {
+    Proc *proc = malloc(sizeof(Proc));
+    proc->argc = argc;
+    proc->variadic = variadic;
+    proc->params = Arr_copy(params, (copier_t) Symbol_copy);
+    proc->builtin = false;
+    proc->logic.body = List_deep_copy(body);
+    return proc;
+}
+
+Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply) {
+    Proc *proc = malloc(sizeof(Proc));
+    proc->argc = argc;
+    proc->variadic = variadic;
+    proc->builtin = true;
+    proc->logic.apply = apply;
+    return proc;
+}
+
+void Proc_free(Proc *proc) {
+    if (proc == NULL) {
+        LOG_NULL(proc);
+        return;
+    }
+
+    if (!proc->builtin) {
+        // free params
+        Arr_freep(proc->params, (free_t) Symbol_free);
+        // free body
+        List_free(proc->logic.body);
+    }
+
+    free(proc);
+}
+
+Proc *Proc_copy(const Proc *proc) {
+    if (proc == NULL) {
+        LOG_NULL(proc);
+        return NULL;
+    }
+
+    if (proc->builtin)
+        return Proc_builtin(proc->argc, proc->variadic, proc->logic.apply);
+    else
+        return Proc_new(proc->argc, proc->variadic, proc->params, proc->logic.body);
+}
+
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
     char *buf;
@@ -192,6 +240,9 @@ char *MalType_tostr(MalType type) {
             break;
         case FALSE:
             buf = "FALSE";
+            break;
+        case PROCEDURE:
+            buf = "PROCEDURE";
             break;
         default:
             buf = "*unknown*";
@@ -254,6 +305,14 @@ MalDatum *MalDatum_new_intproc2(const intproc2_t proc) {
     return mdp;
 }
 
+// *proc is not copied
+MalDatum *MalDatum_new_proc(Proc *proc) {
+    MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->type = PROCEDURE;
+    mdp->value.proc = proc;
+    return mdp;
+}
+
 void MalDatum_free(MalDatum *datum) {
     if (datum == NULL) return;
 
@@ -270,6 +329,9 @@ void MalDatum_free(MalDatum *datum) {
             break;
         case SYMBOL:
             Symbol_free(datum->value.sym);
+            break;
+        case PROCEDURE:
+            Proc_free(datum->value.proc);
             break;
         default:
             break;
@@ -314,6 +376,9 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
         case FALSE:
             out = MalDatum_false();
+            break;
+        case PROCEDURE:
+            out = MalDatum_new_proc(Proc_copy(datum->value.proc));
             break;
         default:
             DEBUG("MalDatum_copy: unknown MalType");
