@@ -79,7 +79,7 @@ typedef struct MalEnv MalEnv; // from env.h
 
 // the type of built-in functions (e.g., list, empty?, numeric ones, etc.)
 // args - array of *MalDatum
-typedef MalDatum* (*builtin_apply_t)(Proc*, Arr *args);
+typedef MalDatum* (*builtin_apply_t)(const Proc*, const Arr *args);
 
 struct Proc {
     int argc; // amount of mandatory arguments
@@ -91,14 +91,14 @@ struct Proc {
     Arr *params; // of *Symbol (makes sense only for MAL procedures) 
     bool builtin;
     union {
-        List *body;
+        Arr *body; // of *MalDatum
         builtin_apply_t apply; // function pointer for built-in procedures
     } logic;
 };
 
 // a constructor for language-defined procedures
 // params and body are copied
-Proc *Proc_new(int argc, bool variadic, const Arr *params, const List *body);
+Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body);
 
 // a constructor for built-in procedures
 Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply);

@@ -182,13 +182,13 @@ Symbol *Symbol_copy(const Symbol *sym) {
 }
 
 // Procedures ----------------------------------------
-Proc *Proc_new(int argc, bool variadic, const Arr *params, const List *body) {
+Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body) {
     Proc *proc = malloc(sizeof(Proc));
     proc->argc = argc;
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
-    proc->logic.body = List_deep_copy(body);
+    proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
     return proc;
 }
 
@@ -211,7 +211,7 @@ void Proc_free(Proc *proc) {
         // free params
         Arr_freep(proc->params, (free_t) Symbol_free);
         // free body
-        List_free(proc->logic.body);
+        Arr_freep(proc->logic.body, (free_t) MalDatum_free);
     }
 
     free(proc);
@@ -266,6 +266,7 @@ char *MalType_tostr(MalType type) {
             break;
     }
     // TODO use statically allocated memory
+    // users of this function leak memory
     return dyn_strcpy(buf);
 }
 

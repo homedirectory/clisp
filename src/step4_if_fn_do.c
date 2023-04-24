@@ -30,7 +30,7 @@ static MalDatum *read(const char* in) {
 }
 
 // args - array of *MalDatum (argument values)
-static MalDatum *apply_proc(Proc *proc, Arr *args, MalEnv *env) {
+static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     if (proc->builtin) {
         return proc->logic.apply(proc, args);
     } 
@@ -53,11 +53,16 @@ static MalDatum *apply_proc(Proc *proc, Arr *args, MalEnv *env) {
             return NULL;
         }
 
-        // 2. evaluate body and return the result of the last expression
-        const List *body = proc->logic.body;
-
-        // TODO
-        MalDatum *out;
+        // 2. evaluate the body
+        const Arr *body = proc->logic.body;
+        // the body must not be empty at this point
+        if (body->len == 0) FATAL("empty body");
+        // evalute each expression and return the result of the last one
+        for (int i = 0; i < body->len - 1; i++) {
+            const MalDatum *dtm = body->items[i];
+            MalDatum_free(eval(dtm, proc_env));
+        }
+        MalDatum *out = eval(body->items[body->len - 1], proc_env);
 
         MalEnv_free(proc_env);
         
@@ -66,7 +71,7 @@ static MalDatum *apply_proc(Proc *proc, Arr *args, MalEnv *env) {
 }
 
 // list - raw unevaled list form
-static MalDatum *eval_proc(const List *list, MalEnv *env) {
+static MalDatum *eval_application(const List *list, MalEnv *env) {
     if (List_isempty(list)) {
         ERROR("procedure application: expected a non-empty list");
         return NULL;
@@ -75,7 +80,10 @@ static MalDatum *eval_proc(const List *list, MalEnv *env) {
     List *ev_list = eval_list(list, env); // own
     if (ev_list == NULL) return NULL;
 
-    char *proc_name = List_ref(list, 0)->value.sym->name;
+    // this can be either a named procedure (bound to a symbol) or an fn*-produced one
+    bool named = MalDatum_istype(List_ref(list, 0), SYMBOL);
+    char *proc_name = named ? List_ref(list, 0)->value.sym->name : "*unnamed*";
+
     Proc *proc = List_ref(ev_list, 0)->value.proc;
 
     int argc = List_len(ev_list) - 1;
@@ -173,12 +181,73 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
  * it comes in 2 forms:
  * 1. (fn* params body)
  * params := () | (param ...)
+ * param := SYMBOL
  * 2. (fn* var-params body)
  * var-params := (& rest) | (param ... & rest)
  * rest is then bound to the list of the remaining arguments
  */
 static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
-    FATAL("Not implemented");
+    int argc = List_len(list) - 1;
+    if (argc < 2) {
+        ERROR("fn* expects at least 2 arguments, but %d were given", argc);
+        return NULL;
+    }
+
+    // 1. validate params
+    List *params;
+    {
+        MalDatum *snd = List_ref(list, 1);
+        if (!MalDatum_istype(snd, LIST)) {
+            ERROR("fn* expects a list as a 2nd argument, but %s was given",
+                    MalType_tostr(snd->type));
+            return NULL;
+        }
+        params = snd->value.list;
+    }
+    // params should be a list of symbols
+    for (struct Node *node = params->head; node != NULL; node = node->next) {
+        MalDatum *par = node->value;
+        if (!MalDatum_istype(par, SYMBOL)) {
+            ERROR("fn* expects a list of symbols as 2nd argument, but %s was found in the list",
+                    MalType_tostr(par->type));
+            return NULL;
+        }
+    }
+
+    /*
+    // 2. validate body -- must not be an empty list
+    MalDatum *body = List_ref(list, 2);
+    if (MalDatum_istype(body, LIST) && List_isempty(body->value.list)) {
+        ERROR("fn* expects a non-empty body");
+        return NULL;
+    }
+    */
+
+    // 2. construct the Procedure
+    // TODO support variadic
+    int proc_argc = List_len(params);
+    bool variadic = false;
+
+    // params
+    Arr *symbols = Arr_newn(proc_argc); // own
+    for (struct Node *node = params->head; node != NULL; node = node->next) {
+        Arr_add(symbols, node->value->value.sym); // no need to copy
+    }
+
+    // body
+    int body_len = argc - 1;
+    // array of *MalDatum
+    Arr *body = Arr_newn(body_len); // own
+    for (struct Node *node = list->head->next->next; node != NULL; node = node->next) {
+        Arr_add(body, node->value); // no need to copy
+    }
+
+    Proc *proc = Proc_new(proc_argc, variadic, symbols, body); // own
+
+    Arr_free(symbols);
+    Arr_free(body);
+
+    return MalDatum_new_proc(proc);
 }
 
 // (def! id <MalDatum>)
@@ -362,7 +431,7 @@ MalDatum *eval(const MalDatum *datum, MalEnv *env) {
                 }
 
                 // it's a regular list form (i.e., it's a procedure application)
-                return eval_proc(list, env);
+                return eval_application(list, env);
             }
             break;
         default:

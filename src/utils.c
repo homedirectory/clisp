@@ -59,7 +59,7 @@ void *Arr_replace(Arr *arr, size_t idx, void *ptr) {
     return old;
 }
 
-void *Arr_get(Arr *arr, size_t idx) {
+void *Arr_get(const Arr *arr, size_t idx) {
     if (idx >= arr->len)
         return NULL;
     return arr->items[idx];
