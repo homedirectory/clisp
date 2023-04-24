@@ -448,6 +448,24 @@ static char *print(MalDatum *datum) {
     return str;
 }
 
+static void rep(const char *str, MalEnv *env) {
+    // read
+    MalDatum *r = read(str);
+    if (r == NULL) return;
+    // eval
+    // TODO implement a stack trace of error messages
+    MalDatum *e = eval(r, env);
+    MalDatum_free(r);
+    // print
+    char *p = print(e);
+    MalDatum_free(e);
+    if (p != NULL) { 
+        if (p[0] != '\0')
+            printf("%s\n", p);
+        free(p);
+    }
+}
+
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
 
@@ -458,28 +476,19 @@ int main(int argc, char **argv) {
 
     core_def_procs(env);
 
+    rep("(def! not (fn* (x) (if x false true)))", env);
+    // TODO implement using 'and' and 'or'
+    rep("(def! >= (fn* (x y) (if (= x y) true (> x y))))", env);
+    rep("(def! <  (fn* (x y) (not (>= x y))))", env);
+    rep("(def! <= (fn* (x y) (if (= x y) true (< x y))))", env);
+
     while (1) {
         char *line = readline(PROMPT);
         if (line == NULL) {
             exit(EXIT_SUCCESS);
         }
-
-        // read
-        MalDatum *r = read(line);
+        rep(line, env);
         free(line);
-        if (r == NULL) continue;
-        // eval
-        // TODO implement a stack trace of error messages
-        MalDatum *e = eval(r, env);
-        MalDatum_free(r);
-        // print
-        char *p = print(e);
-        MalDatum_free(e);
-        if (p != NULL) { 
-            if (p[0] != '\0')
-                printf("%s\n", p);
-            free(p);
-        }
     }
 
     MalEnv_free(env);
