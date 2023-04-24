@@ -50,7 +50,7 @@ List *List_deep_copy(const List *);
  * 8. procedures
  */
 typedef enum MalType {
-    INT, SYMBOL, LIST, STRING, INTPROC2, NIL, TRUE, FALSE, PROCEDURE
+    INT, SYMBOL, LIST, STRING, NIL, TRUE, FALSE, PROCEDURE
 } MalType;
 
 char *MalType_tostr(MalType type);
@@ -103,9 +103,6 @@ Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply);
 void Proc_free(Proc *proc);
 Proc *Proc_copy(const Proc *proc);
 
-// Deprecated
-typedef int (*intproc2_t)(int,int);
-
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
     MalType type;
@@ -114,7 +111,6 @@ typedef struct MalDatum {
         Symbol *sym;
         List *list;
         char *string;
-        intproc2_t intproc2;
         Proc *proc;
     } value;
 } MalDatum;
@@ -131,7 +127,6 @@ MalDatum *MalDatum_new_int(const int);
 MalDatum *MalDatum_new_sym(Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
-MalDatum *MalDatum_new_intproc2(const intproc2_t);
 MalDatum *MalDatum_new_proc(Proc *);
 
 bool MalDatum_istype(const MalDatum *, MalType);

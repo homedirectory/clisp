@@ -229,9 +229,6 @@ char *MalType_tostr(MalType type) {
         case STRING:
             buf = "STRING";
             break;
-        case INTPROC2:
-            buf = "INTPROC2";
-            break;
         case NIL:
             buf = "NIL";
             break;
@@ -298,13 +295,6 @@ MalDatum *MalDatum_new_string(const char *str) {
     return mdp;
 }
 
-MalDatum *MalDatum_new_intproc2(const intproc2_t proc) {
-    MalDatum *mdp = malloc(sizeof(MalDatum));
-    mdp->type = INTPROC2;
-    mdp->value.intproc2 = proc;
-    return mdp;
-}
-
 // *proc is not copied
 MalDatum *MalDatum_new_proc(Proc *proc) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
@@ -361,9 +351,6 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
         case STRING:
             out = MalDatum_new_string(datum->value.string);
-            break;
-        case INTPROC2:
-            out = MalDatum_new_intproc2(datum->value.intproc2);
             break;
         case LIST:
             out = MalDatum_new_list(List_copy(datum->value.list));

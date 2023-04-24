@@ -378,20 +378,80 @@ static char *print(MalDatum *datum) {
     return str;
 }
 
-static int mal_add(int x, int y) {
-    return x + y;
+static MalDatum *mal_add(Proc *proc, Arr *args) {
+    // validate arg types
+    for (int i = 0; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        if (!MalDatum_istype(arg, INT)) {
+            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+            return NULL;
+        }
+    }
+
+    int rslt = ((MalDatum*)args->items[0])->value.i;
+    for (int i = 1; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        rslt += arg->value.i;
+    }
+
+    return MalDatum_new_int(rslt);
 }
 
-static int mal_sub(int x, int y) {
-    return x - y;
+static MalDatum *mal_sub(Proc *proc, Arr *args) {
+    // validate arg types
+    for (int i = 0; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        if (!MalDatum_istype(arg, INT)) {
+            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+            return NULL;
+        }
+    }
+
+    int rslt = ((MalDatum*)args->items[0])->value.i;
+    for (int i = 1; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        rslt -= arg->value.i;
+    }
+
+    return MalDatum_new_int(rslt);
 }
 
-static int mal_mul(int x, int y) {
-    return x * y;
+static MalDatum *mal_mul(Proc *proc, Arr *args) {
+    // validate arg types
+    for (int i = 0; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        if (!MalDatum_istype(arg, INT)) {
+            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+            return NULL;
+        }
+    }
+
+    int rslt = ((MalDatum*)args->items[0])->value.i;
+    for (int i = 1; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        rslt *= arg->value.i;
+    }
+
+    return MalDatum_new_int(rslt);
 }
 
-static int mal_div(int x, int y) {
-    return x / y;
+static MalDatum *mal_div(Proc *proc, Arr *args) {
+    // validate arg types
+    for (int i = 0; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        if (!MalDatum_istype(arg, INT)) {
+            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+            return NULL;
+        }
+    }
+
+    int rslt = ((MalDatum*)args->items[0])->value.i;
+    for (int i = 1; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        rslt /= arg->value.i;
+    }
+
+    return MalDatum_new_int(rslt);
 }
 
 int main(int argc, char **argv) {
@@ -401,10 +461,10 @@ int main(int argc, char **argv) {
     MalEnv_put(env, Symbol_new("true"), MalDatum_true());
     MalEnv_put(env, Symbol_new("false"), MalDatum_false());
 
-    MalEnv_put(env, Symbol_new("+"), MalDatum_new_intproc2(mal_add));
-    MalEnv_put(env, Symbol_new("-"), MalDatum_new_intproc2(mal_sub));
-    MalEnv_put(env, Symbol_new("*"), MalDatum_new_intproc2(mal_mul));
-    MalEnv_put(env, Symbol_new("/"), MalDatum_new_intproc2(mal_div));
+    MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
+    MalEnv_put(env, Symbol_new("-"), MalDatum_new_proc(Proc_builtin(2, true, mal_sub)));
+    MalEnv_put(env, Symbol_new("*"), MalDatum_new_proc(Proc_builtin(2, true, mal_mul)));
+    MalEnv_put(env, Symbol_new("/"), MalDatum_new_proc(Proc_builtin(2, true, mal_div)));
 
     while (1) {
         //char *sp = malloc(50);
