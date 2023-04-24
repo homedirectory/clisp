@@ -13,6 +13,8 @@
 #define PROMPT "user> "
 
 MalDatum *eval(const MalDatum *datum, MalEnv *env);
+MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
+List *eval_list(const List *list, MalEnv *env);
 
 static MalDatum *read(const char* in) {
     Reader *rdr = read_str(in);
@@ -24,6 +26,83 @@ static MalDatum *read(const char* in) {
     MalDatum *form = read_form(rdr);
     Reader_free(rdr);
     return form;
+}
+
+// args - array of *MalDatum (argument values)
+static MalDatum *apply_proc(Proc *proc, Arr *args, MalEnv *env) {
+    if (proc->builtin) {
+        return proc->logic.apply(proc, args);
+    } 
+    else {
+        // local env is created even if a procedure expects no parameters,
+        // so that def! inside it have only local effect
+        MalEnv *proc_env = MalEnv_new(env);
+
+        // 1. bind params to args in the local env
+        // mandatory arguments
+        for (int i = 0; i < proc->argc; i++) {
+            Symbol *param = Arr_get(proc->params, i);
+            MalDatum *arg = Arr_get(args, i);
+            MalEnv_put(proc_env, param, arg); 
+        }
+        // TODO variadic
+        if (proc->variadic) {
+            ERROR("variadic procedures are not implemented");
+            MalEnv_free(proc_env);
+            return NULL;
+        }
+
+        // 2. evaluate body and return the result of the last expression
+        const List *body = proc->logic.body;
+
+        // TODO
+        MalDatum *out;
+
+        MalEnv_free(proc_env);
+        
+        return out;
+    }
+}
+
+// list - raw unevaled list form
+static MalDatum *eval_proc(const List *list, MalEnv *env) {
+    if (List_isempty(list)) {
+        ERROR("procedure application: expected a non-empty list");
+        return NULL;
+    }
+
+    List *ev_list = eval_list(list, env); // own
+    if (ev_list == NULL) return NULL;
+
+    char *proc_name = List_ref(list, 0)->value.sym->name;
+    Proc *proc = List_ref(ev_list, 0)->value.proc;
+
+    int argc = List_len(ev_list) - 1;
+    if (argc < proc->argc) {
+        ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
+                proc_name, proc->argc, argc);
+        List_free(ev_list);
+        return NULL;
+    }
+    else if (!proc->variadic && argc > proc->argc) {
+        ERROR("procedure application: %s expects %d arguments, but %d were given", 
+                proc_name, proc->argc, argc);
+        List_free(ev_list);
+        return NULL;
+    }
+
+    // array of *MalDatum
+    Arr *args = Arr_newn(argc); // own
+    for (struct Node *node = ev_list->head->next; node != NULL; node = node->next) {
+        Arr_add(args, node->value);
+    }
+
+    MalDatum *out = apply_proc(proc, args, env);
+
+    Arr_free(args);
+    List_free(ev_list);
+
+    return out;
 }
 
 /* 'if' expression comes in 2 forms:
@@ -192,7 +271,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
 }
 
 // returns a new list that is the result of calling EVAL on each list element
-static List *eval_list(const List *list, MalEnv *env) {
+List *eval_list(const List *list, MalEnv *env) {
     if (list == NULL) {
         LOG_NULL(list);
         return NULL;
@@ -221,7 +300,7 @@ static List *eval_list(const List *list, MalEnv *env) {
 /* Evaluates a MalDatum in an environment and returns the result in the form of a 
  * new dynamically allocted MalDatum.
  */
-static MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
+MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
     MalDatum *out = NULL;
 
     switch (datum->type) {
@@ -281,28 +360,8 @@ MalDatum *eval(const MalDatum *datum, MalEnv *env) {
                         break;
                 }
 
-                // it's a regular list form
-                MalDatum *evaled = eval_ast(datum, env);
-                if (evaled == NULL) {
-                    LOG_NULL(evaled);
-                    return NULL;
-                }
-
-                List *elist = evaled->value.list;
-                // NOTE: currently we only support arity of 2 
-                if (List_len(elist) != 3) {
-                    ERROR("only procedures of arity 2 are supported");
-                    MalDatum_free(evaled);
-                    return NULL;
-                }
-                // Take the first item of the evaluated list and call it as
-                // a function using the rest of the evaluated list as its arguments.
-                intproc2_t proc = List_ref(elist, 0)->value.intproc2;
-                int arg1 = List_ref(elist, 1)->value.i;
-                int arg2 = List_ref(elist, 2)->value.i;
-                int rslt = proc(arg1, arg2);
-                MalDatum_free(evaled);
-                return MalDatum_new_int(rslt);
+                // it's a regular list form (i.e., it's a procedure application)
+                return eval_proc(list, env);
             }
             break;
         default:
