@@ -109,6 +109,44 @@ static MalDatum *mal_gt(const Proc *proc, const Arr *args) {
     return arg1->value.i > arg2->value.i ? MalDatum_true() : MalDatum_false();
 }
 
+static MalDatum *mal_list(const Proc *proc, const Arr *args) {
+    // TODO use singleton empty list
+    List *list = List_new();
+    for (int i = 0; i < args->len; i++) {
+        MalDatum *dtm = args->items[i];
+        // TODO avoid copying args to speed up
+        List_add(list, MalDatum_deep_copy(dtm));
+    }
+
+    return MalDatum_new_list(list);
+}
+
+static MalDatum *mal_listp(const Proc *proc, const Arr *args) {
+    return MalDatum_istype(args->items[0], LIST) ? MalDatum_true() : MalDatum_false();
+}
+
+static MalDatum *mal_emptyp(const Proc *proc, const Arr *args) {
+    // validate arg type
+    MalDatum *arg = args->items[0];
+    if (!MalDatum_istype(arg, LIST)) {
+        ERROR("empty?: expected LIST, but got %s instead", MalType_tostr(arg->type));
+        return NULL;
+    }
+    List *list = arg->value.list;
+    return List_isempty(list) ? MalDatum_true() : MalDatum_false();
+}
+
+static MalDatum *mal_count(const Proc *proc, const Arr *args) {
+    // validate arg type
+    MalDatum *arg = args->items[0];
+    if (!MalDatum_istype(arg, LIST)) {
+        ERROR("count: expected LIST, but got %s instead", MalType_tostr(arg->type));
+        return NULL;
+    }
+    List *list = arg->value.list;
+    return MalDatum_new_int(List_len(list));
+}
+
 void core_def_procs(MalEnv *env) {
     // FIXME memory leak
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
@@ -117,4 +155,9 @@ void core_def_procs(MalEnv *env) {
     MalEnv_put(env, Symbol_new("/"), MalDatum_new_proc(Proc_builtin(2, true, mal_div)));
     MalEnv_put(env, Symbol_new("="), MalDatum_new_proc(Proc_builtin(2, false, mal_eq)));
     MalEnv_put(env, Symbol_new(">"), MalDatum_new_proc(Proc_builtin(2, false, mal_gt)));
+
+    MalEnv_put(env, Symbol_new("list"), MalDatum_new_proc(Proc_builtin(0, true, mal_list)));
+    MalEnv_put(env, Symbol_new("list?"), MalDatum_new_proc(Proc_builtin(1, false, mal_listp)));
+    MalEnv_put(env, Symbol_new("empty?"), MalDatum_new_proc(Proc_builtin(1, false, mal_emptyp)));
+    MalEnv_put(env, Symbol_new("count"), MalDatum_new_proc(Proc_builtin(1, false, mal_count)));
 }
