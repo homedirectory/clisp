@@ -1,4 +1,5 @@
 #include "types.h"
+#include "env.h"
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -182,13 +183,14 @@ Symbol *Symbol_copy(const Symbol *sym) {
 }
 
 // Procedures ----------------------------------------
-Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body) {
+Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env) {
     Proc *proc = malloc(sizeof(Proc));
     proc->argc = argc;
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
     proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+    proc->env = env;
     return proc;
 }
 
@@ -198,6 +200,7 @@ Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply) {
     proc->variadic = variadic;
     proc->builtin = true;
     proc->logic.apply = apply;
+    proc->env = NULL;
     return proc;
 }
 
@@ -226,7 +229,7 @@ Proc *Proc_copy(const Proc *proc) {
     if (proc->builtin)
         return Proc_builtin(proc->argc, proc->variadic, proc->logic.apply);
     else
-        return Proc_new(proc->argc, proc->variadic, proc->params, proc->logic.body);
+        return Proc_new(proc->argc, proc->variadic, proc->params, proc->logic.body, proc->env);
 }
 
 bool Proc_eq(const Proc *proc1, const Proc *proc2) {

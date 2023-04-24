@@ -78,6 +78,15 @@ void Arr_freep(Arr *arr, free_t freer) {
 }
 
 int Arr_find(const Arr *arr, const void *ptr) {
+    if (arr == NULL) {
+        LOG_NULL(arr);
+        return -1;
+    }
+    if (ptr == NULL) {
+        LOG_NULL(ptr);
+        return -1;
+    }
+
     for (size_t i = 0; i < arr->len; i++) {
         if (arr->items[i] == ptr)
             return i;
@@ -86,6 +95,15 @@ int Arr_find(const Arr *arr, const void *ptr) {
 }
 
 int Arr_findf(const Arr *arr, const void *ptr, const equals_t eq) {
+    if (arr == NULL) {
+        LOG_NULL(arr);
+        return -1;
+    }
+    if (ptr == NULL) {
+        LOG_NULL(ptr);
+        return -1;
+    }
+
     for (size_t i = 0; i < arr->len; i++) {
         if (eq(arr->items[i], ptr))
             return i;

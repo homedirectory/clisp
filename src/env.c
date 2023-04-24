@@ -9,21 +9,31 @@ MalEnv *MalEnv_new(const MalEnv *enclosing) {
     env->symbols = Arr_new();
     env->datums = Arr_new();
     env->enclosing = enclosing;
+    env->reachable = false;
     return env;
 }
 
 void MalEnv_free(MalEnv *env) {
     if (env == NULL) {
         LOG_NULL(env);
-    } else {
-        Arr_freep(env->symbols, (free_t) Symbol_free);
-        Arr_freep(env->datums, (free_t) MalDatum_free);
-        // the enclosing env should not be freed
-        free(env);
+        return;
     }
+    if (env->reachable) {
+        DEBUG("attempt to free a reachable MalEnv was prevented");
+        return;
+    }
+    Arr_freep(env->symbols, (free_t) Symbol_free);
+    Arr_freep(env->datums, (free_t) MalDatum_free);
+    // the enclosing env should not be freed
+    free(env);
 }
 
 MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, const MalDatum *datum) {
+    if (env == NULL) {
+        LOG_NULL(env);
+        return NULL;
+    }
+
     int idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
     if (idx == -1) { // new symbol
         Arr_add(env->symbols, Symbol_copy(sym));
@@ -36,17 +46,19 @@ MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, const MalDatum *datum) {
 }
 
 MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym) {
+    if (env == NULL) {
+        LOG_NULL(env);
+        return NULL;
+    }
+
     const MalEnv *e = env;
     int idx = -1;
     while (e != NULL) {
         idx = Arr_findf(e->symbols, sym, (equals_t) Symbol_eq);
         if (idx != -1)
-            break;
+            return e->datums->items[idx];
         e = e->enclosing;
     }
 
-    if (idx == -1)
-        return NULL;
-    else
-        return e->datums->items[idx];
+    return NULL;
 }

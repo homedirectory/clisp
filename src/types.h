@@ -94,11 +94,12 @@ struct Proc {
         Arr *body; // of *MalDatum
         builtin_apply_t apply; // function pointer for built-in procedures
     } logic;
+    const MalEnv *env; // the enclosing environment in which this MAL procedure was defined
 };
 
 // a constructor for language-defined procedures
 // params and body are copied
-Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body);
+Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env);
 
 // a constructor for built-in procedures
 Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply);

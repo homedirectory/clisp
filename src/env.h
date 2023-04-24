@@ -1,13 +1,15 @@
 #pragma once
 
 #include "types.h"
+#include "stdbool.h"
 
 /* This environment is an associative structure that maps symbols to mal values */
 typedef struct MalEnv {
     // TODO replace Arr by a proper hashmap
     Arr *symbols; // of Symbol*
     Arr *datums;  // of MalDatum*
-    const struct MalEnv *enclosing;
+    struct MalEnv *enclosing;
+    bool reachable;
 } MalEnv;
 
 // Creates a new environment that is enclosed by the given environment.

@@ -37,7 +37,17 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     else {
         // local env is created even if a procedure expects no parameters,
         // so that def! inside it have only local effect
-        MalEnv *proc_env = MalEnv_new(env);
+        // NOTE: this is where the need to track reachability stems from,
+        // since we don't know whether the environment of this particular application
+        // (with all the arguments) will be needed after its applied.
+        // Example where it won't be needed and thus can be safely discarded:
+        // ((fn* (x) x) 10) => 10
+        // Here a local env { x = 10 } with enclosing one set to the global env will be created
+        // and discarded immediately after the result (10) is obtained.
+        // (((fn* (x) (fn* () x)) 10)) => 10
+        // But here the result of this application will be a procedure that should
+        // "remember" about x = 10, so the local env should be preserved. 
+        MalEnv *proc_env = MalEnv_new(proc->env); // own
 
         // 1. bind params to args in the local env
         // mandatory arguments
@@ -242,7 +252,8 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
         Arr_add(body, node->value); // no need to copy
     }
 
-    Proc *proc = Proc_new(proc_argc, variadic, symbols, body); // own
+    Proc *proc = Proc_new(proc_argc, variadic, symbols, body, env); // own
+    env->reachable = true;
 
     Arr_free(symbols);
     Arr_free(body);
@@ -282,7 +293,7 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
 static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
     int argc = List_len(list) - 1;
-    if (argc != 3) {
+    if (argc != 2) {
         ERROR("let* expects 2 arguments, but %d were given", argc);
         return NULL;
     }
@@ -468,6 +479,7 @@ static void rep(const char *str, MalEnv *env) {
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
+    env->reachable = true;
 
     // FIXME memory leak
     MalEnv_put(env, Symbol_new("nil"), MalDatum_nil());
@@ -491,5 +503,6 @@ int main(int argc, char **argv) {
         free(line);
     }
 
+    env->reachable = false;
     MalEnv_free(env);
 }
