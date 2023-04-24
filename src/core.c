@@ -80,9 +80,40 @@ static MalDatum *mal_div(Proc *proc, Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
+/* '=' : compare the first two parameters and return true if they are the same type
+ * and contain the same value. In the case of equal length lists, each element
+ * of the list should be compared for equality and if they are the same return
+ * true, otherwise false
+ */
+static MalDatum *mal_eq(Proc *proc, Arr *args) {
+    MalDatum *arg1 = args->items[0];
+    MalDatum *arg2 = args->items[1];
+
+    return MalDatum_eq(arg1, arg2) ? MalDatum_true() : MalDatum_false();
+}
+
+/* '>' : compare the first two numeric parameters */
+static MalDatum *mal_gt(Proc *proc, Arr *args) {
+    // validate arg types
+    for (int i = 0; i < args->len; i++) {
+        MalDatum *arg = args->items[i];
+        if (!MalDatum_istype(arg, INT)) {
+            ERROR(">: expected INT arguments, but received %s", MalType_tostr(arg->type));
+            return NULL;
+        }
+    }
+
+    MalDatum *arg1 = args->items[0];
+    MalDatum *arg2 = args->items[1];
+
+    return arg1->value.i > arg2->value.i ? MalDatum_true() : MalDatum_false();
+}
+
 void core_def_procs(MalEnv *env) {
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
     MalEnv_put(env, Symbol_new("-"), MalDatum_new_proc(Proc_builtin(2, true, mal_sub)));
     MalEnv_put(env, Symbol_new("*"), MalDatum_new_proc(Proc_builtin(2, true, mal_mul)));
     MalEnv_put(env, Symbol_new("/"), MalDatum_new_proc(Proc_builtin(2, true, mal_div)));
+    MalEnv_put(env, Symbol_new("="), MalDatum_new_proc(Proc_builtin(2, false, mal_eq)));
+    MalEnv_put(env, Symbol_new(">"), MalDatum_new_proc(Proc_builtin(2, false, mal_gt)));
 }

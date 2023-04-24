@@ -118,6 +118,22 @@ void List_free(List *list) {
     }
 }
 
+bool List_eq(const List *lst1, const List *lst2) {
+    if (lst1 == lst2) return true;
+    if (lst1->len != lst2->len) return false;
+
+    struct Node *node1 = lst1->head;
+    struct Node *node2 = lst2->head;
+    while (node1 != NULL) {
+        if (!MalDatum_eq(node1->value, node2->value))
+            return false;
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+    
+    return true;
+}
+
 // Symbol ----------------------------------------
 Symbol *Symbol_new(const char *name) {
     Symbol *sym = malloc(sizeof(Symbol));
@@ -140,7 +156,7 @@ bool Symbol_eq(const Symbol *sym1, const Symbol *sym2) {
         return false;
     }
 
-    return strcmp(sym1->name, sym2->name) == 0;
+    return sym1 == sym2 || strcmp(sym1->name, sym2->name) == 0;
 }
 
 bool Symbol_eq_str(const Symbol *sym, const char *str) {
@@ -211,6 +227,10 @@ Proc *Proc_copy(const Proc *proc) {
         return Proc_builtin(proc->argc, proc->variadic, proc->logic.apply);
     else
         return Proc_new(proc->argc, proc->variadic, proc->params, proc->logic.body);
+}
+
+bool Proc_eq(const Proc *proc1, const Proc *proc2) {
+    return proc1 == proc2;
 }
 
 // MalType ----------------------------------------
@@ -409,4 +429,39 @@ bool MalDatum_isfalse(MalDatum *datum) {
         return false;
     }
     return datum->type == FALSE;
+}
+
+bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
+    if (md1 == NULL) {
+        LOG_NULL(md1);
+        return false;
+    }
+    if (md2 == NULL) {
+        LOG_NULL(md2);
+        return false;
+    }
+
+    if (md1->type != md2->type)
+        return false;
+
+    switch (md1->type) {
+        case INT:
+            return md1->value.i == md2->value.i;
+        case SYMBOL:
+            return Symbol_eq(md1->value.sym, md2->value.sym);
+        case STRING:
+            return strcmp(md1->value.string, md2->value.string) == 0;
+        case LIST:
+            return List_eq(md1->value.list, md2->value.list);
+        case NIL:
+            return true;
+        case TRUE:
+            return true;
+        case FALSE:
+            return true;
+        case PROCEDURE:
+            return Proc_eq(md1->value.proc, md2->value.proc);
+        default:
+            FATAL("unknown MalType");
+    }
 }

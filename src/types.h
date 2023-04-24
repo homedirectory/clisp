@@ -37,6 +37,9 @@ List *List_copy(const List *);
 /* Returns a deep copy of a list: both the nodes and MalDatums they point to are copied. */
 List *List_deep_copy(const List *);
 
+// tests two lists for equality
+bool List_eq(const List *, const List *);
+
 
 /*
  * supported types:
@@ -103,6 +106,8 @@ Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply);
 void Proc_free(Proc *proc);
 Proc *Proc_copy(const Proc *proc);
 
+bool Proc_eq(const Proc *, const Proc *);
+
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
     MalType type;
@@ -134,3 +139,4 @@ void MalDatum_free(MalDatum *);
 MalDatum *MalDatum_copy(const MalDatum *);
 MalDatum *MalDatum_deep_copy(const MalDatum *);
 
+bool MalDatum_eq(const MalDatum *, const MalDatum *);
