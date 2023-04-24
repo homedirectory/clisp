@@ -29,6 +29,8 @@ void List_free(List *);
 
 void List_add(List *, MalDatum *);
 MalDatum *List_ref(const List *, size_t);
+
+List *List_empty();
 bool List_isempty(const List *);
 
 /* Returns a shallow copy of a list: the nodes are copied, but MalDatums they point to are not. */
@@ -53,7 +55,9 @@ bool List_eq(const List *, const List *);
  * 8. procedures
  */
 typedef enum MalType {
-    INT, SYMBOL, LIST, STRING, NIL, TRUE, FALSE, PROCEDURE
+    INT, SYMBOL, LIST, 
+    EMPTY_LIST, // to use as a singleton
+    STRING, NIL, TRUE, FALSE, PROCEDURE
 } MalType;
 
 char *MalType_tostr(MalType type);
@@ -121,9 +125,11 @@ typedef struct MalDatum {
     } value;
 } MalDatum;
 
+// singletons
 MalDatum *MalDatum_nil();
 MalDatum *MalDatum_true();
 MalDatum *MalDatum_false();
+MalDatum *MalDatum_empty_list();
 
 bool MalDatum_isnil(MalDatum *datum);
 bool MalDatum_isfalse(MalDatum *datum);
@@ -136,6 +142,7 @@ MalDatum *MalDatum_new_string(const char *);
 MalDatum *MalDatum_new_proc(Proc *);
 
 bool MalDatum_istype(const MalDatum *, MalType);
+bool MalDatum_islist(const MalDatum *);
 void MalDatum_free(MalDatum *);
 MalDatum *MalDatum_copy(const MalDatum *);
 MalDatum *MalDatum_deep_copy(const MalDatum *);

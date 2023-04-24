@@ -23,6 +23,9 @@ char *pr_str(MalDatum *datum) {
             List *list = datum->value.list;
             str = list ? pr_list(list) : NULL;
             break;
+        case EMPTY_LIST:
+            str = dyn_strcpy("()");
+            break;
         case STRING:
             char *string = datum->value.string;
             str = string ? dyn_strcpy(string) : NULL;

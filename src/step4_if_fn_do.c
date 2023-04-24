@@ -207,7 +207,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     List *params;
     {
         MalDatum *snd = List_ref(list, 1);
-        if (!MalDatum_istype(snd, LIST)) {
+        if (!MalDatum_islist(snd)) {
             ERROR("fn* expects a list as a 2nd argument, but %s was given",
                     MalType_tostr(snd->type));
             return NULL;

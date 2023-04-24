@@ -60,6 +60,11 @@ List *List_deep_copy(const List *list) {
     return out;
 }
 
+static List _empty_list = { .len = 0, .head = NULL, .tail = NULL };
+List *List_empty() {
+    return &_empty_list;
+}
+
 bool List_isempty(const List *list) {
     if (list == NULL) {
         LOG_NULL(list);
@@ -103,7 +108,7 @@ MalDatum *List_ref(const List *list, size_t idx) {
 
 /* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *list) {
-    if (list == NULL) return;
+    if (list == NULL || list == &_empty_list) return;
     else if (list->head == NULL) {
         free(list);
     } 
@@ -249,6 +254,9 @@ char *MalType_tostr(MalType type) {
         case LIST:
             buf = "LIST";
             break;
+        case EMPTY_LIST:
+            buf = "EMPTY LIST";
+            break;
         case STRING:
             buf = "STRING";
             break;
@@ -274,9 +282,13 @@ char *MalType_tostr(MalType type) {
 }
 
 // singletons
-static MalDatum _MalDatum_nil = { NIL };
-static MalDatum _MalDatum_true = { TRUE };
-static MalDatum _MalDatum_false = { FALSE };
+/*const*/ static MalDatum _MalDatum_nil = { .type = NIL };
+/*const*/ static MalDatum _MalDatum_true = { .type = TRUE };
+/*const*/ static MalDatum _MalDatum_false = { .type = FALSE };
+static MalDatum _MalDatum_empty_list = { 
+    .type = EMPTY_LIST, 
+    .value.list = &_empty_list
+};
 
 MalDatum *MalDatum_nil() {
     return &_MalDatum_nil;
@@ -287,6 +299,9 @@ MalDatum *MalDatum_true() {
 MalDatum *MalDatum_false() {
     return &_MalDatum_false;
 };
+MalDatum *MalDatum_empty_list() {
+    return &_MalDatum_empty_list;
+}
 
 MalDatum *MalDatum_new_int(const int i) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
@@ -335,6 +350,7 @@ void MalDatum_free(MalDatum *datum) {
         case NIL: return;
         case TRUE: return;
         case FALSE: return;
+        case EMPTY_LIST: return;
         case LIST:
             List_free(datum->value.list);
             break;
@@ -358,6 +374,10 @@ bool MalDatum_istype(const MalDatum *datum, MalType type) {
     return datum->type == type;
 }
 
+bool MalDatum_islist(const MalDatum *datum) {
+    return datum->type == LIST || datum->type == EMPTY_LIST;
+}
+
 MalDatum *MalDatum_copy(const MalDatum *datum) {
     if (datum == NULL) {
         LOG_NULL(datum);
@@ -375,6 +395,9 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
         case STRING:
             out = MalDatum_new_string(datum->value.string);
+            break;
+        case EMPTY_LIST:
+            out = MalDatum_empty_list();
             break;
         case LIST:
             out = MalDatum_new_list(List_copy(datum->value.list));
@@ -457,6 +480,8 @@ bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
             return strcmp(md1->value.string, md2->value.string) == 0;
         case LIST:
             return List_eq(md1->value.list, md2->value.list);
+        case EMPTY_LIST:
+            return true;
         case NIL:
             return true;
         case TRUE:

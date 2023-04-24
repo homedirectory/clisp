@@ -110,7 +110,9 @@ static MalDatum *mal_gt(const Proc *proc, const Arr *args) {
 }
 
 static MalDatum *mal_list(const Proc *proc, const Arr *args) {
-    // TODO use singleton empty list
+    if (args->len == 0)
+        return MalDatum_empty_list();
+
     List *list = List_new();
     for (int i = 0; i < args->len; i++) {
         MalDatum *dtm = args->items[i];
@@ -122,14 +124,14 @@ static MalDatum *mal_list(const Proc *proc, const Arr *args) {
 }
 
 static MalDatum *mal_listp(const Proc *proc, const Arr *args) {
-    return MalDatum_istype(args->items[0], LIST) ? MalDatum_true() : MalDatum_false();
+    return MalDatum_islist(args->items[0]) ? MalDatum_true() : MalDatum_false();
 }
 
 static MalDatum *mal_emptyp(const Proc *proc, const Arr *args) {
     // validate arg type
     MalDatum *arg = args->items[0];
-    if (!MalDatum_istype(arg, LIST)) {
-        ERROR("empty?: expected LIST, but got %s instead", MalType_tostr(arg->type));
+    if (!MalDatum_islist(arg)) {
+        ERROR("empty?: expected a list, but got %s instead", MalType_tostr(arg->type));
         return NULL;
     }
     List *list = arg->value.list;
@@ -139,8 +141,8 @@ static MalDatum *mal_emptyp(const Proc *proc, const Arr *args) {
 static MalDatum *mal_count(const Proc *proc, const Arr *args) {
     // validate arg type
     MalDatum *arg = args->items[0];
-    if (!MalDatum_istype(arg, LIST)) {
-        ERROR("count: expected LIST, but got %s instead", MalType_tostr(arg->type));
+    if (!MalDatum_islist(arg)) {
+        ERROR("count: expected a list, but got %s instead", MalType_tostr(arg->type));
         return NULL;
     }
     List *list = arg->value.list;

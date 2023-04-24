@@ -176,9 +176,6 @@ static MalDatum *read_atom(const char *token) {
     else if (strchr(SYMBOL_INV_CHARS, token[0]) == NULL) {
         return MalDatum_new_sym(Symbol_new(token));
     }
-    // TODO nil
-    // TODO false
-    // TODO true
     else {
         DEBUG("Unknown atom: %s", token);
         return NULL;
