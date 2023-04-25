@@ -485,7 +485,7 @@ static char *print(MalDatum *datum) {
         return NULL;
     }
 
-    char *str = pr_str(datum);
+    char *str = pr_str(datum, true);
     return str;
 }
 

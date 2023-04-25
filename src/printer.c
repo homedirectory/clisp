@@ -10,7 +10,8 @@
 // When print_readably is true, doublequotes, newlines, and backslashes are
 // translated into their printed representations (the reverse of the reader).
 // In other words, print escapes as 2 characters
-char *pr_str(MalDatum *datum) {
+char *pr_str(MalDatum *datum, bool print_readably) 
+{
     if (datum == NULL) return NULL;
 
     char *str = NULL;
@@ -24,14 +25,32 @@ char *pr_str(MalDatum *datum) {
             break;
         case LIST:
             List *list = datum->value.list;
-            str = list ? pr_list(list) : NULL;
+            str = list ? pr_list(list, print_readably) : NULL;
             break;
         case EMPTY_LIST:
             str = dyn_strcpy("()");
             break;
         case STRING:
             char *string = datum->value.string;
-            str = string ? str_escape(string) : NULL;
+            if (string == NULL) break;
+
+            if (print_readably) {
+                // TODO optimise
+                char *escaped = str_escape(string);
+                size_t esc_len = strlen(escaped);
+
+                char *out = calloc(esc_len + 2 + 1, sizeof(char));
+                out[0] = '"';
+                memcpy(out + 1, escaped, esc_len);
+                out[esc_len + 1] = '"';
+                out[esc_len + 2] = '\0';
+                str = out;
+
+                free(escaped);
+            }
+            else
+                str = dyn_strcpy(string);
+
             break;
         case NIL:
             str = dyn_strcpy("nil");
@@ -58,7 +77,8 @@ char *pr_str(MalDatum *datum) {
 
 // returns a new string with the contents of the given list separeted by spaces 
 // and wrapped in parens
-char *pr_list(List *list) {
+char *pr_list(List *list, bool print_readably) 
+{
     if (list == NULL) return NULL;
     size_t cap = 256;
     char *str = calloc(cap, sizeof(char));
@@ -67,7 +87,7 @@ char *pr_list(List *list) {
 
     struct Node *node = list->head;
     while (node) {
-        char *s = pr_str((MalDatum*) node->value);
+        char *s = pr_str((MalDatum*) node->value, print_readably);
         int slen = strlen(s);
         if (len + slen >= cap) {
             cap = slen + cap * 1.5;
