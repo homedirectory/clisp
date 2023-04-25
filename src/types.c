@@ -326,7 +326,7 @@ MalDatum *MalDatum_new_list(List *list) {
     return mdp;
 }
 
-// *char is copied
+// char is copied
 MalDatum *MalDatum_new_string(const char *str) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->type = STRING;
@@ -415,7 +415,7 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_proc(Proc_copy(datum->value.proc));
             break;
         default:
-            DEBUG("MalDatum_copy: unknown MalType");
+            FATAL("unknown MalType");
             break;
     }
 
