@@ -264,6 +264,44 @@ static MalDatum *mal_println(const Proc *proc, const Arr *args)
     return MalDatum_nil();
 }
 
+/* (procedure? datum) : predicate for procedures */
+static MalDatum *mal_procedurep(const Proc *proc, const Arr *args) {
+    MalDatum *arg = Arr_get(args, 0);
+    return MalDatum_istype(arg, PROCEDURE) ? MalDatum_true() : MalDatum_false();
+}
+
+/* (arity proc) : returns a list of 2 elements:
+ * 1. number of mandatory procedure arguments
+ * 2. true if procedure is variadic, false otherwise
+ */
+static MalDatum *mal_arity(const Proc *proc, const Arr *args) {
+    MalDatum *arg = Arr_get(args, 0);
+    if (!MalDatum_istype(arg, PROCEDURE)) {
+        ERROR("arity: expected a procedure");
+        return NULL;
+    }
+
+    Proc *proc_arg = arg->value.proc;
+    List *list = List_new();
+    List_add(list, MalDatum_new_int(proc_arg->argc));
+    List_add(list, proc_arg->variadic ? MalDatum_true() : MalDatum_false());
+
+    return MalDatum_new_list(list);
+}
+
+// Returns true if a procedure (1st arg) is builtin
+static MalDatum *mal_builtinp(const Proc *proc, const Arr *args) {
+    MalDatum *arg = Arr_get(args, 0);
+    if (!MalDatum_istype(arg, PROCEDURE)) {
+        ERROR("builtin?: expected a procedure");
+        return NULL;
+    }
+
+    Proc *proc_arg = arg->value.proc;
+
+    return proc_arg->builtin ? MalDatum_true() : MalDatum_false();
+}
+
 void core_def_procs(MalEnv *env) {
     // FIXME memory leak
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
@@ -282,4 +320,8 @@ void core_def_procs(MalEnv *env) {
     MalEnv_put(env, Symbol_new("pr-str"), MalDatum_new_proc(Proc_builtin(0, true, mal_pr_str)));
     MalEnv_put(env, Symbol_new("str"), MalDatum_new_proc(Proc_builtin(0, true, mal_str)));
     MalEnv_put(env, Symbol_new("println"), MalDatum_new_proc(Proc_builtin(0, true, mal_println)));
+
+    MalEnv_put(env, Symbol_new("procedure?"), MalDatum_new_proc(Proc_builtin(1, false, mal_procedurep)));
+    MalEnv_put(env, Symbol_new("arity"), MalDatum_new_proc(Proc_builtin(1, false, mal_arity)));
+    MalEnv_put(env, Symbol_new("builtin?"), MalDatum_new_proc(Proc_builtin(1, false, mal_builtinp)));
 }
