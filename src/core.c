@@ -1,8 +1,11 @@
+#include <stdlib.h>
 #include "common.h"
 #include "types.h"
 #include "utils.h"
 #include "core.h"
 #include "env.h"
+#include "printer.h"
+#include "mem_debug.h"
 
 static MalDatum *mal_add(const Proc *proc, const Arr *args) {
     // validate arg types
@@ -155,6 +158,112 @@ static MalDatum *mal_count(const Proc *proc, const Arr *args) {
     return MalDatum_new_int(len);
 }
 
+// prn: calls pr_str on each argument with print_readably set to true, joins the
+// results with " ", prints the string to the screen and then returns nil.
+static MalDatum *mal_prn(const Proc *proc, const Arr *args)
+{
+    if (args->len > 0) {
+        char *strings[args->len];
+
+        for (size_t i = 0; i < args->len; i++) {
+            MalDatum *arg = args->items[i];
+            strings[i] = pr_str(arg, true);
+        }
+
+        // join with " "
+        char *joined = str_join(strings, args->len, " ");
+        printf("%s\n", joined);
+        free(joined);
+
+        for (size_t i = 0; i < args->len; i++)
+            free(strings[i]);
+    }
+
+    return MalDatum_nil();
+}
+
+// pr-str: calls pr_str on each argument with print_readably set to true, joins
+// the results with " " and returns the new string.
+static MalDatum *mal_pr_str(const Proc *proc, const Arr *args)
+{
+    if (args->len == 0) {
+        return MalDatum_new_string("");
+    }
+    else {
+        char *strings[args->len];
+
+        for (size_t i = 0; i < args->len; i++) {
+            MalDatum *arg = args->items[i];
+            strings[i] = pr_str(arg, true);
+        }
+
+        // join with " "
+        char *joined = str_join(strings, args->len, " ");
+
+        for (size_t i = 0; i < args->len; i++)
+            free(strings[i]);
+
+        MalDatum *out = MalDatum_new_string(joined);
+        free(joined);
+        return out;
+    }
+}
+
+/*
+ * str: calls pr_str on each argument with print_readably set to false,
+ * concatenates the results together ("" separator), and returns the new
+ * string.
+ */
+static MalDatum *mal_str(const Proc *proc, const Arr *args)
+{
+    if (args->len == 0) {
+        return MalDatum_new_string("");
+    }
+    else {
+        char *strings[args->len];
+
+        for (size_t i = 0; i < args->len; i++) {
+            MalDatum *arg = args->items[i];
+            strings[i] = pr_str(arg, false);
+        }
+
+        char *joined = str_join(strings, args->len, "");
+
+        for (size_t i = 0; i < args->len; i++)
+            free(strings[i]);
+
+        MalDatum *out = MalDatum_new_string(joined);
+        free(joined);
+        return out;
+    }
+}
+
+/*
+ * println: calls pr_str on each argument with print_readably set to false,
+ * joins the results with " ", prints the string to the screen and then returns
+ * nil.
+ */
+static MalDatum *mal_println(const Proc *proc, const Arr *args)
+{
+    if (args->len > 0) {
+        char *strings[args->len];
+
+        for (size_t i = 0; i < args->len; i++) {
+            MalDatum *arg = args->items[i];
+            strings[i] = pr_str(arg, false);
+        }
+
+        char *joined = str_join(strings, args->len, " ");
+        printf("%s\n", joined);
+        free(joined);
+
+        for (size_t i = 0; i < args->len; i++)
+            free(strings[i]);
+    }
+
+    return MalDatum_nil();
+}
+
 void core_def_procs(MalEnv *env) {
     // FIXME memory leak
     MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
@@ -168,4 +277,9 @@ void core_def_procs(MalEnv *env) {
     MalEnv_put(env, Symbol_new("list?"), MalDatum_new_proc(Proc_builtin(1, false, mal_listp)));
     MalEnv_put(env, Symbol_new("empty?"), MalDatum_new_proc(Proc_builtin(1, false, mal_emptyp)));
     MalEnv_put(env, Symbol_new("count"), MalDatum_new_proc(Proc_builtin(1, false, mal_count)));
+
+    MalEnv_put(env, Symbol_new("prn"), MalDatum_new_proc(Proc_builtin(0, true, mal_prn)));
+    MalEnv_put(env, Symbol_new("pr-str"), MalDatum_new_proc(Proc_builtin(0, true, mal_pr_str)));
+    MalEnv_put(env, Symbol_new("str"), MalDatum_new_proc(Proc_builtin(0, true, mal_str)));
+    MalEnv_put(env, Symbol_new("println"), MalDatum_new_proc(Proc_builtin(0, true, mal_println)));
 }

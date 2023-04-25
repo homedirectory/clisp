@@ -202,6 +202,41 @@ char *str_escape(const char *src)
     return out;
 }
 
+char *str_join(char *strings[], size_t n, const char *sep)
+{
+    if (n == 0) {
+        DEBUG("n == 0");
+        return NULL;
+    }
+
+    size_t sep_len = strlen(sep);
+    size_t tot_len = sep_len * (n - 1);
+    size_t lengths[n];
+    for (size_t i = 0; i < n; i++) {
+        size_t len = strlen(strings[i]);
+        lengths[i] = len;
+        tot_len += len;
+    }
+
+    char *out = calloc(tot_len + 1, sizeof(char));
+    out[0] = '\0';
+
+    size_t curr_len = 0;
+    for (size_t i = 0; i < n - 1; i++) {
+        memcpy(out + curr_len, strings[i], lengths[i]);
+        curr_len += lengths[i];
+        memcpy(out + curr_len, sep, sep_len);
+        curr_len += sep_len;
+    }
+    // now the last one
+    memcpy(out + curr_len, strings[n - 1], lengths[n - 1]);
+    curr_len += lengths[n - 1];
+
+    out[curr_len] = '\0';
+
+    return out;
+}
+
 /*
 int main(int argc, char **argv) {
     Arr *arr = Arr_new();

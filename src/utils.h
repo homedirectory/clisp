@@ -39,3 +39,4 @@ const char *strchrs(const char *str, const char *chars);
 short escape_char(unsigned char c);
 unsigned char unescape_char(unsigned char c);
 char *str_escape(const char *src);
+char *str_join(/*const*/ char *strings[], size_t n, const char *sep);
