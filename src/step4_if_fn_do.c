@@ -61,12 +61,18 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
             MalDatum *arg = Arr_get(args, i);
             MalEnv_put(proc_env, param, arg); 
         }
-        // TODO variadic
+
+        // if variadic, then bind the last param to the rest of arguments
         if (proc->variadic) {
-            ERROR("variadic procedures are not implemented");
-            FREE(proc_env);
-            MalEnv_free(proc_env);
-            return NULL;
+            Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
+            List *var_args = List_new();
+            for (size_t i = proc->argc; i < args->len; i++) {
+                MalDatum *arg = Arr_get(args, i);
+                // TODO optimise: avoid copying arguments
+                List_add(var_args, MalDatum_deep_copy(arg));
+            }
+
+            MalEnv_put(proc_env, var_param, MalDatum_new_list(var_args));
         }
 
         // 2. evaluate the body
@@ -232,37 +238,45 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
         }
         params = snd->value.list;
     }
-    // params should be a list of symbols
+
+    // all parameters should be symbols
     for (struct Node *node = params->head; node != NULL; node = node->next) {
         MalDatum *par = node->value;
         if (!MalDatum_istype(par, SYMBOL)) {
-            ERROR("fn* expects a list of symbols as 2nd argument, but %s was found in the list",
+            ERROR("fn* bad parameter list: expected a list of symbols, but %s was found in the list",
                     MalType_tostr(par->type));
             return NULL;
         }
     }
 
-    /*
-    // 2. validate body -- must not be an empty list
-    MalDatum *body = List_ref(list, 2);
-    if (MalDatum_istype(body, LIST) && List_isempty(body->value.list)) {
-    ERROR("fn* expects a non-empty body");
-    return NULL;
+    size_t proc_argc = 0; // mandatory arg count
+    bool variadic = false;
+    Arr *param_names_symbols = Arr_newn(List_len(params));
+    OWN(param_names_symbols);
+
+    for (struct Node *node = params->head; node != NULL; node = node->next) {
+        Symbol *sym = node->value->value.sym;
+
+        // '&' is a special symbol that marks a variadic procedure
+        // exactly one parameter is expected after it
+        // NOTE: we allow that parameter to also be named '&'
+        if (Symbol_eq_str(sym, "&")) {
+            if (node->next == NULL || node->next->next != NULL) {
+                ERROR("fn* bad parameter list: 1 parameter expected after '&'");
+                return NULL;
+            }
+            Symbol *last_sym = node->next->value->value.sym;
+            Arr_add(param_names_symbols, last_sym); // no need to copy
+            variadic = true;
+            break;
+        }
+        else {
+            proc_argc++;
+            Arr_add(param_names_symbols, sym); // no need to copy
+        }
     }
-    */
 
     // 2. construct the Procedure
-    // TODO support variadic
-    int proc_argc = List_len(params);
-    bool variadic = false;
-
-    // params
-    Arr *symbols = Arr_newn(proc_argc);
-    OWN(symbols);
-    for (struct Node *node = params->head; node != NULL; node = node->next) {
-        Arr_add(symbols, node->value->value.sym); // no need to copy
-    }
-
     // body
     int body_len = argc - 1;
     // array of *MalDatum
@@ -272,12 +286,11 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
         Arr_add(body, node->value); // no need to copy
     }
 
-    Proc *proc = Proc_new(proc_argc, variadic, symbols, body, env);
-    OWN(proc);
+    Proc *proc = Proc_new(proc_argc, variadic, param_names_symbols, body, env);
     env->reachable = true;
 
-    FREE(symbols);
-    Arr_free(symbols);
+    FREE(param_names_symbols);
+    Arr_free(param_names_symbols);
     FREE(body);
     Arr_free(body);
 
