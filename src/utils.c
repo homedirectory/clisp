@@ -111,6 +111,8 @@ int Arr_findf(const Arr *arr, const void *ptr, const equals_t eq) {
     return -1;
 }
 
+// String utilities ----------------------------------------
+
 char *dyn_strcpy(const char *s) {
     char *cpy = calloc(strlen(s) + 1, sizeof(char));
     strcpy(cpy, s);
@@ -136,6 +138,21 @@ const char *strchrs(const char *str, const char *chars) {
     return NULL;
 }
 
+short escape_char(unsigned char c) 
+{
+    switch (c) {
+        case '"' : return '"';
+        case '\'': return '\'';
+        case '\n': return 'n';
+        case '\t': return 't';
+        case '\\': return '\\';
+        case '\r': return 'r';
+        case '\b': return 'b';
+        case '\f': return 'f';
+    }
+    return -1;
+}
+
 unsigned char unescape_char(unsigned char c) 
 {
     switch (c) {
@@ -151,6 +168,38 @@ unsigned char unescape_char(unsigned char c)
             return '\f';
     }
     return c;
+}
+
+char *str_escape(const char *src)
+{
+    //           0  1  2  3  4 
+    // src       a  b  "  c  \n
+    // escapes  -1 -1  " -1  n
+    size_t src_len = strlen(src);
+    short escapes[src_len];
+    size_t n = 0; // amount of escaped characters
+    for (size_t i = 0; i < src_len; i++) {
+        short esc = escape_char(src[i]);
+        escapes[i] = esc;
+        if (esc != -1)
+            n++;
+    }
+
+    char *out;
+    out = malloc(sizeof(*out) * (src_len + n) + 1);
+    size_t j = 0;
+    for (size_t i = 0; i < src_len; i++, j++) {
+        short esc = escapes[i];
+        if (esc == -1)
+            out[j] = src[i];
+        else {
+            out[j] = '\\';
+            out[++j] = esc;
+        }
+    }
+    out[j] = '\0';
+
+    return out;
 }
 
 /*

@@ -7,10 +7,13 @@
 #include <stdlib.h>
 #include "common.h"
 
+// When print_readably is true, doublequotes, newlines, and backslashes are
+// translated into their printed representations (the reverse of the reader).
+// In other words, print escapes as 2 characters
 char *pr_str(MalDatum *datum) {
     if (datum == NULL) return NULL;
 
-    char *str;
+    char *str = NULL;
     switch (datum->type) {
         case INT:
             str = malloc(MAX_INT_DIGITS + 1);
@@ -28,7 +31,7 @@ char *pr_str(MalDatum *datum) {
             break;
         case STRING:
             char *string = datum->value.string;
-            str = string ? dyn_strcpy(string) : NULL;
+            str = string ? str_escape(string) : NULL;
             break;
         case NIL:
             str = dyn_strcpy("nil");
