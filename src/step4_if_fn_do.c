@@ -10,6 +10,7 @@
 #include "env.h"
 #include "common.h"
 #include "core.h"
+#include "mem_debug.h"
 
 #define PROMPT "user> "
 
@@ -19,12 +20,15 @@ List *eval_list(const List *list, MalEnv *env);
 
 static MalDatum *read(const char* in) {
     Reader *rdr = read_str(in);
+    OWN(rdr);
     if (rdr == NULL) return NULL;
     if (rdr->tokens->len == 0) {
+        FREE(rdr);
         Reader_free(rdr);
         return NULL;
     }
     MalDatum *form = read_form(rdr);
+    FREE(rdr);
     Reader_free(rdr);
     return form;
 }
@@ -47,7 +51,8 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
         // (((fn* (x) (fn* () x)) 10)) => 10
         // But here the result of this application will be a procedure that should
         // "remember" about x = 10, so the local env should be preserved. 
-        MalEnv *proc_env = MalEnv_new(proc->env); // own
+        MalEnv *proc_env = MalEnv_new(proc->env);
+        OWN(proc_env);
 
         // 1. bind params to args in the local env
         // mandatory arguments
@@ -59,6 +64,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
         // TODO variadic
         if (proc->variadic) {
             ERROR("variadic procedures are not implemented");
+            FREE(proc_env);
             MalEnv_free(proc_env);
             return NULL;
         }
@@ -74,8 +80,9 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
         }
         MalDatum *out = eval(body->items[body->len - 1], proc_env);
 
+        FREE(proc_env);
         MalEnv_free(proc_env);
-        
+
         return out;
     }
 }
@@ -87,7 +94,8 @@ static MalDatum *eval_application(const List *list, MalEnv *env) {
         return NULL;
     }
 
-    List *ev_list = eval_list(list, env); // own
+    List *ev_list = eval_list(list, env);
+    OWN(ev_list);
     if (ev_list == NULL) return NULL;
 
     // this can be either a named procedure (bound to a symbol) or an fn*-produced one
@@ -100,25 +108,30 @@ static MalDatum *eval_application(const List *list, MalEnv *env) {
     if (argc < proc->argc) {
         ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
                 proc_name, proc->argc, argc);
+        FREE(ev_list);
         List_free(ev_list);
         return NULL;
     }
     else if (!proc->variadic && argc > proc->argc) {
         ERROR("procedure application: %s expects %d arguments, but %d were given", 
                 proc_name, proc->argc, argc);
+        FREE(ev_list);
         List_free(ev_list);
         return NULL;
     }
 
     // array of *MalDatum
-    Arr *args = Arr_newn(argc); // own
+    Arr *args = Arr_newn(argc);
+    OWN(args);
     for (struct Node *node = ev_list->head->next; node != NULL; node = node->next) {
         Arr_add(args, node->value);
     }
 
     MalDatum *out = apply_proc(proc, args, env);
 
+    FREE(args);
     Arr_free(args);
+    FREE(ev_list);
     List_free(ev_list);
 
     return out;
@@ -142,7 +155,8 @@ static MalDatum *eval_if(const List *list, MalEnv *env) {
         return NULL;
     }
 
-    MalDatum *ev_cond = eval(List_ref(list, 1), env); // own
+    MalDatum *ev_cond = eval(List_ref(list, 1), env);
+    OWN(ev_cond);
     if (ev_cond == NULL)
         return NULL;
 
@@ -150,16 +164,19 @@ static MalDatum *eval_if(const List *list, MalEnv *env) {
     if (!MalDatum_isnil(ev_cond) && !MalDatum_isfalse(ev_cond)) {
         // eval(if-true)
         MalDatum *ev_iftrue = eval(List_ref(list, 2), env);
+        FREE(ev_cond);
         MalDatum_free(ev_cond);
         return ev_iftrue;
     } else {
         if (argc == 3) {
             // eval(if-false)
             MalDatum *ev_iffalse = eval(List_ref(list, 3), env);
+            FREE(ev_cond);
             MalDatum_free(ev_cond);
             return ev_iffalse;
         } else {
             // nil
+            FREE(ev_cond);
             MalDatum_free(ev_cond);
             return MalDatum_nil();
         }
@@ -181,6 +198,7 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
     for (node = list->head->next; node->next != NULL; node = node->next) {
         MalDatum *ev = eval(node->value, env);
         if (ev == NULL) return NULL;
+        FREE(ev);
         MalDatum_free(ev);
     }
 
@@ -228,8 +246,8 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     // 2. validate body -- must not be an empty list
     MalDatum *body = List_ref(list, 2);
     if (MalDatum_istype(body, LIST) && List_isempty(body->value.list)) {
-        ERROR("fn* expects a non-empty body");
-        return NULL;
+    ERROR("fn* expects a non-empty body");
+    return NULL;
     }
     */
 
@@ -239,7 +257,8 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     bool variadic = false;
 
     // params
-    Arr *symbols = Arr_newn(proc_argc); // own
+    Arr *symbols = Arr_newn(proc_argc);
+    OWN(symbols);
     for (struct Node *node = params->head; node != NULL; node = node->next) {
         Arr_add(symbols, node->value->value.sym); // no need to copy
     }
@@ -247,15 +266,19 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     // body
     int body_len = argc - 1;
     // array of *MalDatum
-    Arr *body = Arr_newn(body_len); // own
+    Arr *body = Arr_newn(body_len);
+    OWN(body);
     for (struct Node *node = list->head->next->next; node != NULL; node = node->next) {
         Arr_add(body, node->value); // no need to copy
     }
 
-    Proc *proc = Proc_new(proc_argc, variadic, symbols, body, env); // own
+    Proc *proc = Proc_new(proc_argc, variadic, symbols, body, env);
+    OWN(proc);
     env->reachable = true;
 
+    FREE(symbols);
     Arr_free(symbols);
+    FREE(body);
     Arr_free(body);
 
     return MalDatum_new_proc(proc);
@@ -318,7 +341,8 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     MalDatum *expr = List_ref(list, 2);
 
     // 2. initialise the let* environment 
-    MalEnv *let_env = MalEnv_new(env); // own
+    MalEnv *let_env = MalEnv_new(env);
+    OWN(let_env);
     // step = 2
     for (struct Node *id_node = bindings->head; id_node != NULL; id_node = id_node->next->next) {
         // make sure that a symbol is being bound
@@ -326,6 +350,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             char *s = MalType_tostr(id_node->value->type); 
             ERROR("let*: illegal bindings (expected a symbol to be bound, but %s was given)", s);
             free(s);
+            FREE(let_env);
             MalEnv_free(let_env);
             return NULL;
         }
@@ -333,8 +358,10 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
 
         // it's important to evaluate the bound value using the let* env,
         // so that previous bindings can be used during evaluation
-        MalDatum *val = eval(id_node->next->value, let_env); // own
+        MalDatum *val = eval(id_node->next->value, let_env);
+        OWN(val);
         if (val == NULL) {
+            FREE(let_env);
             MalEnv_free(let_env);
             return NULL;
         }
@@ -343,9 +370,11 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     }
 
     // 3. evaluate the expr using the let* env
-    MalDatum *out = eval(expr, let_env); // own
+    MalDatum *out = eval(expr, let_env);
+    OWN(out);
 
     // discard the let* env
+    FREE(let_env);
     MalEnv_free(let_env);
 
     return out;
@@ -368,6 +397,7 @@ List *eval_list(const List *list, MalEnv *env) {
         MalDatum *evaled = eval(node->value, env);
         if (evaled == NULL) {
             LOG_NULL(evaled);
+            FREE(out);
             List_free(out);
             return NULL;
         }
@@ -479,6 +509,7 @@ static void rep(const char *str, MalEnv *env) {
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
+    OWN(env);
     env->reachable = true;
 
     // FIXME memory leak
@@ -504,5 +535,6 @@ int main(int argc, char **argv) {
     }
 
     env->reachable = false;
+    FREE(env);
     MalEnv_free(env);
 }
