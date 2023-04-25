@@ -36,3 +36,4 @@ char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);
 
 const char *strchrs(const char *str, const char *chars);
+unsigned char unescape_char(unsigned char c);

@@ -136,6 +136,23 @@ const char *strchrs(const char *str, const char *chars) {
     return NULL;
 }
 
+unsigned char unescape_char(unsigned char c) 
+{
+    switch (c) {
+        case 'n':
+            return '\n';
+        case 't':
+            return '\t';
+        case 'r':
+            return '\r';
+        case 'b':
+            return '\b';
+        case 'f':
+            return '\f';
+    }
+    return c;
+}
+
 /*
 int main(int argc, char **argv) {
     Arr *arr = Arr_new();

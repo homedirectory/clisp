@@ -66,6 +66,27 @@ static char *parse_string(const char *str) {
     return dyn_strncpy(str, i + 1);
 }
 
+// transforms a string from a "reader form" to a "datum" form
+// by stripping surrounding doublequotes and translating escaped characters
+static char *str_from_token(char *dst, const char *str)
+{
+    size_t len = strlen(str);
+    size_t di = 0;
+
+    // len - 1 because of the last doublequote
+    for (size_t si = 1; si < len - 1; si++, di++) {
+        char c = str[si];
+        if (c == '\\')
+            dst[di] = unescape_char(str[++si]);
+        else
+            dst[di] = c;
+    }
+
+    dst[di] = '\0';
+
+    return dst;
+}
+
 // Splits the input string into tokens. Returns NULL upon failure.
 // NOTE: keep this procedure as simple as possible
 // (i.e. delegate any validation of tokens)
@@ -170,7 +191,9 @@ static MalDatum *read_atom(const char *token) {
     }
     // string
     else if (token[0] == '"') {
-        return MalDatum_new_string(token);
+        char datum_form[strlen(token) - 2 + 1]; // 2 surrounding doublequotes
+        str_from_token(datum_form, token);
+        return MalDatum_new_string(datum_form);
     }
     // symbol
     else if (strchr(SYMBOL_INV_CHARS, token[0]) == NULL) {
