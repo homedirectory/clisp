@@ -16,3 +16,6 @@ step3_env: step3_env.c printer.c reader.c types.c utils.c env.c
 
 step4_if_fn_do: step4_if_fn_do.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
+
+step5_tco: step5_tco.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
+	$(CC) $(CFLAGS) $^ -lreadline -o $@
