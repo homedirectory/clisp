@@ -257,42 +257,14 @@ bool Proc_eq(const Proc *proc1, const Proc *proc2) {
 
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
-    char *buf;
-    switch (type) {
-        case INT:
-            buf = "INT";
-            break;
-        case SYMBOL:
-            buf = "SYMBOL";
-            break;
-        case LIST:
-            buf = "LIST";
-            break;
-        case EMPTY_LIST:
-            buf = "EMPTY LIST";
-            break;
-        case STRING:
-            buf = "STRING";
-            break;
-        case NIL:
-            buf = "NIL";
-            break;
-        case TRUE:
-            buf = "TRUE";
-            break;
-        case FALSE:
-            buf = "FALSE";
-            break;
-        case PROCEDURE:
-            buf = "PROCEDURE";
-            break;
-        default:
-            buf = "*unknown*";
-            break;
-    }
-    // TODO use statically allocated memory
-    // users of this function leak memory
-    return dyn_strcpy(buf);
+    static char *names[] = {
+        "INT", "SYMBOL", "LIST", 
+        "EMPTY_LIST",
+        "STRING", "NIL", "TRUE", "FALSE", "PROCEDURE",
+        "*undefined*"
+    };
+
+    return names[type];
 }
 
 // singletons

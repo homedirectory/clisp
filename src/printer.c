@@ -65,9 +65,7 @@ char *pr_str(MalDatum *datum, bool print_readably)
             str = dyn_strcpy("#<procedure>");
             break;
         default:
-            char *s = MalType_tostr(datum->type);
             DEBUG("Unknown MalType");
-            free(s);
             str = NULL;
             break;
     }

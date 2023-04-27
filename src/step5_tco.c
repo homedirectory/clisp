@@ -338,9 +338,8 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     for (struct Node *id_node = bindings->head; id_node != NULL; id_node = id_node->next->next) {
         // make sure that a symbol is being bound
         if (!MalDatum_istype(id_node->value, SYMBOL)) {
-            char *s = MalType_tostr(id_node->value->type); 
-            ERROR("let*: illegal bindings (expected a symbol to be bound, but %s was given)", s);
-            free(s);
+            ERROR("let*: illegal bindings (expected a symbol to be bound, but %s was given)", 
+                    MalType_tostr(id_node->value->type));
             FREE(let_env);
             MalEnv_free(let_env);
             return NULL;

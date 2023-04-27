@@ -60,7 +60,8 @@ bool List_eq(const List *, const List *);
 typedef enum MalType {
     INT, SYMBOL, LIST, 
     EMPTY_LIST, // to use as a singleton
-    STRING, NIL, TRUE, FALSE, PROCEDURE
+    STRING, NIL, TRUE, FALSE, PROCEDURE,
+    MT_COUNT
 } MalType;
 
 char *MalType_tostr(MalType type);
