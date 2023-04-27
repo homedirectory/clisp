@@ -124,6 +124,20 @@ void List_free(List *list) {
     }
 }
 
+void List_shlw_free(List *list)
+{
+    if (list == NULL || list == &_empty_list) 
+        return;
+
+    struct Node *node = list->head;
+    while (node) {
+        struct Node *p = node;
+        node = node->next;
+        free(p);
+    }
+    free(list);
+}
+
 bool List_eq(const List *lst1, const List *lst2) {
     if (lst1 == lst2) return true;
     if (lst1->len != lst2->len) return false;

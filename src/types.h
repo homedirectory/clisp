@@ -27,6 +27,9 @@ size_t List_len(const List *list);
 /* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *);
 
+// shallow free does not free the values pointed to by nodes
+void List_shlw_free(List *);
+
 void List_add(List *, MalDatum *);
 MalDatum *List_ref(const List *, size_t);
 

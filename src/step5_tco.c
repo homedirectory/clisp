@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <readline/readline.h>
+#include <readline/history.h>
 #include <string.h>
 #include <stddef.h>
 #include "reader.h"
@@ -37,110 +38,94 @@ static MalDatum *read(const char* in) {
 static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     if (proc->builtin) {
         return proc->logic.apply(proc, args);
-    } 
-    else {
-        // local env is created even if a procedure expects no parameters,
-        // so that def! inside it have only local effect
-        // NOTE: this is where the need to track reachability stems from,
-        // since we don't know whether the environment of this particular application
-        // (with all the arguments) will be needed after its applied.
-        // Example where it won't be needed and thus can be safely discarded:
-        // ((fn* (x) x) 10) => 10
-        // Here a local env { x = 10 } with enclosing one set to the global env will be created
-        // and discarded immediately after the result (10) is obtained.
-        // (((fn* (x) (fn* () x)) 10)) => 10
-        // But here the result of this application will be a procedure that should
-        // "remember" about x = 10, so the local env should be preserved. 
-        MalEnv *proc_env = MalEnv_new(proc->env);
-        OWN(proc_env);
+    }
 
-        // 1. bind params to args in the local env
-        // mandatory arguments
-        for (int i = 0; i < proc->argc; i++) {
-            Symbol *param = Arr_get(proc->params, i);
+    // local env is created even if a procedure expects no parameters,
+    // so that def! inside it have only local effect
+    // NOTE: this is where the need to track reachability stems from,
+    // since we don't know whether the environment of this particular application
+    // (with all the arguments) will be needed after its applied.
+    // Example where it won't be needed and thus can be safely discarded:
+    // ((fn* (x) x) 10) => 10
+    // Here a local env { x = 10 } with enclosing one set to the global env will be created
+    // and discarded immediately after the result (10) is obtained.
+    // (((fn* (x) (fn* () x)) 10)) => 10
+    // But here the result of this application will be a procedure that should
+    // "remember" about x = 10, so the local env should be preserved. 
+    MalEnv *proc_env = MalEnv_new(proc->env);
+    OWN(proc_env);
+
+    // 1. bind params to args in the local env
+    // mandatory arguments
+    for (int i = 0; i < proc->argc; i++) {
+        Symbol *param = Arr_get(proc->params, i);
+        MalDatum *arg = Arr_get(args, i);
+        MalEnv_put(proc_env, param, arg); 
+    }
+
+    // if variadic, then bind the last param to the rest of arguments
+    if (proc->variadic) {
+        Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
+        List *var_args = List_new();
+        for (size_t i = proc->argc; i < args->len; i++) {
             MalDatum *arg = Arr_get(args, i);
-            MalEnv_put(proc_env, param, arg); 
+            // TODO optimise: avoid copying arguments
+            List_add(var_args, MalDatum_deep_copy(arg));
         }
 
-        // if variadic, then bind the last param to the rest of arguments
-        if (proc->variadic) {
-            Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
-            List *var_args = List_new();
-            for (size_t i = proc->argc; i < args->len; i++) {
-                MalDatum *arg = Arr_get(args, i);
-                // TODO optimise: avoid copying arguments
-                List_add(var_args, MalDatum_deep_copy(arg));
-            }
-
-            MalEnv_put(proc_env, var_param, MalDatum_new_list(var_args));
-        }
-
-        // 2. evaluate the body
-        const Arr *body = proc->logic.body;
-        // the body must not be empty at this point
-        if (body->len == 0) FATAL("empty body");
-        // evalute each expression and return the result of the last one
-        for (int i = 0; i < body->len - 1; i++) {
-            const MalDatum *dtm = body->items[i];
-            MalDatum_free(eval(dtm, proc_env));
-        }
-        MalDatum *out = eval(body->items[body->len - 1], proc_env);
-
-        FREE(proc_env);
-        MalEnv_free(proc_env);
-
-        return out;
-    }
-}
-
-// list - raw unevaled list form
-static MalDatum *eval_application(const List *list, MalEnv *env) {
-    if (List_isempty(list)) {
-        ERROR("procedure application: expected a non-empty list");
-        return NULL;
+        MalEnv_put(proc_env, var_param, MalDatum_new_list(var_args));
     }
 
-    List *ev_list = eval_list(list, env);
-    OWN(ev_list);
-    if (ev_list == NULL) return NULL;
-
-    // this can be either a named procedure (bound to a symbol) or an fn*-produced one
-    bool named = MalDatum_istype(List_ref(list, 0), SYMBOL);
-    char *proc_name = named ? List_ref(list, 0)->value.sym->name : "*unnamed*";
-
-    Proc *proc = List_ref(ev_list, 0)->value.proc;
-
-    int argc = List_len(ev_list) - 1;
-    if (argc < proc->argc) {
-        ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
-                proc_name, proc->argc, argc);
-        FREE(ev_list);
-        List_free(ev_list);
-        return NULL;
+    // 2. evaluate the body
+    const Arr *body = proc->logic.body;
+    // the body must not be empty at this point
+    if (body->len == 0) FATAL("empty body");
+    // evalute each expression and return the result of the last one
+    for (int i = 0; i < body->len - 1; i++) {
+        const MalDatum *dtm = body->items[i];
+        MalDatum_free(eval(dtm, proc_env));
     }
-    else if (!proc->variadic && argc > proc->argc) {
-        ERROR("procedure application: %s expects %d arguments, but %d were given", 
-                proc_name, proc->argc, argc);
-        FREE(ev_list);
-        List_free(ev_list);
-        return NULL;
-    }
+    MalDatum *out = eval(body->items[body->len - 1], proc_env);
 
-    // array of *MalDatum
-    Arr *args = Arr_newn(argc);
-    OWN(args);
-    for (struct Node *node = ev_list->head->next; node != NULL; node = node->next) {
-        Arr_add(args, node->value);
-    }
-
-    MalDatum *out = apply_proc(proc, args, env);
-
-    FREE(args);
-    Arr_free(args);
-    FREE(ev_list);
-    List_free(ev_list);
+    FREE(proc_env);
+    MalEnv_free(proc_env);
 
     return out;
+}
+
+static MalDatum *eval_application_tco(const Proc *proc, const char* proc_name, const Arr* args, MalEnv *env)
+{
+    // this can be either a named procedure (bound to a symbol) or an fn*-produced one
+    // FIXME this method is not foulproof: consider a named procedure being bound to a symbol
+    char *the_proc_name = proc_name ? proc_name : "*unnamed*";
+
+    int argc = args->len;
+    // too few arguments?
+    if (argc < proc->argc) {
+        ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
+                the_proc_name, proc->argc, argc);
+        return NULL;
+    }
+    // too much arguments?
+    else if (!proc->variadic && argc > proc->argc) {
+        ERROR("procedure application: %s expects %d arguments, but %d were given", 
+                the_proc_name, proc->argc, argc);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < args->len; i++) {
+        Symbol *param_name = Arr_get(proc->params, i);
+        MalEnv_put(env, param_name, args->items[i]);
+    }
+
+    Arr *body = proc->logic.body;
+    // eval body except for the last expression 
+    // (TODO transform into 'do' special form)
+    for (size_t i = 0; i < body->len - 1; i++)
+        eval(body->items[i], env);
+
+    MalDatum *body_last = body->items[body->len - 1];
+    return body_last;
 }
 
 /* 'if' expression comes in 2 forms:
@@ -149,9 +134,9 @@ static MalDatum *eval_application(const List *list, MalEnv *env) {
  * 2. (if cond if-true)
  * return eval(cond) ? eval(if-true) : nil
  */
-static MalDatum *eval_if(const List *list, MalEnv *env) {
-    // 1. validate the list
-    int argc = List_len(list) - 1;
+static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
+    // 1. validate the AST
+    int argc = List_len(ast_list) - 1;
     if (argc < 2) {
         ERROR("if expects at least 2 arguments, but %d were given", argc);
         return NULL;
@@ -161,31 +146,19 @@ static MalDatum *eval_if(const List *list, MalEnv *env) {
         return NULL;
     }
 
-    MalDatum *ev_cond = eval(List_ref(list, 1), env);
+    MalDatum *ev_cond = eval(List_ref(ast_list, 1), env);
+    if (ev_cond == NULL) return NULL;
     OWN(ev_cond);
-    if (ev_cond == NULL)
-        return NULL;
 
     // eval(cond) is true if it's neither 'nil' nor 'false'
     if (!MalDatum_isnil(ev_cond) && !MalDatum_isfalse(ev_cond)) {
-        // eval(if-true)
-        MalDatum *ev_iftrue = eval(List_ref(list, 2), env);
-        FREE(ev_cond);
-        MalDatum_free(ev_cond);
-        return ev_iftrue;
-    } else {
-        if (argc == 3) {
-            // eval(if-false)
-            MalDatum *ev_iffalse = eval(List_ref(list, 3), env);
-            FREE(ev_cond);
-            MalDatum_free(ev_cond);
-            return ev_iffalse;
-        } else {
-            // nil
-            FREE(ev_cond);
-            MalDatum_free(ev_cond);
-            return MalDatum_nil();
-        }
+        return List_ref(ast_list, 2);
+    } 
+    else if (argc == 3) {
+        return List_ref(ast_list, 3);
+    } 
+    else {
+        return MalDatum_nil();
     }
 }
 
@@ -453,44 +426,129 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
     return out;
 }
 
-MalDatum *eval(const MalDatum *datum, MalEnv *env) {
-    if (datum == NULL) return NULL;
+#ifdef EVAL_STACK_DEPTH
+static int eval_stack_depth = 0; 
+#endif
 
-    switch (datum->type) {
-        case LIST:
-            List *list = datum->value.list;
-            if (List_isempty(list)) {
-                // TODO use a single global instance of an empty list
-                return MalDatum_copy(datum);;
-            } 
-            else {
-                // handle special forms: def!, let*, if, do, fn*
-                MalDatum *head = List_ref(list, 0);
-                switch (head->type) {
-                    case SYMBOL:
-                        Symbol *sym = head->value.sym;
-                        if (Symbol_eq_str(sym, "def!"))
-                            return eval_def(list, env);
-                        else if (Symbol_eq_str(sym, "let*"))
-                            return eval_letstar(list, env);
-                        else if (Symbol_eq_str(sym, "if"))
-                            return eval_if(list, env);
-                        else if (Symbol_eq_str(sym, "do"))
-                            return eval_do(list, env);
-                        else if (Symbol_eq_str(sym, "fn*"))
-                            return eval_fnstar(list, env);
-                        break;
-                    default:
-                        break;
-                }
+MalDatum *eval(const MalDatum *ast, MalEnv *env) {
+#ifdef EVAL_STACK_DEPTH
+    eval_stack_depth++;
+    printf("ENTER eval, stack depth: %d\n", eval_stack_depth);
+#endif
+    MalEnv *eval_env = env;
+    bool tco = false;
 
-                // it's a regular list form (i.e., it's a procedure application)
-                return eval_application(list, env);
-            }
+    MalDatum *out = NULL;
+
+    while (true) {
+        if (ast == NULL) {
+            out = NULL;
             break;
-        default:
-            return eval_ast(datum, env);
+        }
+
+        if (MalDatum_islist(ast)) {
+            List *ast_list = ast->value.list;
+            if (List_isempty(ast_list)) {
+                out = MalDatum_empty_list();
+                break;
+            }
+
+            MalDatum *head = List_ref(ast_list, 0);
+            // handle special forms: def!, let*, if, do, fn*
+            if (MalDatum_istype(head, SYMBOL)) {
+                Symbol *sym = head->value.sym;
+                if (Symbol_eq_str(sym, "def!")) {
+                    out = eval_def(ast_list, eval_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "let*")) {
+                    // applying TCO to let* saves us only 1 level of call stack depth
+                    // TODO so we can be lazy about it
+                    out = eval_letstar(ast_list, eval_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "if")) {
+                    // eval the condition and replace AST with the AST of the branched part
+                    ast = eval_if(ast_list, eval_env);
+                    continue;
+                }
+                else if (Symbol_eq_str(sym, "do")) {
+                    // applying TCO to do saves us only 1 level of call stack depth
+                    // TODO so we can be lazy about it
+                    out = eval_do(ast_list, eval_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "fn*")) {
+                    out = eval_fnstar(ast_list, eval_env);
+                    break;
+                }
+            }
+
+            // looks like a procedure application
+            // 1. eval the ast_list
+            List *evaled_list = eval_list(ast_list, eval_env);
+            if (evaled_list == NULL) break;
+            OWN(evaled_list);
+            // 2. make sure that the 1st element is a procedure
+            MalDatum *first = List_ref(evaled_list, 0);
+            if (!MalDatum_istype(first, PROCEDURE)) {
+                ERROR("application: expected a procedure");
+                out = NULL;
+                FREE(evaled_list);
+                List_free(evaled_list);
+                break;
+            }
+
+            Proc *proc = first->value.proc;
+            Arr *args = Arr_newn(List_len(evaled_list) - 1);
+            OWN(args);
+            for (struct Node *node = evaled_list->head->next; node != NULL; node = node->next) {
+                Arr_add(args, node->value);
+            }
+
+            // 3. apply TCO only if it's a non-lambda MAL procedure
+            if (!proc->builtin /* && non-lambda */) {
+                // TODO handle procedure names better
+                char *proc_name = MalDatum_istype(List_ref(ast_list, 0), SYMBOL) ?
+                    List_ref(ast_list, 0)->value.sym->name : NULL;
+
+                if (!tco) {
+                    eval_env = MalEnv_new(eval_env);
+                    eval_env->reachable = true;
+                    OWN(eval_env);
+                    tco = true;
+                }
+                ast = eval_application_tco(proc, proc_name, args, eval_env);
+            }
+            // 4. otherwise just return the result of procedure application
+            else {
+                out = apply_proc(proc, args, eval_env);
+                FREE(args);
+                Arr_free(args);
+                FREE(evaled_list);
+                List_free(evaled_list);
+                break;
+            }
+        }
+        // AST is an atom
+        else {
+            out = eval_ast(ast, eval_env);
+            break;
+        }
     }
+
+    if (eval_env != env) {
+        eval_env->reachable = false;
+        FREE(eval_env);
+        MalEnv_free(eval_env);
+    }
+
+#ifdef EVAL_STACK_DEPTH
+    eval_stack_depth--;
+    printf("LEAVE eval, stack depth: %d\n", eval_stack_depth);
+#endif
+
+    return out;
 }
 
 static char *print(MalDatum *datum) {
@@ -576,11 +634,14 @@ int main(int argc, char **argv) {
     rep("(def! <  (fn* (x y) (not (>= x y))))", env);
     rep("(def! <= (fn* (x y) (if (= x y) true (< x y))))", env);
 
+    rep("(def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc)))))", env);
+
     while (1) {
         char *line = readline(PROMPT);
         if (line == NULL) {
             exit(EXIT_SUCCESS);
         }
+        add_history(line);
         rep(line, env);
         free(line);
     }
