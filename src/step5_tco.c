@@ -121,8 +121,13 @@ static MalDatum *eval_application_tco(const Proc *proc, const char* proc_name, c
     Arr *body = proc->logic.body;
     // eval body except for the last expression 
     // (TODO transform into 'do' special form)
-    for (size_t i = 0; i < body->len - 1; i++)
-        eval(body->items[i], env);
+    for (size_t i = 0; i < body->len - 1; i++) {
+        MalDatum *evaled = eval(body->items[i], env);
+        if (!evaled)
+            MalDatum_free(evaled);
+        else
+            return NULL;
+    }
 
     MalDatum *body_last = body->items[body->len - 1];
     return body_last;
@@ -440,12 +445,7 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
 
     MalDatum *out = NULL;
 
-    while (true) {
-        if (ast == NULL) {
-            out = NULL;
-            break;
-        }
-
+    while (ast) {
         if (MalDatum_islist(ast)) {
             List *ast_list = ast->value.list;
             if (List_isempty(ast_list)) {
@@ -487,7 +487,10 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
             // looks like a procedure application
             // 1. eval the ast_list
             List *evaled_list = eval_list(ast_list, eval_env);
-            if (evaled_list == NULL) break;
+            if (evaled_list == NULL) {
+                out = NULL;
+                break;
+            }
             OWN(evaled_list);
             // 2. make sure that the 1st element is a procedure
             MalDatum *first = List_ref(evaled_list, 0);
@@ -500,6 +503,7 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
             }
 
             Proc *proc = first->value.proc;
+
             Arr *args = Arr_newn(List_len(evaled_list) - 1);
             OWN(args);
             for (struct Node *node = evaled_list->head->next; node != NULL; node = node->next) {
@@ -518,7 +522,12 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
                     OWN(eval_env);
                     tco = true;
                 }
+                // args will be put into eval_env by copying
                 ast = eval_application_tco(proc, proc_name, args, eval_env);
+                FREE(args);
+                Arr_freep(args, (free_t) MalDatum_free);
+                FREE(evaled_list);
+                List_shlw_free(evaled_list);
             }
             // 4. otherwise just return the result of procedure application
             else {
