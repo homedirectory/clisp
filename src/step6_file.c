@@ -320,6 +320,14 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
         return NULL;
     }
 
+    // if id is being bound to an unnamed procedure, then set id as its name
+    if (MalDatum_istype(new_assoc, PROCEDURE)) {
+        Proc *proc = new_assoc->value.proc;
+        if (!proc->name) {
+            proc->name = dyn_strcpy(id->name);
+        }
+    }
+
     MalEnv_put(env, id, new_assoc);
 
     return new_assoc;
