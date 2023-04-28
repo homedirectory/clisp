@@ -89,6 +89,8 @@ void List_add(List *list, MalDatum *datum) {
         list->tail = node;
     }
 
+    MalDatum_own(datum);
+
     list->len += 1;
 }
 
@@ -118,6 +120,7 @@ void List_free(List *list) {
     else {
         struct Node *node = list->head;
         while (node) {
+            MalDatum_release(node->value);
             MalDatum_free(node->value);
             struct Node *p = node;
             node = node->next;

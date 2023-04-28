@@ -135,8 +135,7 @@ static MalDatum *mal_list(const Proc *proc, const Arr *args, MalEnv *env) {
     List *list = List_new();
     for (int i = 0; i < args->len; i++) {
         MalDatum *dtm = args->items[i];
-        // TODO avoid copying args to speed up
-        List_add(list, MalDatum_deep_copy(dtm));
+        List_add(list, dtm);
     }
 
     return MalDatum_new_list(list);
