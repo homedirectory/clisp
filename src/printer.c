@@ -50,7 +50,6 @@ char *pr_str(MalDatum *datum, bool print_readably)
             }
             else
                 str = dyn_strcpy(string);
-
             break;
         case NIL:
             str = dyn_strcpy("nil");
@@ -62,7 +61,14 @@ char *pr_str(MalDatum *datum, bool print_readably)
             str = dyn_strcpy("false");
             break;
         case PROCEDURE:
-            str = dyn_strcpy("#<procedure>");
+            Proc *proc = datum->value.proc;
+            if (proc->name) {
+                char *parts[3] = { "#<procedure:", proc->name, ">" };
+                str = str_join(parts, ARR_LEN(parts), "");
+            }
+            else {
+                str = dyn_strcpy("#<procedure>");
+            }
             break;
         default:
             DEBUG("Unknown MalType");

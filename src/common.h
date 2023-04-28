@@ -4,6 +4,8 @@
 
 typedef void (*free_t)(void *ptr);
 
+#define ARR_LEN(arr) (sizeof(arr) / sizeof(arr[0]))
+
 #define LOG(fmt, ...) \
     do { \
         fprintf(stderr, "%s:%d in %s: " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
