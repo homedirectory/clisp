@@ -20,21 +20,6 @@ MalDatum *eval(const MalDatum *datum, MalEnv *env);
 MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
 
-static MalDatum *verify_proc_arg_type(const Proc *proc, const Arr *args, size_t arg_idx, 
-        MalType expect_type) 
-{
-    MalDatum *arg = Arr_get(args, arg_idx);
-    if (!MalDatum_istype(arg, expect_type)) {
-        char *proc_name = Proc_name(proc);
-        ERROR("%s: bad arg no. %zd: expected a %s", 
-                proc_name, arg_idx + 1, MalType_tostr(expect_type));
-        free(proc_name);
-        return NULL;
-    }
-
-    return arg;
-}
-
 static MalDatum *read(const char* in) {
     Reader *rdr = read_str(in);
     OWN(rdr);
