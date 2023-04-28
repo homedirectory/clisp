@@ -19,3 +19,6 @@ step4_if_fn_do: step4_if_fn_do.c printer.c reader.c types.c utils.c env.c core.c
 
 step5_tco: step5_tco.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
+
+step6_file: step6_file.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
+	$(CC) $(CFLAGS) $^ -lreadline -o $@
