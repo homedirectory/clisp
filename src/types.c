@@ -6,6 +6,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include "common.h"
+#include "mem_debug.h"
+#include <assert.h>
+#include "printer.h"
 
 
 List *List_new() {
@@ -305,10 +308,21 @@ char *MalType_tostr(MalType type) {
 }
 
 // singletons
-/*const*/ static MalDatum _MalDatum_nil = { .type = NIL };
-/*const*/ static MalDatum _MalDatum_true = { .type = TRUE };
-/*const*/ static MalDatum _MalDatum_false = { .type = FALSE };
+/*const*/ static MalDatum _MalDatum_nil = { 
+    .refc = 1,
+    .type = NIL 
+};
+/*const*/ static MalDatum _MalDatum_true = { 
+    .refc = 1,
+    .type = TRUE 
+};
+/*const*/ static MalDatum _MalDatum_false = { 
+    .refc = 1,
+    .type = FALSE 
+};
+
 static MalDatum _MalDatum_empty_list = { 
+    .refc = 1,
     .type = EMPTY_LIST, 
     .value.list = &_empty_list
 };
@@ -328,6 +342,7 @@ MalDatum *MalDatum_empty_list() {
 
 MalDatum *MalDatum_new_int(const int i) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
     mdp->type = INT;
     mdp->value.i = i;
     return mdp;
@@ -336,6 +351,7 @@ MalDatum *MalDatum_new_int(const int i) {
 // *symbol is not copied
 MalDatum *MalDatum_new_sym(Symbol *symbol) { 
     MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
     mdp->type = SYMBOL;
     mdp->value.sym = symbol;
     return mdp;
@@ -344,6 +360,7 @@ MalDatum *MalDatum_new_sym(Symbol *symbol) {
 // *list is not copied
 MalDatum *MalDatum_new_list(List *list) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
     mdp->type = LIST;
     mdp->value.list = list;
     return mdp;
@@ -352,6 +369,7 @@ MalDatum *MalDatum_new_list(List *list) {
 // char is copied
 MalDatum *MalDatum_new_string(const char *str) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
     mdp->type = STRING;
     mdp->value.string = dyn_strcpy(str);
     return mdp;
@@ -360,13 +378,46 @@ MalDatum *MalDatum_new_string(const char *str) {
 // *proc is not copied
 MalDatum *MalDatum_new_proc(Proc *proc) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
     mdp->type = PROCEDURE;
     mdp->value.proc = proc;
     return mdp;
 }
 
+void MalDatum_own(MalDatum *datum) 
+{
+    if (datum == NULL) {
+        LOG_NULL(datum);
+        return;
+    }
+
+    char *repr = pr_repr(datum);
+    DEBUG("own %p -> %s", datum, repr);
+    free(repr);
+    datum->refc += 1;
+}
+
+void MalDatum_release(MalDatum *datum)
+{
+    if (datum == NULL) {
+        LOG_NULL(datum);
+        return;
+    }
+    if (datum->refc <= 0)
+        DEBUG("illegal attempt to decrement ref count = %ld", datum->refc);
+
+    char *repr = pr_repr(datum);
+    DEBUG("release %p -> %s", datum, repr);
+    free(repr);
+    datum->refc -= 1;
+}
+
 void MalDatum_free(MalDatum *datum) {
     if (datum == NULL) return;
+    if (datum->refc > 0) {
+        DEBUG("Refuse to free %p with ref count = %ld", datum, datum->refc);
+        return;
+    }
 
     switch (datum->type) {
         // NIL, TRUE, FALSE should never be freed
@@ -390,6 +441,7 @@ void MalDatum_free(MalDatum *datum) {
             break;
     }
 
+    FREE(datum);
     free(datum);
 }
 

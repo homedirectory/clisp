@@ -139,6 +139,7 @@ char *Proc_name(const Proc *proc);
 
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
+    long refc; // reference count
     MalType type;
     union {
         int i;
@@ -148,6 +149,10 @@ typedef struct MalDatum {
         Proc *proc;
     } value;
 } MalDatum;
+
+// manage ref count
+void MalDatum_own(MalDatum *);
+void MalDatum_release(MalDatum *);
 
 // singletons
 MalDatum *MalDatum_nil();

@@ -114,3 +114,15 @@ char *pr_list(List *list, bool print_readably)
     return str;
 }
 
+
+char *pr_repr(MalDatum *datum)
+{
+    char *str = pr_str(datum, false);
+    char *type_str = MalType_tostr(datum->type);
+
+    char *parts[] = { type_str, str };
+    char *out = str_join(parts, ARR_LEN(parts), " ");
+    free(str);
+
+    return out;
+}
