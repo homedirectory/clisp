@@ -683,6 +683,15 @@ static MalDatum *mal_slurp(const Proc *proc, const Arr *args, MalEnv *env)
     return out;
 }
 
+// eval : takes an AST and evaluates it in the top-level environment
+// local environments are not taken into account by eval
+static MalDatum *mal_eval(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    MalEnv *top_env = MalEnv_enclosing_root(env);
+    return eval(arg0, top_env);
+}
+
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
@@ -701,6 +710,8 @@ int main(int argc, char **argv) {
             Proc_builtin("read-string", 1, false, mal_read_string)));
     MalEnv_put(env, Symbol_new("slurp"), MalDatum_new_proc(
             Proc_builtin("slurp", 1, false, mal_slurp)));
+    MalEnv_put(env, Symbol_new("eval"), MalDatum_new_proc(
+            Proc_builtin("eval", 1, false, mal_eval)));
 
     core_def_procs(env);
 

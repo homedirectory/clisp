@@ -27,3 +27,6 @@ MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, const MalDatum *datum);
 
 /* Returns the MalDatum associated with the given symbol or NULL. */
 MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym);
+
+// returns the top-most enclosing environment of the given one
+MalEnv *MalEnv_enclosing_root(MalEnv *env);

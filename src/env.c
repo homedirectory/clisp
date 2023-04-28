@@ -62,3 +62,9 @@ MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym) {
 
     return NULL;
 }
+
+MalEnv *MalEnv_enclosing_root(MalEnv *env) 
+{
+    while (env->enclosing) env = env->enclosing;
+    return env;
+}
