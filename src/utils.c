@@ -239,6 +239,16 @@ char *str_join(char *strings[], size_t n, const char *sep)
     return out;
 }
 
+char *addr_to_str(void *ptr)
+{
+    // each byte is 2 hex chars + 2 for "0x" prefix
+    size_t n = sizeof(ptr) * 2 + 2;
+    char *str = malloc(sizeof(str[0]) * (n + 1));
+    sprintf(str, "%p", ptr);
+    str[n] = '\0';
+    return str;
+}
+
 // File utilities ----------------------------------------
 bool file_readable(const char *path)
 {

@@ -318,6 +318,15 @@ static MalDatum *mal_builtinp(const Proc *proc, const Arr *args, MalEnv *env) {
     return proc_arg->builtin ? MalDatum_true() : MalDatum_false();
 }
 
+// Returns the address of a MalDatum as a string
+static MalDatum *mal_addr(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = Arr_get(args, 0);
+    char *str = addr_to_str(arg0);
+    MalDatum *out = MalDatum_new_string(str);
+    free(str);
+    return out;
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -348,4 +357,6 @@ void core_def_procs(MalEnv *env)
     DEF("procedure?", 1, false, mal_procedurep);
     DEF("arity", 1, false, mal_arity);
     DEF("builtin?", 1, false, mal_builtinp);
+
+    DEF("addr", 1, false, mal_addr);
 }

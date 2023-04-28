@@ -40,6 +40,7 @@ short escape_char(unsigned char c);
 unsigned char unescape_char(unsigned char c);
 char *str_escape(const char *src);
 char *str_join(/*const*/ char *strings[], size_t n, const char *sep);
+char *addr_to_str(void *ptr);
 
 // File utilities ----------------------------------------
 bool file_readable(const char *path);
