@@ -715,14 +715,12 @@ int main(int argc, char **argv) {
 
     core_def_procs(env);
 
-    // TODO these procedures will be unnamed
-    rep("(def! not (fn* (x) (if x false true)))", env);
-    // TODO implement using 'and' and 'or'
-    rep("(def! >= (fn* (x y) (if (= x y) true (> x y))))", env);
-    rep("(def! <  (fn* (x y) (not (>= x y))))", env);
-    rep("(def! <= (fn* (x y) (if (= x y) true (< x y))))", env);
+    rep("(def! load-file\n"
+            "(fn* (path) (eval (read-string (str \"(do \" (slurp path) \")\")))\n"
+            "(println \"loaded file\" path) nil))", 
+            env);
 
-    rep("(def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc)))))", env);
+    rep("(load-file \"core.mal\")", env);
 
     while (1) {
         char *line = readline(PROMPT);

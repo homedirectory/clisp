@@ -1,0 +1,4 @@
+(def! not (fn* (x) (if x false true)))
+(def! >= (fn* (x y) (if (= x y) true (> x y))))
+(def! <  (fn* (x y) (not (>= x y))))
+(def! <= (fn* (x y) (if (= x y) true (< x y))))
