@@ -40,3 +40,7 @@ short escape_char(unsigned char c);
 unsigned char unescape_char(unsigned char c);
 char *str_escape(const char *src);
 char *str_join(/*const*/ char *strings[], size_t n, const char *sep);
+
+// File utilities ----------------------------------------
+bool file_readable(const char *path);
+char *file_to_str(const char *path);

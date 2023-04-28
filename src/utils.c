@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include "common.h"
+#include <unistd.h>
+#include <fcntl.h>
 
 #define CAPACITY_INCR_RATIO 1.5
 #define DEFAULT_CAPACITY 10
@@ -235,6 +237,51 @@ char *str_join(char *strings[], size_t n, const char *sep)
     out[curr_len] = '\0';
 
     return out;
+}
+
+// File utilities ----------------------------------------
+bool file_readable(const char *path)
+{
+    return access(path, R_OK) != -1;
+}
+
+char *file_to_str(const char *path)
+{
+    int fd = open(path, O_RDONLY);
+    if (fd == -1)
+        return NULL;
+
+    static size_t chunk_size = 1024 * 1024;
+    size_t tot_size = 0;
+    char *buf = malloc(sizeof(*buf) * chunk_size);
+
+    ssize_t nread;
+    while (1) {
+        nread = read(fd, buf, chunk_size);
+        if (nread == -1) {
+            close(fd);
+            free(buf);
+            return NULL;
+        } else {
+            tot_size += nread;
+            // last chunk?
+            if (nread < chunk_size) break;
+            // make more room
+            buf = realloc(buf, tot_size + (sizeof(*buf) * chunk_size));
+        }
+    }
+    close(fd);
+
+    if (tot_size % chunk_size == 0) { // filled up to the brim?
+        // make room for null-byte
+        buf = realloc(buf, tot_size + 1);
+    } else {
+        // get rid of unused space
+        buf = realloc(buf, tot_size);
+    }
+    buf[tot_size] = '\0';
+
+    return buf;
 }
 
 /*

@@ -12,12 +12,28 @@
 #include "common.h"
 #include "core.h"
 #include "mem_debug.h"
+#include "utils.h"
 
 #define PROMPT "user> "
 
 MalDatum *eval(const MalDatum *datum, MalEnv *env);
 MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
+
+static MalDatum *verify_proc_arg_type(const Proc *proc, const Arr *args, size_t arg_idx, 
+        MalType expect_type) 
+{
+    MalDatum *arg = Arr_get(args, arg_idx);
+    if (!MalDatum_istype(arg, expect_type)) {
+        char *proc_name = Proc_name(proc);
+        ERROR("%s: bad arg no. %zd: expected a %s", 
+                proc_name, arg_idx + 1, MalType_tostr(expect_type));
+        free(proc_name);
+        return NULL;
+    }
+
+    return arg;
+}
 
 static MalDatum *read(const char* in) {
     Reader *rdr = read_str(in);
@@ -629,11 +645,8 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args)
 // transforming it into a raw AST. Essentially, exposes the internal READ function
 static MalDatum *mal_read_string(const Proc *proc, const Arr *args) 
 {
-    MalDatum *arg0 = Arr_get(args, 0);
-    if (!MalDatum_istype(arg0, STRING)) {
-        ERROR("read-string: bad 1st arg: expected a string");
-        return NULL;
-    }
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
+    if (!arg0) return NULL;
 
     const char *string = arg0->value.string;
     MalDatum *ast = read(string);
@@ -644,6 +657,30 @@ static MalDatum *mal_read_string(const Proc *proc, const Arr *args)
     }
 
     return ast;
+}
+
+// slurp : takes a file name (string) and returns the contents of the file as a string
+static MalDatum *mal_slurp(const Proc *proc, const Arr *args) 
+{
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
+    if (!arg0) return NULL;
+
+    const char *path = arg0->value.string;
+    if (!file_readable(path)) {
+        ERROR("slurp: can't read file %s", path);
+        return NULL;
+    }
+
+    char *contents = file_to_str(path);
+    if (!contents) {
+        ERROR("slurp: failed to read file %s", path);
+        return NULL;
+    }
+
+    MalDatum *out = MalDatum_new_string(contents);
+    free(contents);
+
+    return out;
 }
 
 
@@ -662,6 +699,8 @@ int main(int argc, char **argv) {
 
     MalEnv_put(env, Symbol_new("read-string"), MalDatum_new_proc(
             Proc_builtin("read-string", 1, false, mal_read_string)));
+    MalEnv_put(env, Symbol_new("slurp"), MalDatum_new_proc(
+            Proc_builtin("slurp", 1, false, mal_slurp)));
 
     core_def_procs(env);
 
