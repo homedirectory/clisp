@@ -87,7 +87,7 @@ typedef struct MalEnv MalEnv; // from env.h
 
 // the type of built-in functions (e.g., list, empty?, numeric ones, etc.)
 // args - array of *MalDatum
-typedef MalDatum* (*builtin_apply_t)(const Proc*, const Arr *args);
+typedef MalDatum* (*builtin_apply_t)(const Proc*, const Arr *args, MalEnv *env);
 
 // TODO store the name
 struct Proc {

@@ -7,7 +7,7 @@
 #include "printer.h"
 #include "mem_debug.h"
 
-static MalDatum *mal_add(const Proc *proc, const Arr *args) {
+static MalDatum *mal_add(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -26,7 +26,7 @@ static MalDatum *mal_add(const Proc *proc, const Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
-static MalDatum *mal_sub(const Proc *proc, const Arr *args) {
+static MalDatum *mal_sub(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -45,7 +45,7 @@ static MalDatum *mal_sub(const Proc *proc, const Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
-static MalDatum *mal_mul(const Proc *proc, const Arr *args) {
+static MalDatum *mal_mul(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -64,7 +64,7 @@ static MalDatum *mal_mul(const Proc *proc, const Arr *args) {
     return MalDatum_new_int(rslt);
 }
 
-static MalDatum *mal_div(const Proc *proc, const Arr *args) {
+static MalDatum *mal_div(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -88,7 +88,7 @@ static MalDatum *mal_div(const Proc *proc, const Arr *args) {
  * of the list should be compared for equality and if they are the same return
  * true, otherwise false
  */
-static MalDatum *mal_eq(const Proc *proc, const Arr *args) {
+static MalDatum *mal_eq(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg1 = args->items[0];
     MalDatum *arg2 = args->items[1];
 
@@ -96,7 +96,7 @@ static MalDatum *mal_eq(const Proc *proc, const Arr *args) {
 }
 
 /* '>' : compare the first two numeric parameters */
-static MalDatum *mal_gt(const Proc *proc, const Arr *args) {
+static MalDatum *mal_gt(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
         MalDatum *arg = args->items[i];
@@ -112,7 +112,7 @@ static MalDatum *mal_gt(const Proc *proc, const Arr *args) {
     return arg1->value.i > arg2->value.i ? MalDatum_true() : MalDatum_false();
 }
 
-static MalDatum *mal_list(const Proc *proc, const Arr *args) {
+static MalDatum *mal_list(const Proc *proc, const Arr *args, MalEnv *env) {
     if (args->len == 0)
         return MalDatum_empty_list();
 
@@ -126,11 +126,11 @@ static MalDatum *mal_list(const Proc *proc, const Arr *args) {
     return MalDatum_new_list(list);
 }
 
-static MalDatum *mal_listp(const Proc *proc, const Arr *args) {
+static MalDatum *mal_listp(const Proc *proc, const Arr *args, MalEnv *env) {
     return MalDatum_islist(args->items[0]) ? MalDatum_true() : MalDatum_false();
 }
 
-static MalDatum *mal_emptyp(const Proc *proc, const Arr *args) {
+static MalDatum *mal_emptyp(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg type
     MalDatum *arg = args->items[0];
     if (!MalDatum_islist(arg)) {
@@ -141,7 +141,7 @@ static MalDatum *mal_emptyp(const Proc *proc, const Arr *args) {
     return List_isempty(list) ? MalDatum_true() : MalDatum_false();
 }
 
-static MalDatum *mal_count(const Proc *proc, const Arr *args) {
+static MalDatum *mal_count(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg type
     MalDatum *arg = args->items[0];
 
@@ -160,7 +160,7 @@ static MalDatum *mal_count(const Proc *proc, const Arr *args) {
 
 // prn: calls pr_str on each argument with print_readably set to true, joins the
 // results with " ", prints the string to the screen and then returns nil.
-static MalDatum *mal_prn(const Proc *proc, const Arr *args)
+static MalDatum *mal_prn(const Proc *proc, const Arr *args, MalEnv *env)
 {
     if (args->len > 0) {
         char *strings[args->len];
@@ -184,7 +184,7 @@ static MalDatum *mal_prn(const Proc *proc, const Arr *args)
 
 // pr-str: calls pr_str on each argument with print_readably set to true, joins
 // the results with " " and returns the new string.
-static MalDatum *mal_pr_str(const Proc *proc, const Arr *args)
+static MalDatum *mal_pr_str(const Proc *proc, const Arr *args, MalEnv *env)
 {
     if (args->len == 0) {
         return MalDatum_new_string("");
@@ -214,7 +214,7 @@ static MalDatum *mal_pr_str(const Proc *proc, const Arr *args)
  * concatenates the results together ("" separator), and returns the new
  * string.
  */
-static MalDatum *mal_str(const Proc *proc, const Arr *args)
+static MalDatum *mal_str(const Proc *proc, const Arr *args, MalEnv *env)
 {
     if (args->len == 0) {
         return MalDatum_new_string("");
@@ -243,7 +243,7 @@ static MalDatum *mal_str(const Proc *proc, const Arr *args)
  * joins the results with " ", prints the string to the screen and then returns
  * nil.
  */
-static MalDatum *mal_println(const Proc *proc, const Arr *args)
+static MalDatum *mal_println(const Proc *proc, const Arr *args, MalEnv *env)
 {
     if (args->len > 0) {
         char *strings[args->len];
@@ -265,7 +265,7 @@ static MalDatum *mal_println(const Proc *proc, const Arr *args)
 }
 
 /* (procedure? datum) : predicate for procedures */
-static MalDatum *mal_procedurep(const Proc *proc, const Arr *args) {
+static MalDatum *mal_procedurep(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg = Arr_get(args, 0);
     return MalDatum_istype(arg, PROCEDURE) ? MalDatum_true() : MalDatum_false();
 }
@@ -274,7 +274,7 @@ static MalDatum *mal_procedurep(const Proc *proc, const Arr *args) {
  * 1. number of mandatory procedure arguments
  * 2. true if procedure is variadic, false otherwise
  */
-static MalDatum *mal_arity(const Proc *proc, const Arr *args) {
+static MalDatum *mal_arity(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg = Arr_get(args, 0);
     if (!MalDatum_istype(arg, PROCEDURE)) {
         ERROR("arity: expected a procedure");
@@ -290,7 +290,7 @@ static MalDatum *mal_arity(const Proc *proc, const Arr *args) {
 }
 
 // Returns true if a procedure (1st arg) is builtin
-static MalDatum *mal_builtinp(const Proc *proc, const Arr *args) {
+static MalDatum *mal_builtinp(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg = Arr_get(args, 0);
     if (!MalDatum_istype(arg, PROCEDURE)) {
         ERROR("builtin?: expected a procedure");

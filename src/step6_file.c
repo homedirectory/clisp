@@ -53,7 +53,7 @@ static MalDatum *read(const char* in) {
 // args - array of *MalDatum (argument values)
 static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     if (proc->builtin) {
-        return proc->logic.apply(proc, args);
+        return proc->logic.apply(proc, args, env);
     }
 
     // local env is created even if a procedure expects no parameters,
@@ -609,7 +609,7 @@ static void rep(const char *str, MalEnv *env) {
 // TODO reorganise file structure and move to core.c
 /* apply : applies a procedure to the list of arguments 
  * (apply proc args-list) */
-static MalDatum *mal_apply(const Proc *proc, const Arr *args)
+static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
 {
     MalDatum *proc_arg = Arr_get(args, 0);
     if (!MalDatum_istype(proc_arg, PROCEDURE)) {
@@ -643,7 +643,7 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args)
 
 // read-string : takes a Mal string and reads it as if it were entered into the prompt,
 // transforming it into a raw AST. Essentially, exposes the internal READ function
-static MalDatum *mal_read_string(const Proc *proc, const Arr *args) 
+static MalDatum *mal_read_string(const Proc *proc, const Arr *args, MalEnv *env) 
 {
     MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
     if (!arg0) return NULL;
@@ -660,7 +660,7 @@ static MalDatum *mal_read_string(const Proc *proc, const Arr *args)
 }
 
 // slurp : takes a file name (string) and returns the contents of the file as a string
-static MalDatum *mal_slurp(const Proc *proc, const Arr *args) 
+static MalDatum *mal_slurp(const Proc *proc, const Arr *args, MalEnv *env) 
 {
     MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
     if (!arg0) return NULL;
