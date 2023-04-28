@@ -428,7 +428,7 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
             if (assoc == NULL) {
                 ERROR("symbol binding '%s' not found", sym->name);
             } else {
-                out = MalDatum_deep_copy(assoc);
+                out = assoc;;
             }
             break;
         case LIST:

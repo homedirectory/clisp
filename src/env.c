@@ -23,24 +23,30 @@ void MalEnv_free(MalEnv *env) {
         return;
     }
     Arr_freep(env->symbols, (free_t) Symbol_free);
+    for (size_t i = 0; i < env->datums->len; i++)
+        MalDatum_release(env->datums->items[i]);
+
     Arr_freep(env->datums, (free_t) MalDatum_free);
     // the enclosing env should not be freed
     free(env);
 }
 
-MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, const MalDatum *datum) {
+MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, MalDatum *datum) {
     if (env == NULL) {
         LOG_NULL(env);
         return NULL;
     }
 
+    MalDatum_own(datum);
+
     int idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
     if (idx == -1) { // new symbol
         Arr_add(env->symbols, Symbol_copy(sym));
-        Arr_add(env->datums, MalDatum_deep_copy(datum));
+        Arr_add(env->datums, datum);
         return NULL;
     } else { // existing symbol
-        MalDatum *old = Arr_replace(env->datums, idx, MalDatum_deep_copy(datum));
+        MalDatum *old = Arr_replace(env->datums, idx, datum);
+        MalDatum_release(old);
         return old;
     }
 }
