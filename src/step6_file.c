@@ -70,8 +70,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
         List *var_args = List_new();
         for (size_t i = proc->argc; i < args->len; i++) {
             MalDatum *arg = Arr_get(args, i);
-            // TODO optimise: avoid copying arguments
-            List_add(var_args, MalDatum_deep_copy(arg));
+            List_add(var_args, arg);
         }
 
         MalEnv_put(proc_env, var_param, MalDatum_new_list(var_args));
