@@ -625,6 +625,27 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args)
     return rslt;
 }
 
+// read-string : takes a Mal string and reads it as if it were entered into the prompt,
+// transforming it into a raw AST. Essentially, exposes the internal READ function
+static MalDatum *mal_read_string(const Proc *proc, const Arr *args) 
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    if (!MalDatum_istype(arg0, STRING)) {
+        ERROR("read-string: bad 1st arg: expected a string");
+        return NULL;
+    }
+
+    const char *string = arg0->value.string;
+    MalDatum *ast = read(string);
+
+    if (ast == NULL) {
+        ERROR("read-string: could not parse bad syntax");
+        return NULL;
+    }
+
+    return ast;
+}
+
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
@@ -638,6 +659,9 @@ int main(int argc, char **argv) {
 
     MalEnv_put(env, Symbol_new("apply"), MalDatum_new_proc(
                 Proc_builtin("apply", 2, false, mal_apply)));
+
+    MalEnv_put(env, Symbol_new("read-string"), MalDatum_new_proc(
+            Proc_builtin("read-string", 1, false, mal_read_string)));
 
     core_def_procs(env);
 
