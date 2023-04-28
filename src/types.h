@@ -89,7 +89,9 @@ typedef struct MalEnv MalEnv; // from env.h
 // args - array of *MalDatum
 typedef MalDatum* (*builtin_apply_t)(const Proc*, const Arr *args);
 
+// TODO store the name
 struct Proc {
+    char *name;
     int argc; // amount of mandatory arguments
     bool variadic; // accepts more arguments after mandatory ones (default: false)
     /* Declared parameter names, which include mandatory arguments and, if this procedure
@@ -107,15 +109,33 @@ struct Proc {
 
 // a constructor for language-defined procedures
 // params and body are copied
-Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env);
+Proc *Proc_new (
+        const char *name, 
+        int argc, 
+        bool variadic, 
+        const Arr *params, 
+        const Arr *body, 
+        const MalEnv *env
+        );
+
+Proc *Proc_new_lambda (
+        int argc,
+        bool variadic,
+        const Arr *params,
+        const Arr *body, 
+        const MalEnv *env
+        );
 
 // a constructor for built-in procedures
-Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply);
+Proc *Proc_builtin(const char *name, int argc, bool variadic, const builtin_apply_t apply);
 
 void Proc_free(Proc *proc);
 Proc *Proc_copy(const Proc *proc);
 
 bool Proc_eq(const Proc *, const Proc *);
+
+// returns a dynamically allocated string containing the procedure's name
+char *Proc_name(const Proc *proc);
 
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {

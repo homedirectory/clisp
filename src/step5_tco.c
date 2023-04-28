@@ -93,25 +93,31 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     return out;
 }
 
-static MalDatum *eval_application_tco(const Proc *proc, const char* proc_name, const Arr* args, MalEnv *env)
+static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv *env)
 {
-    // this can be either a named procedure (bound to a symbol) or an fn*-produced one
-    // FIXME this method is not foulproof: consider a named procedure being bound to a symbol
-    char *the_proc_name = proc_name ? proc_name : "*unnamed*";
+    char *proc_name = Proc_name(proc);
+    OWN(proc_name);
 
     int argc = args->len;
     // too few arguments?
     if (argc < proc->argc) {
         ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
-                the_proc_name, proc->argc, argc);
+                proc_name, proc->argc, argc);
+        FREE(proc_name);
+        free(proc_name);
         return NULL;
     }
     // too much arguments?
     else if (!proc->variadic && argc > proc->argc) {
         ERROR("procedure application: %s expects %d arguments, but %d were given", 
-                the_proc_name, proc->argc, argc);
+                proc_name, proc->argc, argc);
+        FREE(proc_name);
+        free(proc_name);
         return NULL;
     }
+
+    FREE(proc_name);
+    free(proc_name);
 
     for (size_t i = 0; i < args->len; i++) {
         Symbol *param_name = Arr_get(proc->params, i);
@@ -123,10 +129,12 @@ static MalDatum *eval_application_tco(const Proc *proc, const char* proc_name, c
     // (TODO transform into 'do' special form)
     for (size_t i = 0; i < body->len - 1; i++) {
         MalDatum *evaled = eval(body->items[i], env);
-        if (!evaled)
+        if (evaled)
             MalDatum_free(evaled);
-        else
+        else {
+            LOG_NULL(evaled);
             return NULL;
+        }
     }
 
     MalDatum *body_last = body->items[body->len - 1];
@@ -264,7 +272,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
         Arr_add(body, node->value); // no need to copy
     }
 
-    Proc *proc = Proc_new(proc_argc, variadic, param_names_symbols, body, env);
+    Proc *proc = Proc_new_lambda(proc_argc, variadic, param_names_symbols, body, env);
     env->reachable = true;
 
     FREE(param_names_symbols);
@@ -511,10 +519,6 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
 
             // 3. apply TCO only if it's a non-lambda MAL procedure
             if (!proc->builtin /* && non-lambda */) {
-                // TODO handle procedure names better
-                char *proc_name = MalDatum_istype(List_ref(ast_list, 0), SYMBOL) ?
-                    List_ref(ast_list, 0)->value.sym->name : NULL;
-
                 if (!tco) {
                     eval_env = MalEnv_new(eval_env);
                     eval_env->reachable = true;
@@ -522,7 +526,7 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
                     tco = true;
                 }
                 // args will be put into eval_env by copying
-                ast = eval_application_tco(proc, proc_name, args, eval_env);
+                ast = eval_application_tco(proc, args, eval_env);
                 FREE(args);
                 Arr_freep(args, (free_t) MalDatum_free);
                 FREE(evaled_list);
@@ -632,10 +636,12 @@ int main(int argc, char **argv) {
     MalEnv_put(env, Symbol_new("true"), MalDatum_true());
     MalEnv_put(env, Symbol_new("false"), MalDatum_false());
 
-    MalEnv_put(env, Symbol_new("apply"), MalDatum_new_proc(Proc_builtin(2, false, mal_apply)));
+    MalEnv_put(env, Symbol_new("apply"), MalDatum_new_proc(
+                Proc_builtin("apply", 2, false, mal_apply)));
 
     core_def_procs(env);
 
+    // TODO these procedures will be unnamed
     rep("(def! not (fn* (x) (if x false true)))", env);
     // TODO implement using 'and' and 'or'
     rep("(def! >= (fn* (x y) (if (= x y) true (> x y))))", env);

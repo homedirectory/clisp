@@ -202,8 +202,9 @@ Symbol *Symbol_copy(const Symbol *sym) {
 }
 
 // Procedures ----------------------------------------
-Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env) {
+Proc *Proc_new(const char *name, int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env) {
     Proc *proc = malloc(sizeof(Proc));
+    proc->name = dyn_strcpy(name);
     proc->argc = argc;
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
@@ -213,8 +214,9 @@ Proc *Proc_new(int argc, bool variadic, const Arr *params, const Arr *body, cons
     return proc;
 }
 
-Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply) {
+Proc *Proc_builtin(const char *name, int argc, bool variadic, const builtin_apply_t apply) {
     Proc *proc = malloc(sizeof(Proc));
+    proc->name = dyn_strcpy(name);
     proc->argc = argc;
     proc->variadic = variadic;
     proc->builtin = true;
@@ -222,6 +224,31 @@ Proc *Proc_builtin(int argc, bool variadic, const builtin_apply_t apply) {
     proc->env = NULL;
     return proc;
 }
+
+Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env) {
+    Proc *proc = malloc(sizeof(Proc));
+    proc->name = NULL;
+    proc->argc = argc;
+    proc->variadic = variadic;
+    proc->params = Arr_copy(params, (copier_t) Symbol_copy);
+    proc->builtin = false;
+    proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+    proc->env = env;
+    return proc;
+}
+
+char *Proc_name(const Proc *proc)
+{
+    static const char* lambda_name = "*lambda*";
+    if (proc == NULL) {
+        LOG_NULL(proc);
+        return NULL;
+    }
+
+    const char* name = proc->name ? proc->name : lambda_name;
+    return dyn_strcpy(name);
+}
+
 
 void Proc_free(Proc *proc) {
     if (proc == NULL) {
@@ -236,6 +263,9 @@ void Proc_free(Proc *proc) {
         Arr_freep(proc->logic.body, (free_t) MalDatum_free);
     }
 
+    if (proc->name) 
+        free(proc->name);
+
     free(proc);
 }
 
@@ -245,10 +275,17 @@ Proc *Proc_copy(const Proc *proc) {
         return NULL;
     }
 
-    if (proc->builtin)
-        return Proc_builtin(proc->argc, proc->variadic, proc->logic.apply);
-    else
-        return Proc_new(proc->argc, proc->variadic, proc->params, proc->logic.body, proc->env);
+    if (proc->builtin) {
+        return Proc_builtin(proc->name, proc->argc, proc->variadic, proc->logic.apply);
+    }
+    else if (proc->name) { // named procedure?
+        return Proc_new(proc->name, proc->argc, proc->variadic, proc->params, proc->logic.body, 
+                proc->env);
+    }
+    else { // lambda
+        return Proc_new_lambda(proc->argc, proc->variadic, proc->params, proc->logic.body, 
+                proc->env);
+    }
 }
 
 bool Proc_eq(const Proc *proc1, const Proc *proc2) {

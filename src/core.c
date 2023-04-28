@@ -302,26 +302,34 @@ static MalDatum *mal_builtinp(const Proc *proc, const Arr *args) {
     return proc_arg->builtin ? MalDatum_true() : MalDatum_false();
 }
 
-void core_def_procs(MalEnv *env) {
-    // FIXME memory leak
-    MalEnv_put(env, Symbol_new("+"), MalDatum_new_proc(Proc_builtin(2, true, mal_add)));
-    MalEnv_put(env, Symbol_new("-"), MalDatum_new_proc(Proc_builtin(2, true, mal_sub)));
-    MalEnv_put(env, Symbol_new("*"), MalDatum_new_proc(Proc_builtin(2, true, mal_mul)));
-    MalEnv_put(env, Symbol_new("/"), MalDatum_new_proc(Proc_builtin(2, true, mal_div)));
-    MalEnv_put(env, Symbol_new("="), MalDatum_new_proc(Proc_builtin(2, false, mal_eq)));
-    MalEnv_put(env, Symbol_new(">"), MalDatum_new_proc(Proc_builtin(2, false, mal_gt)));
+void core_def_procs(MalEnv *env) 
+{
+#define DEF(name, arity, variadic, func_ptr) \
+    do { \
+        Symbol *sym = Symbol_new(name); \
+        MalEnv_put(env, sym, MalDatum_new_proc(\
+                    Proc_builtin(name, arity, variadic, func_ptr))); \
+        Symbol_free(sym); \
+    } while (0);
 
-    MalEnv_put(env, Symbol_new("list"), MalDatum_new_proc(Proc_builtin(0, true, mal_list)));
-    MalEnv_put(env, Symbol_new("list?"), MalDatum_new_proc(Proc_builtin(1, false, mal_listp)));
-    MalEnv_put(env, Symbol_new("empty?"), MalDatum_new_proc(Proc_builtin(1, false, mal_emptyp)));
-    MalEnv_put(env, Symbol_new("count"), MalDatum_new_proc(Proc_builtin(1, false, mal_count)));
+    DEF("+", 2, true, mal_add);
+    DEF("-", 2, true, mal_sub);
+    DEF("*", 2, true, mal_mul);
+    DEF("/", 2, true, mal_div);
+    DEF("=", 2, false, mal_eq);
+    DEF(">", 2, false, mal_gt);
 
-    MalEnv_put(env, Symbol_new("prn"), MalDatum_new_proc(Proc_builtin(0, true, mal_prn)));
-    MalEnv_put(env, Symbol_new("pr-str"), MalDatum_new_proc(Proc_builtin(0, true, mal_pr_str)));
-    MalEnv_put(env, Symbol_new("str"), MalDatum_new_proc(Proc_builtin(0, true, mal_str)));
-    MalEnv_put(env, Symbol_new("println"), MalDatum_new_proc(Proc_builtin(0, true, mal_println)));
+    DEF("list", 0, true, mal_list);
+    DEF("list?", 1, false, mal_listp);
+    DEF("empty?", 1, false, mal_emptyp);
+    DEF("count", 1, false, mal_count);
 
-    MalEnv_put(env, Symbol_new("procedure?"), MalDatum_new_proc(Proc_builtin(1, false, mal_procedurep)));
-    MalEnv_put(env, Symbol_new("arity"), MalDatum_new_proc(Proc_builtin(1, false, mal_arity)));
-    MalEnv_put(env, Symbol_new("builtin?"), MalDatum_new_proc(Proc_builtin(1, false, mal_builtinp)));
+    DEF("prn", 0, true, mal_prn);
+    DEF("pr-str", 0, true, mal_pr_str);
+    DEF("str", 0, true, mal_str);
+    DEF("println", 0, true, mal_println);
+
+    DEF("procedure?", 1, false, mal_procedurep);
+    DEF("arity", 1, false, mal_arity);
+    DEF("builtin?", 1, false, mal_builtinp);
 }
