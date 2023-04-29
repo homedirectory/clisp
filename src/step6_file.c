@@ -380,9 +380,18 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     MalDatum *out = eval(expr, let_env);
     OWN(out);
 
+    // this is a hack
+    // if the returned value was computed in let* bindings,
+    // then we don't want it to be freed when we free the let_env,
+    // so we increment its ref count only to decrement it after let_env is freed
+    MalDatum_own(out);
+
     // discard the let* env
     FREE(let_env);
     MalEnv_free(let_env);
+
+    // the hack cont.
+    MalDatum_release(out);
 
     return out;
 }
