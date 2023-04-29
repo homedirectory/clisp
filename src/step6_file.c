@@ -546,7 +546,7 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
                 FREE(args);
                 Arr_freep(args, (free_t) MalDatum_free);
                 FREE(evaled_list);
-                List_shlw_free(evaled_list);
+                List_free(evaled_list);
             }
             // 4. otherwise just return the result of procedure application
             else {
