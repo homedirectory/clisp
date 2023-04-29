@@ -17,7 +17,7 @@
 #define PROMPT "user> "
 
 MalDatum *eval(const MalDatum *datum, MalEnv *env);
-MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
+MalDatum *eval_ast(MalDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
 
 static MalDatum *read(const char* in) {
@@ -83,6 +83,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     // evalute each expression and return the result of the last one
     for (int i = 0; i < body->len - 1; i++) {
         const MalDatum *dtm = body->items[i];
+        // TODO check NULL
         MalDatum_free(eval(dtm, proc_env));
     }
     MalDatum *out = eval(body->items[body->len - 1], proc_env);
@@ -414,10 +415,7 @@ List *eval_list(const List *list, MalEnv *env) {
     return out;
 }
 
-/* Evaluates a MalDatum in an environment and returns the result in the form of a 
- * new dynamically allocted MalDatum.
- */
-MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
+MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
     MalDatum *out = NULL;
 
     switch (datum->type) {
@@ -439,6 +437,7 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
             }
             break;
         default:
+            // STRING | INT
             out = MalDatum_copy(datum);
             break;
     }
@@ -584,16 +583,19 @@ static void rep(const char *str, MalEnv *env) {
     // read
     MalDatum *r = read(str);
     if (r == NULL) return;
+
     // eval
     // TODO implement a stack trace of error messages
     MalDatum *e = eval(r, env);
     MalDatum_free(r);
+
     // print
     char *p = print(e);
+    // the evaled value can be either discarded (e.g., (+ 1 2) => 3)
+    // or owned by something (e.g., (def! x 5) => 5)
     MalDatum_free(e);
     if (p != NULL) { 
-        if (p[0] != '\0')
-            printf("%s\n", p);
+        printf("%s\n", p);
         free(p);
     }
 }

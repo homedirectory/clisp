@@ -351,7 +351,6 @@ MalDatum *MalDatum_new_int(const int i) {
     return mdp;
 }
 
-// *symbol is not copied
 MalDatum *MalDatum_new_sym(Symbol *symbol) { 
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;
@@ -360,7 +359,6 @@ MalDatum *MalDatum_new_sym(Symbol *symbol) {
     return mdp;
 }
 
-// *list is not copied
 MalDatum *MalDatum_new_list(List *list) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;
@@ -369,7 +367,7 @@ MalDatum *MalDatum_new_list(List *list) {
     return mdp;
 }
 
-// char is copied
+// str is copied
 MalDatum *MalDatum_new_string(const char *str) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;
@@ -378,7 +376,6 @@ MalDatum *MalDatum_new_string(const char *str) {
     return mdp;
 }
 
-// *proc is not copied
 MalDatum *MalDatum_new_proc(Proc *proc) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;
@@ -394,10 +391,11 @@ void MalDatum_own(MalDatum *datum)
         return;
     }
 
-    char *repr = pr_repr(datum);
-    DEBUG("own %p -> %s", datum, repr);
-    free(repr);
     datum->refc += 1;
+
+    char *repr = pr_repr(datum);
+    DEBUG("own %p (refc %ld) -> %s", datum, datum->refc, repr);
+    free(repr);
 }
 
 void MalDatum_release(MalDatum *datum)
@@ -409,10 +407,11 @@ void MalDatum_release(MalDatum *datum)
     if (datum->refc <= 0)
         DEBUG("illegal attempt to decrement ref count = %ld", datum->refc);
 
-    char *repr = pr_repr(datum);
-    DEBUG("release %p -> %s", datum, repr);
-    free(repr);
     datum->refc -= 1;
+
+    char *repr = pr_repr(datum);
+    DEBUG("release %p (refc %ld) -> %s", datum, datum->refc, repr);
+    free(repr);
 }
 
 void MalDatum_free(MalDatum *datum) {
@@ -423,11 +422,21 @@ void MalDatum_free(MalDatum *datum) {
     }
 
     switch (datum->type) {
-        // NIL, TRUE, FALSE should never be freed
-        case NIL: return;
-        case TRUE: return;
-        case FALSE: return;
-        case EMPTY_LIST: return;
+        // singletons will always have ref count >= 1
+        // but let's be safe
+        case NIL: 
+            DEBUG("WTF? freeing NIL");
+            return;
+        case TRUE: 
+            DEBUG("WTF? freeing TRUE");
+            return;
+        case FALSE: 
+            DEBUG("WTF? freeing FALSE");
+            return;
+        case EMPTY_LIST: 
+            DEBUG("WTF? freeing EMPTY_LIST");
+            return;
+        case INT: break;
         case LIST:
             List_free(datum->value.list);
             break;
@@ -441,6 +450,7 @@ void MalDatum_free(MalDatum *datum) {
             Proc_free(datum->value.proc);
             break;
         default:
+            DEBUG("WTF? freeing %s", MalType_tostr(datum->type));
             break;
     }
 
