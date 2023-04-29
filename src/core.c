@@ -173,6 +173,28 @@ static MalDatum *mal_count(const Proc *proc, const Arr *args, MalEnv *env) {
     return MalDatum_new_int(len);
 }
 
+static MalDatum *mal_list_ref(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, LIST);
+    if (!arg0) return NULL;
+    MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, INT);
+    if (!arg1) return NULL;
+
+    List *list = arg0->value.list;
+    int idx = arg1->value.i;
+
+    if (idx < 0) {
+        ERROR("list-ref: expected non-negative index");
+        return NULL;
+    }
+    if (idx >= List_len(list)) {
+        ERROR("list-ref: index too large");
+        return NULL;
+    }
+
+    return List_ref(list, idx);
+}
+
 // prn: calls pr_str on each argument with print_readably set to true, joins the
 // results with " ", prints the string to the screen and then returns nil.
 static MalDatum *mal_prn(const Proc *proc, const Arr *args, MalEnv *env)
@@ -347,6 +369,7 @@ void core_def_procs(MalEnv *env)
     DEF("list?", 1, false, mal_listp);
     DEF("empty?", 1, false, mal_emptyp);
     DEF("count", 1, false, mal_count);
+    DEF("list-ref", 2, false, mal_list_ref);
 
     DEF("prn", 0, true, mal_prn);
     DEF("pr-str", 0, true, mal_pr_str);
