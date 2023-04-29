@@ -348,6 +348,14 @@ static MalDatum *mal_addr(const Proc *proc, const Arr *args, MalEnv *env) {
     return out;
 }
 
+// Returns the reference count of a given MalDatum
+static MalDatum *mal_refc(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    // the count will be incremented by the procedure application environment
+    return MalDatum_new_int(arg0->refc - 1);
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -381,4 +389,5 @@ void core_def_procs(MalEnv *env)
     DEF("builtin?", 1, false, mal_builtinp);
 
     DEF("addr", 1, false, mal_addr);
+    DEF("refc", 1, false, mal_refc);
 }
