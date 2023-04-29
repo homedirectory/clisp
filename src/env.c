@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include "common.h"
 
-MalEnv *MalEnv_new(const MalEnv *enclosing) {
+MalEnv *MalEnv_new(MalEnv *enclosing) {
     MalEnv *env = malloc(sizeof(MalEnv));
     env->symbols = Arr_new();
     env->datums = Arr_new();

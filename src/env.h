@@ -14,7 +14,7 @@ typedef struct MalEnv {
 
 // Creates a new environment that is enclosed by the given environment.
 // env might be NULL when a top-level environment is created.
-MalEnv *MalEnv_new(const MalEnv *env);
+MalEnv *MalEnv_new(MalEnv *env);
 
 void MalEnv_free(MalEnv *env);
 

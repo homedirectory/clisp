@@ -17,7 +17,7 @@
 #define PROMPT "user> "
 
 MalDatum *eval(const MalDatum *datum, MalEnv *env);
-MalDatum *eval_ast(MalDatum *datum, MalEnv *env);
+MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
 
 static MalDatum *read(const char* in) {
@@ -415,7 +415,7 @@ List *eval_list(const List *list, MalEnv *env) {
     return out;
 }
 
-MalDatum *eval_ast(MalDatum *datum, MalEnv *env) {
+MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
     MalDatum *out = NULL;
 
     switch (datum->type) {

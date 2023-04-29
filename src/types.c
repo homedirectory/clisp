@@ -208,7 +208,11 @@ Symbol *Symbol_copy(const Symbol *sym) {
 }
 
 // Procedures ----------------------------------------
-Proc *Proc_new(const char *name, int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env) {
+Proc *Proc_new(const char *name, 
+        int argc, bool variadic, 
+        const Arr *params, const Arr *body, 
+        MalEnv *env) 
+{
     Proc *proc = malloc(sizeof(Proc));
     proc->name = dyn_strcpy(name);
     proc->argc = argc;
@@ -231,7 +235,8 @@ Proc *Proc_builtin(const char *name, int argc, bool variadic, const builtin_appl
     return proc;
 }
 
-Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *body, const MalEnv *env) {
+Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *body, MalEnv *env) 
+{
     Proc *proc = malloc(sizeof(Proc));
     proc->name = NULL;
     proc->argc = argc;
