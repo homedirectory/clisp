@@ -2,3 +2,5 @@
 (def! >= (fn* (x y) (if (= x y) true (> x y))))
 (def! <  (fn* (x y) (not (>= x y))))
 (def! <= (fn* (x y) (if (= x y) true (< x y))))
+
+(def! tco (fn* (x acc) (if (= x 0) acc (tco (- x 1) (+ x acc)))))
