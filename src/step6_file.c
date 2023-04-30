@@ -36,13 +36,14 @@ static MalDatum *read(const char* in) {
     return form;
 }
 
-// args - array of *MalDatum (argument values)
+// procedure application without TCO
+// args: array of *MalDatum (argument values)
 static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     if (proc->builtin) {
         return proc->logic.apply(proc, args, env);
     }
 
-    // local env is created even if a procedure expects no parameters,
+    // local env is created even if a procedure expects no parameters
     // NOTE: this is where the need to track reachability stems from,
     // since we don't know whether the environment of this particular application
     // (with all the arguments) will be needed after its applied.
@@ -210,7 +211,7 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
 static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc < 2) {
-        ERROR("fn* expects at least 2 arguments, but %d were given", argc);
+        ERROR("fn*: cannot have empty body");
         return NULL;
     }
 
@@ -219,8 +220,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     {
         MalDatum *snd = List_ref(list, 1);
         if (!MalDatum_islist(snd)) {
-            ERROR("fn* expects a list as a 2nd argument, but %s was given",
-                    MalType_tostr(snd->type));
+            ERROR("fn*: bad syntax at parameter declaration");
             return NULL;
         }
         params = snd->value.list;
