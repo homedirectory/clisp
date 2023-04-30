@@ -646,7 +646,7 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
         Arr_add(args_arr, node->value);
     }
 
-    MalDatum *rslt = apply_proc(applied_proc, args_arr, NULL);
+    MalDatum *rslt = apply_proc(applied_proc, args_arr, env);
 
     FREE(args_arr);
     Arr_free(args_arr);
