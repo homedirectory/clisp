@@ -71,7 +71,7 @@ char *pr_str(MalDatum *datum, bool print_readably)
             }
             break;
         default:
-            DEBUG("Unknown MalType");
+            DEBUG("Unknown MalType %s", MalType_tostr(datum->type));
             str = NULL;
             break;
     }

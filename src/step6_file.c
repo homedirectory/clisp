@@ -17,7 +17,7 @@
 #define PROMPT "user> "
 #define HISTORY_FILE ".mal_history"
 
-MalDatum *eval(const MalDatum *datum, MalEnv *env);
+MalDatum *eval(MalDatum *datum, MalEnv *env);
 MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
 
@@ -83,7 +83,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     if (body->len == 0) FATAL("empty body");
     // evalute each expression and return the result of the last one
     for (int i = 0; i < body->len - 1; i++) {
-        const MalDatum *dtm = body->items[i];
+        MalDatum *dtm = body->items[i];
         // TODO check NULL
         MalDatum_free(eval(dtm, proc_env));
     }
@@ -362,7 +362,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             MalEnv_free(let_env);
             return NULL;
         }
-        Symbol *id = id_node->value->value.sym; // borrowed
+        Symbol *id = id_node->value->value.sym;
 
         // it's important to evaluate the bound value using the let* env,
         // so that previous bindings can be used during evaluation
@@ -459,7 +459,7 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
 static int eval_stack_depth = 0; 
 #endif
 
-MalDatum *eval(const MalDatum *ast, MalEnv *env) {
+MalDatum *eval(MalDatum *ast, MalEnv *env) {
 #ifdef EVAL_STACK_DEPTH
     eval_stack_depth++;
     printf("ENTER eval, stack depth: %d\n", eval_stack_depth);
@@ -543,10 +543,12 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
                     OWN(eval_env);
                     tco = true;
                 }
-                // args will be put into eval_env by copying
+                // args will be put into eval_env
                 ast = eval_application_tco(proc, args, eval_env);
+
                 FREE(args);
                 Arr_freep(args, (free_t) MalDatum_free);
+
                 FREE(evaled_list);
                 List_free(evaled_list);
             }
@@ -562,8 +564,7 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
                 break;
             }
         }
-        // AST is an atom
-        else {
+        else { // AST is not a list
             out = eval_ast(ast, eval_env);
             break;
         }
