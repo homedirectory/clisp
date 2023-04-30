@@ -363,6 +363,31 @@ static MalDatum *mal_type(const Proc *proc, const Arr *args, MalEnv *env)
     return MalDatum_new_sym(Symbol_new(MalType_tostr(arg0->type)));
 }
 
+// env : returns the current (relative) environment as a list
+static MalDatum *mal_env(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    Arr *symbols = env->symbols;
+    Arr *datums = env->datums;
+
+    if (symbols->len == 0) {
+        return MalDatum_empty_list();
+    }
+    else {
+        List *list = List_new();
+
+        for (size_t i = 0; i < symbols->len; i++) {
+            List *pair = List_new();
+            Symbol *sym = symbols->items[i];
+            MalDatum *dtm = datums->items[i];
+            List_add(pair, MalDatum_new_sym(Symbol_copy(sym)));
+            List_add(pair, dtm);
+            List_add(list, MalDatum_new_list(pair));
+        }
+
+        return MalDatum_new_list(list);
+    }
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -398,4 +423,5 @@ void core_def_procs(MalEnv *env)
     DEF("addr", 1, false, mal_addr);
     DEF("refc", 1, false, mal_refc);
     DEF("type", 1, false, mal_type);
+    DEF("env", 0, false, mal_env);
 }
