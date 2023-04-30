@@ -15,6 +15,7 @@
 #include "utils.h"
 
 #define PROMPT "user> "
+#define HISTORY_FILE ".mal_history"
 
 MalDatum *eval(const MalDatum *datum, MalEnv *env);
 MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
@@ -725,12 +726,25 @@ int main(int argc, char **argv) {
 
     rep("(load-file \"core.mal\")", env);
 
+    read_history(HISTORY_FILE);
+    // if (read_history(HISTORY_FILE) != 0) {
+    //     fprintf(stderr, "failed to read history file %s\n", HISTORY_FILE);
+    //     exit(EXIT_FAILURE);
+    // }
+
     while (1) {
         char *line = readline(PROMPT);
         if (line == NULL) {
             exit(EXIT_SUCCESS);
         }
+
         add_history(line);
+        // FIXME append to history file just once on exit
+        if (append_history(1, HISTORY_FILE) != 0)
+            fprintf(stderr, 
+                    "failed to append to history file %s (try creating it manually)\n", 
+                    HISTORY_FILE);
+
         rep(line, env);
         free(line);
     }
