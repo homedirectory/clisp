@@ -570,9 +570,14 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
     }
 
     if (eval_env != env) {
+        // a hack to prevent the return value of a procedure to be freed (similar to let* hack)
+        MalDatum_own(out); // hack own
+
         eval_env->reachable = false;
         FREE(eval_env);
         MalEnv_free(eval_env);
+
+        MalDatum_release(out); // hack release
     }
 
 #ifdef EVAL_STACK_DEPTH
