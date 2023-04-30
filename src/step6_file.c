@@ -44,6 +44,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     }
 
     // local env is created even if a procedure expects no parameters
+    // so that def! inside it have only local effect
     // NOTE: this is where the need to track reachability stems from,
     // since we don't know whether the environment of this particular application
     // (with all the arguments) will be needed after its applied.
@@ -285,7 +286,6 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
 }
 
 // (def! id <MalDatum>)
-// def! is always evaluated in the top-level env, even when called in an enclosed env
 static MalDatum *eval_def(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc != 2) {
@@ -314,7 +314,7 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
         }
     }
 
-    MalEnv_put(MalEnv_enclosing_root(env), id, new_assoc);
+    MalEnv_put(env, id, new_assoc);
 
     return new_assoc;
 }
