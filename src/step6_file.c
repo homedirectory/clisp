@@ -754,12 +754,14 @@ int main(int argc, char **argv) {
             exit(EXIT_SUCCESS);
         }
 
-        add_history(line);
-        // FIXME append to history file just once on exit
-        if (append_history(1, HISTORY_FILE) != 0)
-            fprintf(stderr, 
-                    "failed to append to history file %s (try creating it manually)\n", 
-                    HISTORY_FILE);
+        if (line[0] != '\0') {
+            add_history(line);
+            // FIXME append to history file just once on exit
+            if (append_history(1, HISTORY_FILE) != 0)
+                fprintf(stderr, 
+                        "failed to append to history file %s (try creating it manually)\n", 
+                        HISTORY_FILE);
+        }
 
         rep(line, env);
         free(line);
