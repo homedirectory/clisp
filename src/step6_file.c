@@ -535,8 +535,9 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
             }
 
             // 3. apply TCO only if it's a non-lambda MAL procedure
-            if (!proc->builtin /* && non-lambda */) {
+            if (!proc->builtin && Proc_is_named(proc)) {
                 if (!tco) {
+                    // one-time creation of env for TCO
                     eval_env = MalEnv_new(eval_env);
                     eval_env->reachable = true;
                     OWN(eval_env);
@@ -549,11 +550,13 @@ MalDatum *eval(const MalDatum *ast, MalEnv *env) {
                 FREE(evaled_list);
                 List_free(evaled_list);
             }
-            // 4. otherwise just return the result of procedure application
             else {
+                // 4. otherwise just return the result of procedure application
+                // builtin procedures do not get TCO
+                // unnamed procedures cannot be called recursively apriori
                 out = apply_proc(proc, args, eval_env);
                 FREE(args);
-                Arr_free(args);
+                Arr_freep(args, (free_t) MalDatum_free);
                 FREE(evaled_list);
                 List_free(evaled_list);
                 break;
