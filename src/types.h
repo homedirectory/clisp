@@ -137,6 +137,8 @@ bool Proc_eq(const Proc *, const Proc *);
 // returns a dynamically allocated string containing the procedure's name
 char *Proc_name(const Proc *proc);
 
+bool Proc_is_named(const Proc *);
+
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
     long refc; // reference count

@@ -246,6 +246,10 @@ char *Proc_name(const Proc *proc)
     return dyn_strcpy(name);
 }
 
+bool Proc_is_named(const Proc *proc)
+{
+    return proc->name != NULL;
+}
 
 void Proc_free(Proc *proc) {
     if (proc == NULL) {

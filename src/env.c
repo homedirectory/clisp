@@ -39,6 +39,14 @@ MalDatum *MalEnv_put(MalEnv *env, const Symbol *sym, MalDatum *datum) {
 
     MalDatum_own(datum);
 
+    // if datum is an unnamed procedure, then set its name to sym
+    if (MalDatum_istype(datum, PROCEDURE)) {
+        Proc *proc = datum->value.proc;
+        if (!Proc_is_named(proc)) {
+            proc->name = dyn_strcpy(sym->name);
+        }
+    }
+
     int idx = Arr_findf(env->symbols, sym, (equals_t) Symbol_eq);
     if (idx == -1) { // new symbol
         Arr_add(env->symbols, Symbol_copy(sym));
