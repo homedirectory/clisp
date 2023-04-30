@@ -356,6 +356,13 @@ static MalDatum *mal_refc(const Proc *proc, const Arr *args, MalEnv *env)
     return MalDatum_new_int(arg0->refc - 1);
 }
 
+// type : returns the type of the argument as a symbol
+static MalDatum *mal_type(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_new_sym(Symbol_new(MalType_tostr(arg0->type)));
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -390,4 +397,5 @@ void core_def_procs(MalEnv *env)
 
     DEF("addr", 1, false, mal_addr);
     DEF("refc", 1, false, mal_refc);
+    DEF("type", 1, false, mal_type);
 }
