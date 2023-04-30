@@ -90,8 +90,13 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     }
     MalDatum *out = eval(body->items[body->len - 1], proc_env);
 
+    // a hack to prevent the return value of a procedure to be freed
+    MalDatum_own(out); // hack own
+
     FREE(proc_env);
     MalEnv_free(proc_env);
+
+    MalDatum_release(out); // hack release
 
     return out;
 }
@@ -557,10 +562,12 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 // builtin procedures do not get TCO
                 // unnamed procedures cannot be called recursively apriori
                 out = apply_proc(proc, args, eval_env);
+                MalDatum_own(out); // hack own
                 FREE(args);
                 Arr_freep(args, (free_t) MalDatum_free);
                 FREE(evaled_list);
                 List_free(evaled_list);
+                MalDatum_release(out); // hack release
                 break;
             }
         }
