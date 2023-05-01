@@ -457,6 +457,12 @@ void MalDatum_free(MalDatum *datum) {
     free(datum);
 }
 
+void MalDatum_release_free(MalDatum *dtm)
+{
+    MalDatum_release(dtm);
+    MalDatum_free(dtm);
+}
+
 bool MalDatum_istype(const MalDatum *datum, MalType type) {
     return datum->type == type;
 }

@@ -276,7 +276,8 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     Arr *body = Arr_newn(body_len);
     OWN(body);
     for (struct Node *node = list->head->next->next; node != NULL; node = node->next) {
-        Arr_add(body, node->value); // no need to copy
+        Arr_add(body, node->value);
+        MalDatum_own(node->value);
     }
 
     Proc *proc = Proc_new_lambda(proc_argc, variadic, param_names_symbols, body, env);
@@ -468,9 +469,10 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
     eval_stack_depth++;
     printf("ENTER eval, stack depth: %d\n", eval_stack_depth);
 #endif
-    MalEnv *eval_env = env;
-    bool tco = false;
-
+    // we create a new environment for each procedure application to bind params to args
+    // because of TCO, ast might be the last body part of a procedure, so we might need 
+    // apply_env created in the previous loop cycle to evaluate ast
+    MalEnv *apply_env = env;
     MalDatum *out = NULL;
 
     while (ast) {
@@ -486,35 +488,36 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             if (MalDatum_istype(head, SYMBOL)) {
                 Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
-                    out = eval_def(ast_list, eval_env);
+                    out = eval_def(ast_list, apply_env);
                     break;
                 }
                 else if (Symbol_eq_str(sym, "let*")) {
                     // applying TCO to let* saves us only 1 level of call stack depth
                     // TODO so we can be lazy about it
-                    out = eval_letstar(ast_list, eval_env);
+                    out = eval_letstar(ast_list, apply_env);
                     break;
                 }
                 else if (Symbol_eq_str(sym, "if")) {
                     // eval the condition and replace AST with the AST of the branched part
-                    ast = eval_if(ast_list, eval_env);
+                    ast = eval_if(ast_list, apply_env);
                     continue;
                 }
                 else if (Symbol_eq_str(sym, "do")) {
                     // applying TCO to do saves us only 1 level of call stack depth
                     // TODO so we can be lazy about it
-                    out = eval_do(ast_list, eval_env);
+                    out = eval_do(ast_list, apply_env);
                     break;
                 }
                 else if (Symbol_eq_str(sym, "fn*")) {
-                    out = eval_fnstar(ast_list, eval_env);
+                    out = eval_fnstar(ast_list, apply_env);
                     break;
                 }
             }
 
             // looks like a procedure application
+            // if TCO has been applied, then ast_list is the last body part of a procedure
             // 1. eval the ast_list
-            List *evaled_list = eval_list(ast_list, eval_env);
+            List *evaled_list = eval_list(ast_list, apply_env);
             if (evaled_list == NULL) {
                 out = NULL;
                 break;
@@ -536,22 +539,24 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             OWN(args);
             for (struct Node *node = evaled_list->head->next; node != NULL; node = node->next) {
                 Arr_add(args, node->value);
+                MalDatum_own(node->value); // hold onto argument values
+            }
+
+            // previous application's env is no longer needed after we have argument values
+            if (apply_env != env) {
+                MalEnv_free(apply_env);
+                apply_env = NULL;
             }
 
             // 3. apply TCO only if it's a non-lambda MAL procedure
             if (!proc->builtin && Proc_is_named(proc)) {
-                if (!tco) {
-                    // one-time creation of env for TCO
-                    eval_env = MalEnv_new(eval_env);
-                    eval_env->reachable = true;
-                    OWN(eval_env);
-                    tco = true;
-                }
-                // args will be put into eval_env
-                ast = eval_application_tco(proc, args, eval_env);
+                // args will be put into apply_env
+                apply_env = MalEnv_new(proc->env);
+                ast = eval_application_tco(proc, args, apply_env);
 
+                // release and free args
                 FREE(args);
-                Arr_freep(args, (free_t) MalDatum_free);
+                Arr_freep(args, (free_t) MalDatum_release_free);
 
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -560,28 +565,32 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 // 4. otherwise just return the result of procedure application
                 // builtin procedures do not get TCO
                 // unnamed procedures cannot be called recursively apriori
-                out = apply_proc(proc, args, eval_env);
+                out = apply_proc(proc, args, env);
                 MalDatum_own(out); // hack own
+
                 FREE(args);
-                Arr_freep(args, (free_t) MalDatum_free);
+                Arr_freep(args, (free_t) MalDatum_release_free);
+
                 FREE(evaled_list);
                 List_free(evaled_list);
+
                 MalDatum_release(out); // hack release
                 break;
             }
         }
         else { // AST is not a list
-            out = eval_ast(ast, eval_env);
+            out = eval_ast(ast, apply_env);
             break;
         }
-    }
+    } // end while
 
-    if (eval_env != env) {
+    // we might need to free the application env of the last tail call 
+    if (apply_env && apply_env != env) {
         // a hack to prevent the return value of a procedure to be freed (similar to let* hack)
         MalDatum_own(out); // hack own
 
-        FREE(eval_env);
-        MalEnv_free(eval_env);
+        FREE(apply_env);
+        MalEnv_free(apply_env);
 
         MalDatum_release(out); // hack release
     }

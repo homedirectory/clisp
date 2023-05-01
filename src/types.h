@@ -175,6 +175,7 @@ MalDatum *MalDatum_new_proc(Proc *);
 bool MalDatum_istype(const MalDatum *, MalType);
 bool MalDatum_islist(const MalDatum *);
 void MalDatum_free(MalDatum *);
+void MalDatum_release_free(MalDatum *);
 MalDatum *MalDatum_copy(const MalDatum *);
 MalDatum *MalDatum_deep_copy(const MalDatum *);
 
