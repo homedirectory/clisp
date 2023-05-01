@@ -55,12 +55,23 @@ bool List_eq(const List *, const List *);
  * 5. nil
  * 6. true
  * 7. false
- * 8. procedures
+ * 8. procedure
+ * 9. atom
  */
 typedef enum MalType {
-    INT, SYMBOL, LIST, 
+    // --- code & data ---
+    INT, 
+    SYMBOL, 
+    LIST, 
     EMPTY_LIST, // to use as a singleton
-    STRING, NIL, TRUE, FALSE, PROCEDURE,
+    STRING, // code-form may differ from data-form (e.g., escaped characters)
+    // --- only data ---
+    NIL, 
+    TRUE, 
+    FALSE, 
+    PROCEDURE,
+    ATOM,
+    //
     MT_COUNT
 } MalType;
 
@@ -139,6 +150,25 @@ char *Proc_name(const Proc *proc);
 
 bool Proc_is_named(const Proc *);
 
+
+// Atom -----------------------------------------------------------------------
+// An atom holds a reference to a single Mal value of any type; it supports
+// reading that Mal value and modifying the reference to point to another Mal
+// value. Note that this is the only Mal data type that is mutable
+typedef struct {
+    MalDatum *datum;
+} Atom;
+
+Atom *Atom_new(MalDatum *);
+void Atom_free(Atom *);
+Atom *Atom_copy(const Atom *);
+// 2 Atoms are equal only if they point to the same value
+bool Atom_eq(const Atom *, const Atom *);
+
+void Atom_reset(Atom *, MalDatum *);
+
+
+// MalDatum -------------------------------------------------------------------
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
 typedef struct MalDatum {
     long refc; // reference count
@@ -149,6 +179,7 @@ typedef struct MalDatum {
         List *list;
         char *string;
         Proc *proc;
+        Atom *atom;
     } value;
 } MalDatum;
 
@@ -171,6 +202,7 @@ MalDatum *MalDatum_new_sym(Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 MalDatum *MalDatum_new_proc(Proc *);
+MalDatum *MalDatum_new_atom(Atom *);
 
 bool MalDatum_istype(const MalDatum *, MalType);
 bool MalDatum_islist(const MalDatum *);

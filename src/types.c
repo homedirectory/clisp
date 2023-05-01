@@ -297,12 +297,84 @@ bool Proc_eq(const Proc *proc1, const Proc *proc2) {
     return proc1 == proc2;
 }
 
+
+// Atom -----------------------------------------------------------------------
+Atom *Atom_new(MalDatum *dtm)
+{
+    if (!dtm) {
+        LOG_NULL(dtm);
+        return NULL;
+    }
+
+    Atom *atom = malloc(sizeof(Atom));
+    atom->datum = dtm;
+    MalDatum_own(dtm);
+    return atom;
+}
+
+void Atom_free(Atom *atom)
+{
+    if (!atom) {
+        LOG_NULL(atom);
+        return;
+    }
+
+    MalDatum_release_free(atom->datum);
+    atom->datum = NULL;
+    free(atom);
+}
+
+Atom *Atom_copy(const Atom *atom)
+{
+    FATAL("UNIMPLEMENTED");
+}
+
+bool Atom_eq(const Atom *a1, const Atom *a2)
+{
+    if (!a1) {
+        LOG_NULL(a1);
+        return false;
+    }
+    if (!a2) {
+        LOG_NULL(a2);
+        return false;
+    }
+
+    return a1->datum == a2->datum;
+}
+
+void Atom_reset(Atom *atom, MalDatum *dtm) 
+{
+    if (!atom) {
+        LOG_NULL(atom);
+        return;
+    }
+    if (!dtm) {
+        LOG_NULL(dtm);
+        return;
+    }
+
+    if (atom->datum == dtm) return;
+
+    MalDatum_release_free(atom->datum);
+    atom->datum = dtm;
+    MalDatum_own(dtm);
+}
+
+
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
-    static char *names[] = {
-        "INT", "SYMBOL", "LIST", 
+    static char* const names[] = {
+        "INT", 
+        "SYMBOL", 
+        "LIST", 
         "EMPTY_LIST",
-        "STRING", "NIL", "TRUE", "FALSE", "PROCEDURE",
+        "STRING", 
+        "NIL", 
+        "TRUE", 
+        "FALSE", 
+        "PROCEDURE",
+        "ATOM",
         "*undefined*"
     };
 
@@ -383,6 +455,15 @@ MalDatum *MalDatum_new_proc(Proc *proc) {
     return mdp;
 }
 
+MalDatum *MalDatum_new_atom(Atom *atom)
+{
+    MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
+    mdp->type = ATOM;
+    mdp->value.atom = atom;
+    return mdp;
+}
+
 void MalDatum_own(MalDatum *datum) 
 {
     if (datum == NULL) {
@@ -448,6 +529,9 @@ void MalDatum_free(MalDatum *datum) {
         case PROCEDURE:
             Proc_free(datum->value.proc);
             break;
+        case ATOM:
+            Atom_free(datum->value.atom);
+            break;
         default:
             DEBUG("WTF? freeing %s", MalType_tostr(datum->type));
             break;
@@ -506,6 +590,9 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
         case PROCEDURE:
             out = MalDatum_new_proc(Proc_copy(datum->value.proc));
+            break;
+        case ATOM:
+            out = MalDatum_new_atom(Atom_copy(datum->value.atom));
             break;
         default:
             FATAL("unknown MalType");
@@ -583,6 +670,8 @@ bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
             return true;
         case PROCEDURE:
             return Proc_eq(md1->value.proc, md2->value.proc);
+        case ATOM:
+            return Atom_eq(md1->value.atom, md2->value.atom);
         default:
             FATAL("unknown MalType");
     }

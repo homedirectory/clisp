@@ -723,6 +723,48 @@ static MalDatum *mal_eval(const Proc *proc, const Arr *args, MalEnv *env)
     return eval(arg0, top_env);
 }
 
+// swap! : Takes an atom, a function, and zero or more function arguments. The
+// atom's value is modified to the result of applying the function with the atom's
+// value as the first argument and the optionally given function arguments as the
+// rest of the arguments. The new atom's value is returned.
+static MalDatum *mal_swap_bang(const Proc *proc, const Arr *args, MalEnv *env) {
+    Atom *atom;
+    {
+        MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, ATOM);
+        if (!arg0) return NULL;
+        atom = arg0->value.atom;
+    }
+
+    const Proc *applied_proc;
+    {
+        MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, PROCEDURE);
+        if (!arg1) return NULL;
+        applied_proc = arg1->value.proc;
+    }
+
+    Arr *proc_args = Arr_newn(1 + args->len - 2); // of *MalDatum
+    OWN(proc_args);
+
+    // use atom's value as the 1st argument 
+    Arr_add(proc_args, atom->datum);
+
+    for (size_t i = 2; i < args->len; i++) {
+        Arr_add(proc_args, args->items[i]);
+    }
+
+    MalDatum *rslt = NULL;
+
+    if (verify_proc_application(applied_proc, proc_args)) {
+        rslt = apply_proc(applied_proc, proc_args, env);
+        Atom_reset(atom, rslt);
+    }
+
+    FREE(proc_args);
+    Arr_free(proc_args);
+
+    return rslt;
+}
+
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
@@ -743,6 +785,9 @@ int main(int argc, char **argv) {
             Proc_builtin("slurp", 1, false, mal_slurp)));
     MalEnv_put(env, Symbol_new("eval"), MalDatum_new_proc(
             Proc_builtin("eval", 1, false, mal_eval)));
+
+    MalEnv_put(env, Symbol_new("swap!"), MalDatum_new_proc(
+            Proc_builtin("swap!", 2, true, mal_swap_bang)));
 
     core_def_procs(env);
 

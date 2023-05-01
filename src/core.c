@@ -388,6 +388,41 @@ static MalDatum *mal_env(const Proc *proc, const Arr *args, MalEnv *env)
     }
 }
 
+// atom : creates a new Atom
+static MalDatum *mal_atom(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_new_atom(Atom_new(arg0));
+}
+
+// atom?
+static MalDatum *mal_atomp(const Proc *proc, const Arr *args, MalEnv *env) {
+    return MalDatum_istype(args->items[0], ATOM) ? MalDatum_true() : MalDatum_false();
+}
+
+// deref : Takes an atom argument and returns the Mal value referenced by this atom.
+static MalDatum *mal_deref(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, ATOM);
+    if (!arg0) return NULL;
+
+    Atom *atom = arg0->value.atom;
+    return atom->datum;
+}
+
+// reset! : Takes an atom and a Mal value; the atom is modified to refer to the
+// given Mal value. The Mal value is returned.
+static MalDatum *mal_reset_bang(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, ATOM);
+    if (!arg0) return NULL;
+    Atom *atom = arg0->value.atom;
+
+    MalDatum *arg1 = Arr_get(args, 1);
+
+    Atom_reset(atom, arg1);
+
+    return arg1;
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -424,4 +459,9 @@ void core_def_procs(MalEnv *env)
     DEF("refc", 1, false, mal_refc);
     DEF("type", 1, false, mal_type);
     DEF("env", 0, false, mal_env);
+
+    DEF("atom", 1, false, mal_atom);
+    DEF("atom?", 1, false, mal_atomp);
+    DEF("deref", 1, false, mal_deref);
+    DEF("reset!", 2, false, mal_reset_bang);
 }

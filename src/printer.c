@@ -63,12 +63,19 @@ char *pr_str(MalDatum *datum, bool print_readably)
         case PROCEDURE:
             Proc *proc = datum->value.proc;
             if (proc->name) {
-                char *parts[3] = { "#<procedure:", proc->name, ">" };
+                char *parts[] = { "#<procedure:", proc->name, ">" };
                 str = str_join(parts, ARR_LEN(parts), "");
             }
             else {
                 str = dyn_strcpy("#<procedure>");
             }
+            break;
+        case ATOM:
+            Atom *atom = datum->value.atom;
+            char *dtm_str = pr_str(atom->datum, print_readably);
+            char *parts[] = { "(atom ", dtm_str, ")" };
+            str = str_join(parts, ARR_LEN(parts), "");
+            free(dtm_str);
             break;
         default:
             DEBUG("Unknown MalType %s", MalType_tostr(datum->type));
