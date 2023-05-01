@@ -7,6 +7,7 @@
 #include "common.h"
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/types.h>
 
 #define CAPACITY_INCR_RATIO 1.5
 #define DEFAULT_CAPACITY 10
@@ -138,6 +139,14 @@ const char *strchrs(const char *str, const char *chars) {
         ++str;
     }
     return NULL;
+}
+
+// returns the index of first occurence of c in str, otherwise -1
+ssize_t stridx(const char *str, char c)
+{
+    const char *s = str;
+    while (*str != '\0' && *str != c) str++;
+    return *str == c ? str - s : -1;
 }
 
 short escape_char(unsigned char c) 

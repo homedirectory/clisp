@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "common.h"
+#include <sys/types.h>
 
 // this is a dynamic array of pointers
 // it only makes sense to store pointers to dynamically allocated memory in this struct
@@ -36,6 +37,8 @@ int Arr_findf(const Arr *arr, const void *ptr, const equals_t);
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);
 const char *strchrs(const char *str, const char *chars);
+// returns the index of first occurence of c in str, otherwise -1
+ssize_t stridx(const char *str, char c);
 short escape_char(unsigned char c);
 unsigned char unescape_char(unsigned char c);
 char *str_escape(const char *src);

@@ -7,26 +7,12 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include "common.h"
+#include <sys/types.h>
 
 #define WHITESPACE_CHARS " \t\n\r"
 #define SYMBOL_INV_CHARS WHITESPACE_CHARS "[]{}('\"`,;)"
-
-/* 
- * parses an int from *str and stores it as a string in *out
- * returns the length of the parsed int (digits count + minus sign optionally) or -1 on failure
- */
-/*
-static int parse_int(const char *str, char *out) {
-    int d;
-    int ret = sscanf(str, "%d", &d);
-    if (ret == 0 || ret == EOF) {
-        return -1;
-    } else {
-        sprintf(out, "%d", d);
-        return strlen(out);
-    }
-}
-*/
+#define COMMENT_CHAR ';'
+#define COMMENT_CHARS ";"
 
 /*
  * Read characters from *str until one of characters in string *set is encountered or end
@@ -45,8 +31,8 @@ static char *parse_until(const char *str, const char *set) {
     }
 }
 
-// parses a string from *str that must start with '"'
-// the resulting string is wrapped with double quotes
+// parses a string from *str that must start with a double quote
+// the resulting string is wrapped in double quotes
 static char *parse_string(const char *str) {
     // str[0] is '"', so start from str + 1
     size_t i = 1;
@@ -67,7 +53,7 @@ static char *parse_string(const char *str) {
 }
 
 // transforms a string from a "reader form" to a "datum" form
-// by stripping surrounding doublequotes and translating escaped characters
+// by stripping surrounding doublequotes and unescaping characters
 static char *str_from_token(char *dst, const char *str)
 {
     size_t len = strlen(str);
@@ -100,8 +86,19 @@ static Arr *tokenize(const char *str) {
             continue;
         }
 
+        if (c == COMMENT_CHAR) {
+            // read the rest of the line
+            ssize_t idx = stridx(str + i + 1, '\n');
+            if (idx == -1)
+                break;
+            else {
+                i += idx + 1;
+                continue;
+            }
+        }
+
         char *tok; // token to be added
-        size_t n;  // read step
+        size_t n;  // read step (in bytes)
 
         // paren
         if (c == '(' || c == ')') {
@@ -118,12 +115,11 @@ static Arr *tokenize(const char *str) {
         }
 
         // TODO special characters
-        // TODO comments
 
         // int | symbol
         else {
-            // read until whitespace or paren
-            tok = parse_until(str + i, WHITESPACE_CHARS "()");
+            // read until whitespace, paren or comment
+            tok = parse_until(str + i, WHITESPACE_CHARS "()" COMMENT_CHARS);
             if (tok)
                 n = strlen(tok);
         }
