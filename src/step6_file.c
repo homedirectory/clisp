@@ -36,9 +36,35 @@ static MalDatum *read(const char* in) {
     return form;
 }
 
+static bool verify_proc_application(const Proc *proc, const Arr* args)
+{
+    char *proc_name = Proc_name(proc);
+
+    int argc = args->len;
+    // too few arguments?
+    if (argc < proc->argc) {
+        ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
+                proc_name, proc->argc, argc);
+        free(proc_name);
+        return false;
+    }
+    // too much arguments?
+    else if (!proc->variadic && argc > proc->argc) {
+        ERROR("procedure application: %s expects %d arguments, but %d were given", 
+                proc_name, proc->argc, argc);
+        free(proc_name);
+        return false;
+    }
+
+    free(proc_name);
+    return true;
+}
+
 // procedure application without TCO
 // args: array of *MalDatum (argument values)
 static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
+    if (!verify_proc_application(proc, args)) return NULL;
+
     if (proc->builtin) {
         return proc->logic.apply(proc, args, env);
     }
@@ -103,29 +129,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
 
 static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv *env)
 {
-    char *proc_name = Proc_name(proc);
-    OWN(proc_name);
-
-    int argc = args->len;
-    // too few arguments?
-    if (argc < proc->argc) {
-        ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
-                proc_name, proc->argc, argc);
-        FREE(proc_name);
-        free(proc_name);
-        return NULL;
-    }
-    // too much arguments?
-    else if (!proc->variadic && argc > proc->argc) {
-        ERROR("procedure application: %s expects %d arguments, but %d were given", 
-                proc_name, proc->argc, argc);
-        FREE(proc_name);
-        free(proc_name);
-        return NULL;
-    }
-
-    FREE(proc_name);
-    free(proc_name);
+    if (!verify_proc_application(proc, args)) return NULL;
 
     for (size_t i = 0; i < args->len; i++) {
         Symbol *param_name = Arr_get(proc->params, i);
@@ -566,7 +570,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 // builtin procedures do not get TCO
                 // unnamed procedures cannot be called recursively apriori
                 out = apply_proc(proc, args, env);
-                MalDatum_own(out); // hack own
+                if (out) MalDatum_own(out); // hack own
 
                 FREE(args);
                 Arr_freep(args, (free_t) MalDatum_release_free);
@@ -574,7 +578,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 FREE(evaled_list);
                 List_free(evaled_list);
 
-                MalDatum_release(out); // hack release
+                if (out) MalDatum_release(out); // hack release
                 break;
             }
         }
@@ -587,12 +591,12 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
     // we might need to free the application env of the last tail call 
     if (apply_env && apply_env != env) {
         // a hack to prevent the return value of a procedure to be freed (similar to let* hack)
-        MalDatum_own(out); // hack own
+        if (out) MalDatum_own(out); // hack own
 
         FREE(apply_env);
         MalEnv_free(apply_env);
 
-        MalDatum_release(out); // hack release
+        if (out) MalDatum_release(out); // hack release
     }
 
 #ifdef EVAL_STACK_DEPTH
