@@ -207,6 +207,7 @@ Proc *Proc_new(const char *name,
     proc->builtin = false;
     proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
     proc->env = env;
+    MalEnv_own(env);
     return proc;
 }
 
@@ -231,6 +232,7 @@ Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *bod
     proc->builtin = false;
     proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
     proc->env = env;
+    MalEnv_own(env);
     return proc;
 }
 
@@ -266,6 +268,8 @@ void Proc_free(Proc *proc) {
 
     if (proc->name) 
         free(proc->name);
+
+    MalEnv_release(proc->env);
 
     free(proc);
 }

@@ -9,7 +9,7 @@ typedef struct MalEnv {
     Arr *symbols; // of Symbol*
     Arr *datums;  // of MalDatum*
     struct MalEnv *enclosing;
-    bool reachable;
+    long refc; // reference count
 } MalEnv;
 
 // Creates a new environment that is enclosed by the given environment.
@@ -30,3 +30,7 @@ MalDatum *MalEnv_get(const MalEnv *env, const Symbol *sym);
 
 // returns the top-most enclosing environment of the given one
 MalEnv *MalEnv_enclosing_root(MalEnv *env);
+
+// reference counting
+void MalEnv_own(MalEnv *env);
+void MalEnv_release(MalEnv *env);

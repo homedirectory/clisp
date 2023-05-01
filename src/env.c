@@ -9,7 +9,8 @@ MalEnv *MalEnv_new(MalEnv *enclosing) {
     env->symbols = Arr_new();
     env->datums = Arr_new();
     env->enclosing = enclosing;
-    env->reachable = false;
+    MalEnv_own(enclosing);
+    env->refc = 0;
     return env;
 }
 
@@ -18,16 +19,18 @@ void MalEnv_free(MalEnv *env) {
         LOG_NULL(env);
         return;
     }
-    if (env->reachable) {
-        DEBUG("attempt to free a reachable MalEnv was prevented");
+    if (env->refc > 0) {
+        DEBUG("Refuse to free %p (refc %ld)", env, env->refc);
         return;
     }
-    Arr_freep(env->symbols, (free_t) Symbol_free);
-    for (size_t i = 0; i < env->datums->len; i++)
-        MalDatum_release(env->datums->items[i]);
 
-    Arr_freep(env->datums, (free_t) MalDatum_free);
-    // the enclosing env should not be freed
+    DEBUG("freeing MalEnv (refc = %ld)", env->refc);
+
+    Arr_freep(env->symbols, (free_t) Symbol_free);
+    Arr_freep(env->datums, (free_t) MalDatum_release_free);
+    // the enclosing env should not be freed, but simply released
+    if (env->enclosing)
+        MalEnv_release(env->enclosing);
     free(env);
 }
 
@@ -81,4 +84,26 @@ MalEnv *MalEnv_enclosing_root(MalEnv *env)
 {
     while (env->enclosing) env = env->enclosing;
     return env;
+}
+
+void MalEnv_own(MalEnv *env)
+{
+    if (!env) {
+        LOG_NULL(env);
+        return;
+    }
+
+    env->refc += 1;
+}
+
+void MalEnv_release(MalEnv *env)
+{
+    if (env == NULL) {
+        LOG_NULL(env);
+        return;
+    }
+    if (env->refc <= 0)
+        DEBUG("illegal attempt to decrement ref count = %ld", env->refc);
+
+    env->refc -= 1;
 }

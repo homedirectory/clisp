@@ -280,7 +280,6 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     }
 
     Proc *proc = Proc_new_lambda(proc_argc, variadic, param_names_symbols, body, env);
-    env->reachable = true;
 
     FREE(param_names_symbols);
     Arr_free(param_names_symbols);
@@ -581,7 +580,6 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
         // a hack to prevent the return value of a procedure to be freed (similar to let* hack)
         MalDatum_own(out); // hack own
 
-        eval_env->reachable = false;
         FREE(eval_env);
         MalEnv_free(eval_env);
 
@@ -716,7 +714,7 @@ static MalDatum *mal_eval(const Proc *proc, const Arr *args, MalEnv *env)
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
     OWN(env);
-    env->reachable = true;
+    MalEnv_own(env);
 
     // FIXME memory leak
     MalEnv_put(env, Symbol_new("nil"), MalDatum_nil());
@@ -767,7 +765,7 @@ int main(int argc, char **argv) {
         free(line);
     }
 
-    env->reachable = false;
+    MalEnv_release(env);
     FREE(env);
     MalEnv_free(env);
 }
