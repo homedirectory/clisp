@@ -444,6 +444,33 @@ static MalDatum *mal_cons(const Proc *proc, const Arr *args, MalEnv *env)
     return MalDatum_new_list(new_list);
 }
 
+// concat : concatenates given lists, if 0 arguments are given returns an empty list
+static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    if (args->len == 0) {
+        return MalDatum_empty_list();
+    }
+
+    List *lists[args->len];
+    for (size_t i = 0; i < args->len; i++) {
+        MalDatum *arg = Arr_get(args, i);
+        if (!MalDatum_islist(arg)) {
+            ERROR("concat: bad arg no. %zd, expected LIST", i + 1);
+            return NULL;
+        }
+        lists[i] = arg->value.list;
+    }
+
+    List *new_list = List_new();
+    for (size_t i = 0; i < args->len; i++) {
+        List *lst = lists[i];
+        for (struct Node *node = lst->head; node != NULL; node = node->next)
+            List_add(new_list, node->value);
+    }
+
+    return MalDatum_new_list(new_list);
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -487,4 +514,5 @@ void core_def_procs(MalEnv *env)
     DEF("reset!", 2, false, mal_reset_bang);
 
     DEF("cons", 2, false, mal_cons);
+    DEF("concat", 0, true, mal_concat);
 }
