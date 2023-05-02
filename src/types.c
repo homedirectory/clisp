@@ -205,9 +205,14 @@ Proc *Proc_new(const char *name,
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
-    proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+    {
+        Arr *proc_body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+        Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
+        proc->logic.body = proc_body;
+    }
     proc->env = env;
     MalEnv_own(env);
+
     return proc;
 }
 
@@ -230,7 +235,11 @@ Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *bod
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
-    proc->logic.body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+    {
+        Arr *proc_body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+        Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
+        proc->logic.body = proc_body;
+    }
     proc->env = env;
     MalEnv_own(env);
     return proc;
@@ -263,13 +272,14 @@ void Proc_free(Proc *proc) {
         // free params
         Arr_freep(proc->params, (free_t) Symbol_free);
         // free body
-        Arr_freep(proc->logic.body, (free_t) MalDatum_free);
+        Arr_freep(proc->logic.body, (free_t) MalDatum_release_free);
     }
 
     if (proc->name) 
         free(proc->name);
 
     MalEnv_release(proc->env);
+    MalEnv_free(proc->env);
 
     free(proc);
 }
@@ -484,8 +494,11 @@ void MalDatum_release(MalDatum *datum)
         LOG_NULL(datum);
         return;
     }
-    if (datum->refc <= 0)
-        DEBUG("illegal attempt to decrement ref count = %ld", datum->refc);
+    if (datum->refc <= 0) {
+        char *repr = pr_repr(datum);
+        FATAL("Invalid ref count %ld @ %p -> %s", datum->refc, datum, repr);
+        free(repr);
+    }
 
     datum->refc -= 1;
 
@@ -497,7 +510,7 @@ void MalDatum_release(MalDatum *datum)
 void MalDatum_free(MalDatum *datum) {
     if (datum == NULL) return;
     if (datum->refc > 0) {
-        DEBUG("Refuse to free %p with ref count = %ld", datum, datum->refc);
+        DEBUG("Refuse to free %p (refc %ld)", datum, datum->refc);
         return;
     }
 
@@ -543,6 +556,11 @@ void MalDatum_free(MalDatum *datum) {
 
 void MalDatum_release_free(MalDatum *dtm)
 {
+    if (dtm == NULL) {
+        LOG_NULL(dtm);
+        return;
+    }
+
     MalDatum_release(dtm);
     MalDatum_free(dtm);
 }

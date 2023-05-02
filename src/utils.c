@@ -114,6 +114,15 @@ int Arr_findf(const Arr *arr, const void *ptr, const equals_t eq) {
     return -1;
 }
 
+void Arr_foreach(const Arr *arr, const unary_void_t func)
+{
+    if (arr == NULL) FATAL("arr is NULL");
+
+    for (size_t i = 0; i < arr->len; i++) {
+        func(arr->items[i]);
+    }
+}
+
 // String utilities ----------------------------------------
 
 char *dyn_strcpy(const char *s) {

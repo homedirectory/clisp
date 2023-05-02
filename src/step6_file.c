@@ -281,7 +281,6 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     OWN(body);
     for (struct Node *node = list->head->next->next; node != NULL; node = node->next) {
         Arr_add(body, node->value);
-        MalDatum_own(node->value);
     }
 
     Proc *proc = Proc_new_lambda(proc_argc, variadic, param_names_symbols, body, env);

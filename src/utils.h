@@ -33,6 +33,9 @@ typedef bool (*equals_t)(const void*, const void*);
 // Finds *ptr in *arr using the equals? function eq
 int Arr_findf(const Arr *arr, const void *ptr, const equals_t);
 
+typedef void (*unary_void_t)(void*);
+void Arr_foreach(const Arr *arr, const unary_void_t func);
+
 // String utilities ----------------------------------------
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);
