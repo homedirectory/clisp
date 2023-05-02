@@ -183,8 +183,10 @@ typedef struct MalDatum {
     } value;
 } MalDatum;
 
-// manage ref count
+// *** functions for managing reference count of MalDatum
+// increments ref count (use when you need to *own* memory)
 void MalDatum_own(MalDatum *);
+// decrements ref count (use when you want to *release* owned memory)
 void MalDatum_release(MalDatum *);
 
 // singletons

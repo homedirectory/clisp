@@ -387,7 +387,6 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
 
     // 3. evaluate the expr using the let* env
     MalDatum *out = eval(expr, let_env);
-    OWN(out);
 
     // this is a hack
     // if the returned value was computed in let* bindings,
@@ -800,6 +799,9 @@ int main(int argc, char **argv) {
             env);
 
     rep("(load-file \"core.mal\")", env);
+
+    // TODO if the first arg is a filename, then eval (load-file <filename>)
+    // TODO bind *ARGV* to command line arguments
 
     read_history(HISTORY_FILE);
     // if (read_history(HISTORY_FILE) != 0) {
