@@ -1,0 +1,28 @@
+define parr
+  set var $n = $arg0->len
+  while $n > 0
+    set var $item = ($arg1*)$arg0->items[$n - 1]
+    print $item
+    print *$item
+    set var $n = $n - 1
+  end
+end
+
+document parr
+        parr ARR_POINTER DATA_TYPE
+        print an array of DATA_TYPE values
+end
+
+define plist
+    set var $node = $arg0->head
+    while $node
+        print $node->value
+        print *($node->value)
+        set var $node = $node->next
+    end
+end
+
+document plist
+    plist LIST_POINTER
+    print a list of MalDatum
+end
