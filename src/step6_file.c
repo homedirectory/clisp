@@ -543,7 +543,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             OWN(args);
             for (struct Node *node = evaled_list->head->next; node != NULL; node = node->next) {
                 Arr_add(args, node->value);
-                MalDatum_own(node->value); // hold onto argument values
+                // MalDatum_own(node->value); // hold onto argument values
             }
 
             // previous application's env is no longer needed after we have argument values
@@ -560,7 +560,8 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
 
                 // release and free args
                 FREE(args);
-                Arr_freep(args, (free_t) MalDatum_release_free);
+                // Arr_freep(args, (free_t) MalDatum_release_free);
+                Arr_free(args);
 
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -573,7 +574,8 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 if (out) MalDatum_own(out); // hack own
 
                 FREE(args);
-                Arr_freep(args, (free_t) MalDatum_release_free);
+                // Arr_freep(args, (free_t) MalDatum_release_free);
+                Arr_free(args);
 
                 FREE(evaled_list);
                 List_free(evaled_list);
