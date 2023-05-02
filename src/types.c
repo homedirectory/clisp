@@ -617,6 +617,9 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
     }
 
+    // this is a completely new object, so reset ref count to 0
+    out->refc = 0;
+
     return out;
 }
 
