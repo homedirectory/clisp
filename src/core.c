@@ -423,6 +423,27 @@ static MalDatum *mal_reset_bang(const Proc *proc, const Arr *args, MalEnv *env) 
     return arg1;
 }
 
+// cons : prepend a value to a list
+static MalDatum *mal_cons(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    List *list;
+    {
+        MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, LIST);
+        if (!arg1) return NULL;
+        list = arg1->value.list;
+    }
+
+    MalDatum *arg0 = Arr_get(args, 0);
+    List *new_list = List_new();
+    List_add(new_list, arg0);
+
+    for (struct Node *node = list->head; node != NULL; node = node->next) {
+        List_add(new_list, node->value);
+    }
+
+    return MalDatum_new_list(new_list);
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -464,4 +485,6 @@ void core_def_procs(MalEnv *env)
     DEF("atom?", 1, false, mal_atomp);
     DEF("deref", 1, false, mal_deref);
     DEF("reset!", 2, false, mal_reset_bang);
+
+    DEF("cons", 2, false, mal_cons);
 }
