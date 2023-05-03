@@ -22,3 +22,6 @@ step5_tco: step5_tco.c printer.c reader.c types.c utils.c env.c core.c mem_debug
 
 step6_file: step6_file.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
+
+step7_quote: step7_quote.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
+	$(CC) $(CFLAGS) $^ -lreadline -o $@
