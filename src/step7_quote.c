@@ -416,6 +416,137 @@ static MalDatum *eval_quote(const List *list, MalEnv *env) {
     return arg1;
 }
 
+// helper function for eval_quasiquote_list
+static MalDatum *eval_unquote(const List *list, MalEnv *env) 
+{
+    size_t argc = List_len(list) - 1;
+    if (argc != 1) {
+        ERROR("unquote expects 1 argument, but %zd were given", argc);
+        return NULL;
+    }
+
+    MalDatum *arg1 = List_ref(list, 1);
+    return eval(arg1, env);
+}
+
+// helper function for eval_quasiquote_list
+static List *eval_splice_unquote(const List *list, MalEnv *env) 
+{
+    size_t argc = List_len(list) - 1;
+    if (argc != 1) {
+        ERROR("splice-unquote expects 1 argument, but %zd were given", argc);
+        return NULL;
+    }
+
+    MalDatum *arg1 = List_ref(list, 1);
+    MalDatum *evaled = eval(arg1, env);
+    if (!MalDatum_islist(evaled)) {
+        ERROR("splice-unquote: resulting value must be a list, but was %s",
+                MalType_tostr(evaled->type));
+        MalDatum_free(evaled);
+        return NULL;
+    }
+    else {
+        return evaled->value.list;
+    }
+}
+
+// helper function for eval_quasiquote
+static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splice)
+{
+    if (List_isempty(list)) 
+        return MalDatum_empty_list();
+
+    MalDatum *ref0 = List_ref(list, 0);
+    if (MalDatum_istype(ref0, SYMBOL)) {
+        Symbol *sym = ref0->value.sym;
+
+        if (Symbol_eq_str(sym, "unquote")) {
+            return eval_unquote(list, env);
+        }
+        else if (Symbol_eq_str(sym, "splice-unquote")) {
+            List *evaled = eval_splice_unquote(list, env);
+            if (!evaled)  {
+                return NULL;
+            } 
+            else {
+                *splice = true;
+                return MalDatum_new_list(evaled);
+            }
+        }
+    }
+
+    List *out_list = List_new();
+
+    for (struct Node *node = list->head; node != NULL; node = node->next) {
+        MalDatum *dtm = node->value;
+
+        if (MalDatum_islist(dtm)) { // recurse
+            bool _splice = false;
+            MalDatum *evaled = eval_quasiquote_list(dtm->value.list, env, &_splice);
+            if (!evaled) {
+                List_free(out_list);
+                return NULL;
+            }
+            if (_splice) {
+                List_append(out_list, evaled->value.list);
+            }
+            else {
+                List_add(out_list, evaled);
+            }
+        }
+        else { // not a list
+            List_add(out_list, dtm);
+        }
+    }
+
+    return MalDatum_new_list(out_list);
+}
+
+// quasiquote : This allows a quoted list to have internal elements of the list
+// that are temporarily unquoted (normal evaluation). There are two special forms
+// that only mean something within a quasiquoted list: unquote and splice-unquote.
+
+// some examples:
+// (quasiquote (unquote 1))                 -> 1
+// (def! lst (quote (b c)))
+// (quasiquote (a (unquote lst) d))         -> (a (b c) d)
+// (quasiquote (a (splice-unquote lst) d))  -> (a b c d)
+// (quasiquote (a (and (unquote lst)) d))   -> (a (and (b c)) d)
+
+// splice-unquote may only appear in an enclosing list form:
+// (quasiquote (splice-unquote (list 1 2)))   -> ERROR!
+// (quasiquote ((splice-unquote (list 1 2)))) -> (1 2)
+static MalDatum *eval_quasiquote(const List *list, MalEnv *env) 
+{
+    size_t argc = List_len(list) - 1;
+    if (argc != 1) {
+        ERROR("quasiquote expects 1 argument, but %zd were given", argc);
+        return NULL;
+    }
+
+    MalDatum *ast = List_ref(list, 1);
+    if (!MalDatum_islist(ast))
+        return ast;
+
+    const List *ast_list = ast->value.list;
+    if (List_isempty(ast_list)) 
+        return ast;
+
+    // splice-unquote may only appear in an enclosing list form
+    MalDatum *ast0 = List_ref(ast_list, 0);
+    if (MalDatum_istype(ast0, SYMBOL)) {
+        Symbol *sym = ast0->value.sym;
+        if (Symbol_eq_str(sym, "splice-unquote")) {
+            ERROR("splice-unquote: illegal context within quasiquote");
+            return NULL;
+        }
+    }
+
+    MalDatum *out = eval_quasiquote_list(ast_list, env, NULL);
+    return out;
+}
+
 // returns a new list that is the result of calling EVAL on each list element
 List *eval_list(const List *list, MalEnv *env) {
     if (list == NULL) {
@@ -498,7 +629,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
 
             MalDatum *head = List_ref(ast_list, 0);
-            // handle special forms: def!, let*, if, do, fn*, quote
+            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote
             if (MalDatum_istype(head, SYMBOL)) {
                 Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
@@ -528,6 +659,10 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 }
                 else if (Symbol_eq_str(sym, "quote")) {
                     out = eval_quote(ast_list, apply_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "quasiquote")) {
+                    out = eval_quasiquote(ast_list, apply_env);
                     break;
                 }
             }

@@ -31,6 +31,8 @@ void List_free(List *);
 void List_shlw_free(List *);
 
 void List_add(List *, MalDatum *);
+void List_append(List *dst, const List *src);
+
 MalDatum *List_ref(const List *, size_t);
 
 List *List_empty();

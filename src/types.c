@@ -94,6 +94,22 @@ void List_add(List *list, MalDatum *datum) {
     list->len += 1;
 }
 
+void List_append(List *dst, const List *src)
+{
+    if (dst == NULL) {
+        LOG_NULL(dst);
+        return;
+    }
+    if (src == NULL) {
+        LOG_NULL(src);
+        return;
+    }
+
+    for (struct Node *node = src->head; node != NULL; node = node->next) {
+        List_add(dst, node->value);
+    }
+}
+
 MalDatum *List_ref(const List *list, size_t idx) { 
     if (list == NULL) {
         LOG_NULL(list);
