@@ -404,6 +404,18 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     return out;
 }
 
+// quote : this special form returns its argument without evaluating it
+static MalDatum *eval_quote(const List *list, MalEnv *env) {
+    size_t argc = List_len(list) - 1;
+    if (argc != 1) {
+        ERROR("quote expects 1 argument, but %zd were given", argc);
+        return NULL;
+    }
+
+    MalDatum *arg1 = List_ref(list, 1);
+    return arg1;
+}
+
 // returns a new list that is the result of calling EVAL on each list element
 List *eval_list(const List *list, MalEnv *env) {
     if (list == NULL) {
@@ -486,7 +498,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
 
             MalDatum *head = List_ref(ast_list, 0);
-            // handle special forms: def!, let*, if, do, fn*
+            // handle special forms: def!, let*, if, do, fn*, quote
             if (MalDatum_istype(head, SYMBOL)) {
                 Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
@@ -512,6 +524,10 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 }
                 else if (Symbol_eq_str(sym, "fn*")) {
                     out = eval_fnstar(ast_list, apply_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "quote")) {
+                    out = eval_quote(ast_list, apply_env);
                     break;
                 }
             }
@@ -624,17 +640,21 @@ static void rep(const char *str, MalEnv *env) {
     // eval
     // TODO implement a stack trace of error messages
     MalDatum *e = eval(r, env);
+    if (!e) return;
+    MalDatum_own(e); // prevent from being freed before printing
+
     MalDatum_free(r);
 
     // print
     char *p = print(e);
-    // the evaled value can be either discarded (e.g., (+ 1 2) => 3)
-    // or owned by something (e.g., (def! x 5) => 5)
-    MalDatum_free(e);
     if (p != NULL) { 
         printf("%s\n", p);
         free(p);
     }
+
+    // the evaled value can be either discarded (e.g., (+ 1 2) => 3)
+    // or owned by something (e.g., (def! x 5) => 5)
+    MalDatum_release_free(e);
 }
 
 // TODO reorganise file structure and move to core.c
