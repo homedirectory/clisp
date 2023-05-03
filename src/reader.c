@@ -13,6 +13,10 @@
 #define SYMBOL_INV_CHARS WHITESPACE_CHARS "[]{}('\"`,;)"
 #define COMMENT_CHAR ';'
 #define COMMENT_CHARS ";"
+#define QUOTE_MACRO_CHAR '\''
+#define QUASIQUOTE_MACRO_CHAR '`'
+#define UNQUOTE_MACRO_CHAR '~'
+#define SPLICE_UNQUOTE_MACRO_STR "~@" // very fragile parsing, be careful if you change it
 
 /*
  * Read characters from *str until one of characters in string *set is encountered or end
@@ -113,9 +117,24 @@ static Arr *tokenize(const char *str) {
                 n = strlen(tok);
             }
         }
-
-        // TODO special characters
-
+        // quote & quasiquote macros
+        else if (c == QUOTE_MACRO_CHAR || c == QUASIQUOTE_MACRO_CHAR) {
+            tok = malloc(2);
+            sprintf(tok, "%c", c);
+            n = 1;
+        }
+        // unquote & splice-unquote macro
+        else if (c == UNQUOTE_MACRO_CHAR) {
+            if (str[i + 1] == SPLICE_UNQUOTE_MACRO_STR[1]) {
+                tok = dyn_strcpy(SPLICE_UNQUOTE_MACRO_STR);
+                n = 2;
+            } 
+            else {
+                tok = malloc(2);
+                sprintf(tok, "%c", UNQUOTE_MACRO_CHAR);
+                n = 1;
+            }
+        }
         // int | symbol
         else {
             // read until whitespace, paren or comment
@@ -141,14 +160,12 @@ Reader *read_str(const char *str) {
     if (tokens == NULL)
         return NULL;
 
-    /*
 #ifdef _MAL_TRACE
     puts("tokens:");
     for (size_t i = 0; i < tokens->len; i++) {
         printf("%s\n", (char*) tokens->items[i]);
     }
 #endif
-*/
 
     Reader *rdr = malloc(sizeof(Reader));
     rdr->pos = 0;
@@ -234,13 +251,64 @@ static MalDatum *read_list(Reader *rdr) {
 
 MalDatum *read_form(Reader *rdr) {
     const char *token = Reader_next(rdr);
+    if (!token) { // no more tokens
+        return NULL;
+    }
     // list
-    if (token[0] == '(') {
+    else if (token[0] == '(') {
         return read_list(rdr);
     } 
     else if (token[0] == ')') {
         ERROR("unbalanced closing paren '%c'", token[0]);
         return NULL;
+    }
+    // quote macro
+    else if (token[0] == QUOTE_MACRO_CHAR) {
+        MalDatum *next_form = read_form(rdr);
+        if (!next_form) {
+            ERROR("bad syntax: stray quote (%c)", QUOTE_MACRO_CHAR);
+            return NULL;
+        }
+        List *list = List_new();
+        List_add(list, MalDatum_new_sym(Symbol_new("quote")));
+        List_add(list, next_form);
+        return MalDatum_new_list(list);
+    }
+    // quasiquote macro
+    else if (token[0] == QUASIQUOTE_MACRO_CHAR) {
+        MalDatum *next_form = read_form(rdr);
+        if (!next_form) {
+            ERROR("bad syntax: stray quasiquote (%c)", QUASIQUOTE_MACRO_CHAR);
+            return NULL;
+        }
+        List *list = List_new();
+        List_add(list, MalDatum_new_sym(Symbol_new("quasiquote")));
+        List_add(list, next_form);
+        return MalDatum_new_list(list);
+    }
+    // splice-unquote macro
+    else if (strcmp(token, SPLICE_UNQUOTE_MACRO_STR) == 0) {
+        MalDatum *next_form = read_form(rdr);
+        if (!next_form) {
+            ERROR("bad syntax: stray splice-unquote (%s)", SPLICE_UNQUOTE_MACRO_STR);
+            return NULL;
+        }
+        List *list = List_new();
+        List_add(list, MalDatum_new_sym(Symbol_new("splice-unquote")));
+        List_add(list, next_form);
+        return MalDatum_new_list(list);
+    }
+    // unquote macro
+    else if (token[0] == UNQUOTE_MACRO_CHAR) {
+        MalDatum *next_form = read_form(rdr);
+        if (!next_form) {
+            ERROR("bad syntax: stray unquote (%c)", UNQUOTE_MACRO_CHAR);
+            return NULL;
+        }
+        List *list = List_new();
+        List_add(list, MalDatum_new_sym(Symbol_new("unquote")));
+        List_add(list, next_form);
+        return MalDatum_new_list(list);
     }
     // atom
     // TODO allow multiple atoms (in a top-level expression)
