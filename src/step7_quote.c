@@ -538,7 +538,7 @@ static MalDatum *eval_quasiquote(const List *list, MalEnv *env)
     if (MalDatum_istype(ast0, SYMBOL)) {
         Symbol *sym = ast0->value.sym;
         if (Symbol_eq_str(sym, "splice-unquote")) {
-            ERROR("splice-unquote: illegal context within quasiquote");
+            ERROR("splice-unquote: illegal context within quasiquote (nothing to splice into)");
             return NULL;
         }
     }
