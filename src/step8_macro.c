@@ -663,6 +663,70 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
     return out;
 }
 
+static MalDatum *macroexpand_single(MalDatum *ast, MalEnv *env)
+{
+    if (!MalDatum_islist(ast)) return ast;
+
+    List *ast_list = ast->value.list;
+    if (List_isempty(ast_list)) return ast;
+
+    // this is a macro call if the first list element is a symbol that's bound to a macro procedure
+    const Proc *macro = NULL;
+    {
+        MalDatum *ref0 = List_ref(ast_list, 0);
+        if (!MalDatum_istype(ref0, SYMBOL)) return ast;
+
+        const Symbol *sym = ref0->value.sym;
+        const MalDatum *datum = MalEnv_get(env, sym);
+        if (datum && MalDatum_istype(datum, PROCEDURE)) {
+            const Proc *proc = datum->value.proc;
+            if (!Proc_is_macro(proc)) return ast;
+            else macro = proc; 
+        }
+        else return ast;
+    }
+
+    Arr *args = Arr_newn(List_len(ast_list) - 1);
+    for (struct Node *node = ast_list->head->next; node != NULL; node = node->next) {
+        Arr_add(args, node->value);
+    }
+
+    MalDatum *out = apply_proc(macro, args, env);
+
+    if (out) MalDatum_own(out); // hack own
+    Arr_free(args);
+    if (out) MalDatum_release(out); // hack release
+
+    return out;
+}
+
+static MalDatum *macroexpand(MalDatum *ast, MalEnv *env)
+{
+    MalDatum *out = ast;
+
+    while (1) {
+        MalDatum *expanded = macroexpand_single(out, env);
+        if (!expanded) return NULL;
+        else if (expanded == out) return out;
+        else out = expanded;
+    }
+
+    return out;
+}
+
+// 'macroexpand' special form
+static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
+{
+    size_t argc = List_len(ast_list) - 1;
+    if (argc != 1) {
+        ERROR("macroexpand expects 1 argument, but %zu were given", argc);
+        return NULL;
+    }
+
+    MalDatum *arg1 = List_ref(ast_list, 1);
+    return macroexpand(arg1, env);
+}
+
 #ifdef EVAL_STACK_DEPTH
 static int eval_stack_depth = 0; 
 #endif
@@ -680,6 +744,17 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
 
     while (ast) {
         if (MalDatum_islist(ast)) {
+            MalDatum *expanded = macroexpand(ast, env);
+            if (!expanded) break;
+            else if (expanded != ast && !MalDatum_islist(expanded)) {
+                out = eval_ast(expanded, env);
+                break;
+            }
+            else {
+                // expanded == ast OR expanded is a list
+                ast = expanded;
+            }
+
             List *ast_list = ast->value.list;
             if (List_isempty(ast_list)) {
                 out = MalDatum_empty_list();
