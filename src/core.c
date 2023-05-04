@@ -187,12 +187,70 @@ static MalDatum *mal_list_ref(const Proc *proc, const Arr *args, MalEnv *env)
         ERROR("list-ref: expected non-negative index");
         return NULL;
     }
-    if (idx >= List_len(list)) {
-        ERROR("list-ref: index too large");
+    size_t list_len = List_len(list);
+    if (idx >= list_len) {
+        ERROR("list-ref: index too large (%d >= %zu)", idx, list_len);
         return NULL;
     }
 
     return List_ref(list, idx);
+}
+
+static MalDatum *mal_list_rest(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, LIST);
+    if (!arg0) return NULL;
+
+    List *list = arg0->value.list;
+
+    if (List_isempty(list)) {
+        ERROR("list-rest: received an empty list");
+        return NULL;
+    }
+
+    List *out = List_new();
+    for (struct Node *node = list->head->next; node != NULL; node = node->next)
+        List_add(out, node->value);
+
+    return MalDatum_new_list(out);
+}
+
+// nth : takes a list (or vector) and a number (index) as arguments, returns
+// the element of the list/vector at the given index. If the index is out of range,
+// then an error is raised.
+static MalDatum *mal_nth(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    if (MalDatum_islist(arg0)) {
+        return mal_list_ref(proc, args, env);
+    }
+    // else if (MalDatum_istype(arg0, VECTOR)) {
+    //     return mal_vec_ref(proc, args, env);
+    // }
+    else {
+        ERROR("nth: bad 1st arg: expected LIST or VECTOR, but was %s",
+                MalType_tostr(arg0->type));
+        return NULL;
+    }
+}
+
+// rest : takes a list (or vector) as its argument and returns a new list/vector
+//     containing all the elements except the first. If the list/vector is empty
+//     empty then an error is raised.
+static MalDatum *mal_rest(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = Arr_get(args, 0);
+    if (MalDatum_islist(arg0)) {
+        return mal_list_rest(proc, args, env);
+    }
+    // else if (MalDatum_istype(arg0, VECTOR)) {
+    //     return mal_vec_rest(proc, args, env);
+    // }
+    else {
+        ERROR("rest: bad 1st arg: expected LIST or VECTOR, but was %s",
+                MalType_tostr(arg0->type));
+        return NULL;
+    }
 }
 
 // prn: calls pr_str on each argument with print_readably set to true, joins the
@@ -500,6 +558,10 @@ void core_def_procs(MalEnv *env)
     DEF("empty?", 1, false, mal_emptyp);
     DEF("count", 1, false, mal_count);
     DEF("list-ref", 2, false, mal_list_ref);
+    DEF("list-rest", 1, false, mal_list_rest);
+
+    DEF("nth", 2, false, mal_nth);
+    DEF("rest", 1, false, mal_rest);
 
     DEF("prn", 0, true, mal_prn);
     DEF("pr-str", 0, true, mal_pr_str);

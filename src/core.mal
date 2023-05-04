@@ -3,4 +3,6 @@
 (def! <  (fn* (x y) (not (>= x y))))
 (def! <= (fn* (x y) (if (= x y) true (< x y))))
 
+(def! first (fn* (seq) (nth seq 0)))
+
 (def! tco (fn* (x acc) (if (= x 0) acc (tco (- x 1) (+ x acc)))))
