@@ -762,7 +762,8 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
 
             MalDatum *head = List_ref(ast_list, 0);
-            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote, defmacro!
+            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote, 
+            // defmacro!, macroexpand
             if (MalDatum_istype(head, SYMBOL)) {
                 Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
@@ -800,6 +801,10 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 }
                 else if (Symbol_eq_str(sym, "quasiquote")) {
                     out = eval_quasiquote(ast_list, apply_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "macroexpand")) {
+                    out = eval_macroexpand(ast_list, apply_env);
                     break;
                 }
             }
