@@ -62,13 +62,16 @@ char *pr_str(MalDatum *datum, bool print_readably)
             break;
         case PROCEDURE:
             Proc *proc = datum->value.proc;
+            char *type = dyn_strcpy(Proc_is_macro(proc) ? "macro" : "procedure");
             if (proc->name) {
-                char *parts[] = { "#<procedure:", proc->name, ">" };
+                char *parts[] = { "#<", type, ":", proc->name, ">" };
                 str = str_join(parts, ARR_LEN(parts), "");
             }
             else {
-                str = dyn_strcpy("#<procedure>");
+                char *parts[] = { "#<", type, ">" };
+                str = str_join(parts, ARR_LEN(parts), "");
             }
+            free(type);
             break;
         case ATOM:
             Atom *atom = datum->value.atom;
