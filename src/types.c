@@ -221,6 +221,7 @@ Proc *Proc_new(const char *name,
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
+    proc->macro = false;
     {
         Arr *proc_body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
         Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
@@ -238,6 +239,7 @@ Proc *Proc_builtin(const char *name, int argc, bool variadic, const builtin_appl
     proc->argc = argc;
     proc->variadic = variadic;
     proc->builtin = true;
+    proc->macro = false;
     proc->logic.apply = apply;
     proc->env = NULL;
     return proc;
@@ -251,6 +253,7 @@ Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *bod
     proc->variadic = variadic;
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
+    proc->macro = false;
     {
         Arr *proc_body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
         Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
@@ -276,6 +279,11 @@ char *Proc_name(const Proc *proc)
 bool Proc_is_named(const Proc *proc)
 {
     return proc->name != NULL;
+}
+
+bool Proc_is_macro(const Proc *proc)
+{
+    return proc->macro;
 }
 
 void Proc_free(Proc *proc) {

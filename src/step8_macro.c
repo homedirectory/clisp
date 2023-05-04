@@ -327,6 +327,64 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
     return new_assoc;
 }
 
+// (defmacro! id <fn*-expr>)
+static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
+    size_t argc = List_len(list) - 1;
+    if (argc != 2) {
+        ERROR("defmacro! expects 2 arguments, but %zu were given", argc);
+        return NULL;
+    }
+
+    const MalDatum *arg1 = List_ref(list, 1);
+    if (!(MalDatum_istype(arg1, SYMBOL))) {
+        ERROR("defmacro!: 1st arg must be a symbol, but was %s", MalType_tostr(arg1->type));
+        return NULL;
+    }
+    Symbol *id = arg1->value.sym;
+
+    MalDatum *macro_datum = NULL;
+    {
+        MalDatum *arg2 = List_ref(list, 2);
+        if (!MalDatum_islist(arg2)) {
+            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            return NULL;
+        }
+
+        const List *arg2_list = arg2->value.list;
+        if (List_isempty(arg2_list)) {
+            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            return NULL;
+        }
+        const MalDatum *arg2_list_ref0 = List_ref(arg2_list, 0);
+        if (!MalDatum_istype(arg2_list_ref0, SYMBOL)) {
+            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            return NULL;
+        }
+        const Symbol *sym = arg2_list_ref0->value.sym;
+        if (!Symbol_eq_str(sym, "fn*")) {
+            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            return NULL;
+        }
+        MalDatum *evaled = eval(arg2, env);
+        if (!evaled) return NULL;
+        if (!MalDatum_istype(evaled, PROCEDURE)) {
+            MalDatum_free(evaled);
+            ERROR("defmacro!: 2nd arg must evaluate to a procedure");
+            return NULL;
+        }
+        macro_datum = evaled;
+    }
+
+    if (!macro_datum) return NULL;
+
+    Proc *macro_proc = macro_datum->value.proc;
+    macro_proc->macro = true;
+
+    MalEnv_put(env, Symbol_copy(id), macro_datum);
+
+    return macro_datum;
+}
+
 /* (let* (bindings) expr) 
  * bindings := (id val ...) // must have an even number of elements 
  */
@@ -629,11 +687,15 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
 
             MalDatum *head = List_ref(ast_list, 0);
-            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote
+            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote, defmacro!
             if (MalDatum_istype(head, SYMBOL)) {
                 Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
                     out = eval_def(ast_list, apply_env);
+                    break;
+                }
+                if (Symbol_eq_str(sym, "defmacro!")) {
+                    out = eval_defmacro(ast_list, apply_env);
                     break;
                 }
                 else if (Symbol_eq_str(sym, "let*")) {

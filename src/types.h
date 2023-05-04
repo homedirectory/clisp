@@ -102,7 +102,6 @@ typedef struct MalEnv MalEnv; // from env.h
 // args - array of *MalDatum
 typedef MalDatum* (*builtin_apply_t)(const Proc*, const Arr *args, MalEnv *env);
 
-// TODO store the name
 struct Proc {
     char *name;
     int argc; // amount of mandatory arguments
@@ -113,6 +112,7 @@ struct Proc {
      */
     Arr *params; // of *Symbol (makes sense only for MAL procedures) 
     bool builtin;
+    bool macro;
     union {
         Arr *body; // of *MalDatum
         builtin_apply_t apply; // function pointer for built-in procedures
@@ -151,6 +151,7 @@ bool Proc_eq(const Proc *, const Proc *);
 char *Proc_name(const Proc *proc);
 
 bool Proc_is_named(const Proc *);
+bool Proc_is_macro(const Proc *);
 
 
 // Atom -----------------------------------------------------------------------
