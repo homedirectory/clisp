@@ -68,6 +68,11 @@ void *Arr_get(const Arr *arr, size_t idx) {
     return arr->items[idx];
 }
 
+void *Arr_last(const Arr *arr)
+{
+    return arr->len == 0 ? NULL : arr->items[arr->len - 1];
+}
+
 void Arr_free(Arr *arr) {
     free(arr->items);
     free(arr);

@@ -1004,32 +1004,40 @@ static void rep(const char *str, MalEnv *env) {
 
 // TODO reorganise file structure and move to core.c
 /* apply : applies a procedure to the list of arguments 
- * (apply proc args-list) */
+ * (apply proc <interm> arg-list) 
+ * if <interm> (intermediate arguments) are present, they are simply consed onto arg-list;
+ * for example: (apply f a b '(c d)) <=> (apply f '(a b c d))
+ * */
 static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
 {
-    MalDatum *proc_arg = Arr_get(args, 0);
-    if (!MalDatum_istype(proc_arg, PROCEDURE)) {
-        ERROR("apply: bad 1st arg: expected a procedure");
+    const MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, PROCEDURE);
+    if (!arg0) return NULL;
+    const Proc *f = arg0->value.proc;
+
+    const MalDatum *arg_last = Arr_last(args);
+    if (!MalDatum_islist(arg_last)) {
+        ERROR("apply: bad last arg: expected a list");
         return NULL;
     }
+    const List *arg_list = arg_last->value.list;
 
-    MalDatum *list_arg = Arr_get(args, 1);
-    if (!MalDatum_islist(list_arg)) {
-        ERROR("apply: bad 2nd arg: expected a list");
-        return NULL;
-    }
+    size_t interm_argc = args->len - 2;
 
-    Proc *applied_proc = proc_arg->value.proc;
-    List *list = list_arg->value.list;
-
-    Arr *args_arr = Arr_newn(List_len(list)); // of *MalDatum
+    Arr *args_arr = Arr_newn(List_len(arg_list) + interm_argc);
     OWN(args_arr);
 
-    for (struct Node *node = list->head; node != NULL; node = node->next) {
+    // first intermediate arguments
+    if (interm_argc > 0) {
+        for (size_t i = 1; i < 1 + interm_argc; i++) {
+            Arr_add(args_arr, Arr_get(args, i));
+        }
+    }
+    // now arg-list
+    for (struct Node *node = arg_list->head; node != NULL; node = node->next) {
         Arr_add(args_arr, node->value);
     }
 
-    MalDatum *rslt = apply_proc(applied_proc, args_arr, env);
+    MalDatum *rslt = apply_proc(f, args_arr, env);
 
     FREE(args_arr);
     Arr_free(args_arr);
@@ -1142,7 +1150,7 @@ int main(int argc, char **argv) {
     MalEnv_put(env, Symbol_new("false"), MalDatum_false());
 
     MalEnv_put(env, Symbol_new("apply"), MalDatum_new_proc(
-                Proc_builtin("apply", 2, false, mal_apply)));
+                Proc_builtin("apply", 2, true, mal_apply)));
 
     MalEnv_put(env, Symbol_new("read-string"), MalDatum_new_proc(
             Proc_builtin("read-string", 1, false, mal_read_string)));

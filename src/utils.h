@@ -27,6 +27,7 @@ Arr *Arr_copy(const Arr *arr, const copier_t copier);
 size_t Arr_add(Arr*, void*);
 void *Arr_replace(Arr*, size_t, void*);
 void *Arr_get(const Arr*, size_t idx);
+void *Arr_last(const Arr*);
 int Arr_find(const Arr*, const void*);
 
 typedef bool (*equals_t)(const void*, const void*);
