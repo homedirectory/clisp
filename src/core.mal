@@ -6,3 +6,10 @@
 (def! first (fn* (seq) (nth seq 0)))
 
 (def! tco (fn* (x acc) (if (= x 0) acc (tco (- x 1) (+ x acc)))))
+
+(defmacro! cond (fn* (head & tail)
+    `(if ~(first head)
+         ~(list-ref head 1)
+         ~(if (empty? tail)
+              `nil
+              (apply cond tail)))))
