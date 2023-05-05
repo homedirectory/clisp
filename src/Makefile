@@ -28,3 +28,6 @@ step7_quote: step7_quote.c printer.c reader.c types.c utils.c env.c core.c mem_d
 
 step8_macros: step8_macros.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
+
+step9_try: step9_try.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
+	$(CC) $(CFLAGS) $^ -lreadline -o $@
