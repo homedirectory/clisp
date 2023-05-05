@@ -182,8 +182,14 @@ void Exception_free(Exception *);
 Exception *Exception_copy(const Exception *);
 bool Exception_eq(const Exception *, const Exception *);
 
-void Exception_last_store(const char *msg);
+void Exception_last_store(const char *fmt, /*args*/ ...);
 Exception *Exception_last_copy();
+
+#define ERROR(fmt, ...) do { \
+    LOG("ERROR: " fmt, ##__VA_ARGS__); \
+    Exception_last_store(fmt, ##__VA_ARGS__); \
+} while (0);
+
 
 // MalDatum -------------------------------------------------------------------
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */

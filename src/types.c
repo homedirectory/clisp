@@ -9,7 +9,7 @@
 #include "mem_debug.h"
 #include <assert.h>
 #include "printer.h"
-
+#include <stdarg.h>
 
 List *List_new() {
     List *list = malloc(sizeof(List));
@@ -434,18 +434,26 @@ static Exception _Exception_last = {
     .msg = NULL
 };
 
-void Exception_last_store(const char *msg)
+void Exception_last_store(const char *fmt, ...)
 {
     if (_Exception_last.msg) {
         free(_Exception_last.msg);
     }
-    _Exception_last.msg = dyn_strcpy(msg);
+
+    char buf[2048]; // TODO fix rigid limit
+
+    va_list va;
+    va_start(va, fmt);
+    vsprintf(buf, fmt, va);
+    va_end(va);
+
+    _Exception_last.msg = dyn_strcpy(buf);
 }
 
 Exception *Exception_last_copy()
 {
     if (!_Exception_last.msg) {
-        LOG_NULL(_Excetpion_last.msg);
+        LOG_NULL(_Exception_last.msg);
     }
     return Exception_copy(&_Exception_last);
 }

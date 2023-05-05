@@ -727,6 +727,70 @@ static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
     return macroexpand(arg1, env);
 }
 
+// 'try*' special form
+// (try* <expr1> (catch* <symbol> <expr2>))
+// if <expr1> raises an error, then the error is bound to <symbol> and <expr2> is evaluated
+static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
+{
+    size_t argc = List_len(ast_list) - 1;
+    if (argc != 2) {
+        ERROR("try* expects 2 arguments, but %zu were given", argc);
+        return NULL;
+    }
+
+    MalDatum *expr1 = List_ref(ast_list, 1);
+    MalDatum *catch_form = List_ref(ast_list, 2);
+    // validate catch_form
+    Symbol *err_sym = NULL;
+    MalDatum *expr2 = NULL;
+    {
+        if (!MalDatum_islist(catch_form)) {
+            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            return NULL;
+        }
+        List *catch_list = catch_form->value.list;
+
+        if (List_len(catch_list) != 3) {
+            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            return NULL;
+        }
+
+        // validate (catch* ...)
+        MalDatum *catch0 = List_ref(catch_list, 0);
+        if (!MalDatum_istype(catch0, SYMBOL) 
+                || !Symbol_eq_str(catch0->value.sym, "catch*")) 
+        {
+            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            return NULL;
+        }
+
+        MalDatum *catch1 = List_ref(catch_list, 1);
+        if (!MalDatum_istype(catch1, SYMBOL)) {
+            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            return NULL;
+        }
+
+        err_sym = catch1->value.sym;
+        expr2 = List_ref(catch_list, 2);
+    }
+
+    MalDatum *expr1_rslt = eval(expr1, env);
+    if (expr1_rslt) { return expr1_rslt; }
+    else {
+        MalEnv *catch_env = MalEnv_new(env);
+        Exception *exn = Exception_last_copy();
+        MalEnv_put(catch_env, err_sym, MalDatum_new_exn(exn));
+
+        MalDatum *expr2_rslt = eval(expr2, catch_env);
+
+        if (expr2_rslt) MalDatum_own(expr2_rslt); // hack own
+        MalEnv_free(catch_env);
+        if (expr2_rslt) MalDatum_release(expr2_rslt); // hack release
+
+        return expr2_rslt;
+    }
+}
+
 #ifdef EVAL_STACK_DEPTH
 static int eval_stack_depth = 0; 
 #endif
@@ -762,8 +826,8 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
 
             MalDatum *head = List_ref(ast_list, 0);
-            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote, 
-            // defmacro!, macroexpand
+            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote,
+            // defmacro!, macroexpand, try*/catch*
             if (MalDatum_istype(head, SYMBOL)) {
                 Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
@@ -805,6 +869,10 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 }
                 else if (Symbol_eq_str(sym, "macroexpand")) {
                     out = eval_macroexpand(ast_list, apply_env);
+                    break;
+                }
+                else if (Symbol_eq_str(sym, "try*")) {
+                    out = eval_try_star(ast_list, apply_env);
                     break;
                 }
             }
