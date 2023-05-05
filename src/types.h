@@ -174,20 +174,26 @@ void Atom_reset(Atom *, MalDatum *);
 
 // Exception -------------------------------------------------------------------
 typedef struct {
-    char *msg;
+    MalDatum *datum;
 } Exception;
 
-Exception *Exception_new(const char *msg);
+// datum is copied
+Exception *Exception_new(const MalDatum *);
+
 void Exception_free(Exception *);
 Exception *Exception_copy(const Exception *);
 bool Exception_eq(const Exception *, const Exception *);
 
-void Exception_last_store(const char *fmt, /*args*/ ...);
+void Exception_last_sprintf(const char *fmt, /*args*/ ...);
+
+// copies datum
+void Exception_last_val_set(const MalDatum *);
+
 Exception *Exception_last_copy();
 
 #define ERROR(fmt, ...) do { \
     LOG("ERROR: " fmt, ##__VA_ARGS__); \
-    Exception_last_store(fmt, ##__VA_ARGS__); \
+    Exception_last_sprintf(fmt, ##__VA_ARGS__); \
 } while (0);
 
 

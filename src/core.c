@@ -536,18 +536,28 @@ static MalDatum *mal_macrop(const Proc *proc, const Arr *args, MalEnv *env) {
     return Proc_is_macro(arg0_proc) ? MalDatum_true() : MalDatum_false();
 }
 
+// exn : exception constructor
 static MalDatum *mal_exn(const Proc *proc, const Arr *args, MalEnv *env)
 {
-    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
-    if (!arg0) return NULL;
-
-    return MalDatum_new_exn(Exception_new(arg0->value.string));
+    const MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_new_exn(Exception_new(arg0));
 }
 
+// exn?
 static MalDatum *mal_exnp(const Proc *proc, const Arr *args, MalEnv *env)
 {
     const MalDatum *arg0 = Arr_get(args, 0);
     return MalDatum_istype(arg0, EXCEPTION) ? MalDatum_true() : MalDatum_false();
+}
+
+// exn-datum : returns the value which the exception was constructed with
+static MalDatum *mal_exn_datum(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    const MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, EXCEPTION);
+    if (!arg0) return NULL;
+
+    const Exception *exn = arg0->value.exn;
+    return exn->datum;
 }
 
 void core_def_procs(MalEnv *env) 
@@ -603,4 +613,5 @@ void core_def_procs(MalEnv *env)
 
     DEF("exn", 1, false, mal_exn);
     DEF("exn?", 1, false, mal_exnp);
+    DEF("exn-datum", 1, false, mal_exn_datum);
 }

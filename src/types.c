@@ -396,10 +396,12 @@ void Atom_reset(Atom *atom, MalDatum *dtm)
 }
 
 // Exception -------------------------------------------------------------------
-Exception *Exception_new(const char *msg)
+Exception *Exception_new(const MalDatum *dtm)
 {
     Exception *exn = malloc(sizeof(Exception));
-    exn->msg = dyn_strcpy(msg);
+    MalDatum *copy = MalDatum_deep_copy(dtm);
+    MalDatum_own(copy);
+    exn->datum = copy;
     return exn;
 }
 
@@ -409,7 +411,9 @@ void Exception_free(Exception *exn)
         LOG_NULL(exn);
         return;
     }
-    free(exn->msg);
+    MalDatum *val = exn->datum;
+    MalDatum_release(val);
+    MalDatum_free(val);
     free(exn);
 }
 
@@ -419,27 +423,33 @@ Exception *Exception_copy(const Exception *exn)
         LOG_NULL(exn);
         return NULL;
     }
-    return Exception_new(exn->msg);
+    return Exception_new(exn->datum);
 }
 
 bool Exception_eq(const Exception *exn1, const Exception *exn2)
 {
-    return exn1 == exn2 
-        || exn1->msg == exn2->msg
-        || strcmp(exn1->msg, exn2->msg) == 0;
+    return exn1 == exn2 || MalDatum_eq(exn1->datum, exn2->datum);
 }
 
 // global struct that stores the last raised exception
 static Exception _Exception_last = {
-    .msg = NULL
+    .datum = NULL
 };
 
-void Exception_last_store(const char *fmt, ...)
+void Exception_last_val_set(const MalDatum *dtm) 
 {
-    if (_Exception_last.msg) {
-        free(_Exception_last.msg);
+    MalDatum *old = _Exception_last.datum;
+    if (old) {
+        MalDatum_release(old);
+        MalDatum_free(old);
     }
+    MalDatum *copy = MalDatum_deep_copy(dtm);
+    MalDatum_own(copy);
+    _Exception_last.datum = copy;
+}
 
+void Exception_last_sprintf(const char *fmt, ...)
+{
     char buf[2048]; // TODO fix rigid limit
 
     va_list va;
@@ -447,13 +457,13 @@ void Exception_last_store(const char *fmt, ...)
     vsprintf(buf, fmt, va);
     va_end(va);
 
-    _Exception_last.msg = dyn_strcpy(buf);
+    Exception_last_val_set(MalDatum_new_string(buf));
 }
 
 Exception *Exception_last_copy()
 {
-    if (!_Exception_last.msg) {
-        LOG_NULL(_Exception_last.msg);
+    if (!_Exception_last.datum) {
+        LOG_NULL(_Exception_last.datum);
     }
     return Exception_copy(&_Exception_last);
 }
