@@ -59,6 +59,7 @@ bool List_eq(const List *, const List *);
  * 7. false
  * 8. procedure
  * 9. atom
+ * 10. exception (exn for short)
  */
 typedef enum MalType {
     // --- code & data ---
@@ -73,6 +74,7 @@ typedef enum MalType {
     FALSE, 
     PROCEDURE,
     ATOM,
+    EXCEPTION,
     //
     MT_COUNT
 } MalType;
@@ -170,6 +172,18 @@ bool Atom_eq(const Atom *, const Atom *);
 
 void Atom_reset(Atom *, MalDatum *);
 
+// Exception -------------------------------------------------------------------
+typedef struct {
+    char *msg;
+} Exception;
+
+Exception *Exception_new(const char *msg);
+void Exception_free(Exception *);
+Exception *Exception_copy(const Exception *);
+bool Exception_eq(const Exception *, const Exception *);
+
+void Exception_last_store(const char *msg);
+Exception *Exception_last_copy();
 
 // MalDatum -------------------------------------------------------------------
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */
@@ -183,6 +197,7 @@ typedef struct MalDatum {
         char *string;
         Proc *proc;
         Atom *atom;
+        Exception *exn;
     } value;
 } MalDatum;
 
@@ -208,6 +223,7 @@ MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 MalDatum *MalDatum_new_proc(Proc *);
 MalDatum *MalDatum_new_atom(Atom *);
+MalDatum *MalDatum_new_exn(Exception *);
 
 bool MalDatum_istype(const MalDatum *, MalType);
 bool MalDatum_islist(const MalDatum *);

@@ -80,6 +80,16 @@ char *pr_str(MalDatum *datum, bool print_readably)
             str = str_join(parts, ARR_LEN(parts), "");
             free(dtm_str);
             break;
+        case EXCEPTION:
+            Exception *exn = datum->value.exn;
+            if (exn->msg) {
+                char *parts[] = { "#<exn:\"", exn->msg, "\">" };
+                str = str_join(parts, ARR_LEN(parts), "");
+            }
+            else {
+                str = dyn_strcpy("#<exn>");
+            }
+            break;
         default:
             DEBUG("Unknown MalType %s", MalType_tostr(datum->type));
             str = NULL;

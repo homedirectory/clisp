@@ -395,6 +395,60 @@ void Atom_reset(Atom *atom, MalDatum *dtm)
     MalDatum_own(dtm);
 }
 
+// Exception -------------------------------------------------------------------
+Exception *Exception_new(const char *msg)
+{
+    Exception *exn = malloc(sizeof(Exception));
+    exn->msg = dyn_strcpy(msg);
+    return exn;
+}
+
+void Exception_free(Exception *exn)
+{
+    if (!exn) {
+        LOG_NULL(exn);
+        return;
+    }
+    free(exn->msg);
+    free(exn);
+}
+
+Exception *Exception_copy(const Exception *exn)
+{
+    if (!exn) {
+        LOG_NULL(exn);
+        return NULL;
+    }
+    return Exception_new(exn->msg);
+}
+
+bool Exception_eq(const Exception *exn1, const Exception *exn2)
+{
+    return exn1 == exn2 
+        || exn1->msg == exn2->msg
+        || strcmp(exn1->msg, exn2->msg) == 0;
+}
+
+// global struct that stores the last raised exception
+static Exception _Exception_last = {
+    .msg = NULL
+};
+
+void Exception_last_store(const char *msg)
+{
+    if (_Exception_last.msg) {
+        free(_Exception_last.msg);
+    }
+    _Exception_last.msg = dyn_strcpy(msg);
+}
+
+Exception *Exception_last_copy()
+{
+    if (!_Exception_last.msg) {
+        LOG_NULL(_Excetpion_last.msg);
+    }
+    return Exception_copy(&_Exception_last);
+}
 
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {
@@ -409,6 +463,7 @@ char *MalType_tostr(MalType type) {
         "FALSE", 
         "PROCEDURE",
         "ATOM",
+        "EXCEPTION",
         "*undefined*"
     };
 
@@ -498,6 +553,15 @@ MalDatum *MalDatum_new_atom(Atom *atom)
     return mdp;
 }
 
+MalDatum *MalDatum_new_exn(Exception *exn)
+{
+    MalDatum *mdp = malloc(sizeof(MalDatum));
+    mdp->refc = 0;
+    mdp->type = EXCEPTION;
+    mdp->value.exn = exn;
+    return mdp;
+}
+
 void MalDatum_own(MalDatum *datum) 
 {
     if (datum == NULL) {
@@ -569,6 +633,9 @@ void MalDatum_free(MalDatum *datum) {
         case ATOM:
             Atom_free(datum->value.atom);
             break;
+        case EXCEPTION:
+            Exception_free(datum->value.exn);
+            break;
         default:
             DEBUG("WTF? freeing %s", MalType_tostr(datum->type));
             break;
@@ -635,6 +702,9 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
         case ATOM:
             out = MalDatum_new_atom(Atom_copy(datum->value.atom));
+            break;
+        case EXCEPTION:
+            out = MalDatum_new_exn(Exception_copy(datum->value.exn));
             break;
         default:
             FATAL("unknown MalType");
@@ -717,6 +787,8 @@ bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
             return Proc_eq(md1->value.proc, md2->value.proc);
         case ATOM:
             return Atom_eq(md1->value.atom, md2->value.atom);
+        case EXCEPTION:
+            return Exception_eq(md1->value.exn, md2->value.exn);
         default:
             FATAL("unknown MalType");
     }

@@ -536,6 +536,20 @@ static MalDatum *mal_macrop(const Proc *proc, const Arr *args, MalEnv *env) {
     return Proc_is_macro(arg0_proc) ? MalDatum_true() : MalDatum_false();
 }
 
+static MalDatum *mal_exn(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
+    if (!arg0) return NULL;
+
+    return MalDatum_new_exn(Exception_new(arg0->value.string));
+}
+
+static MalDatum *mal_exnp(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    const MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_istype(arg0, EXCEPTION) ? MalDatum_true() : MalDatum_false();
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
@@ -586,4 +600,7 @@ void core_def_procs(MalEnv *env)
     DEF("concat", 0, true, mal_concat);
 
     DEF("macro?", 0, true, mal_macrop);
+
+    DEF("exn", 1, false, mal_exn);
+    DEF("exn?", 1, false, mal_exnp);
 }
