@@ -41,16 +41,10 @@ static bool verify_proc_application(const Proc *proc, const Arr* args)
     char *proc_name = Proc_name(proc);
 
     int argc = args->len;
-    // too few arguments?
-    if (argc < proc->argc) {
-        ERROR("procedure application: %s expects at least %d arguments, but %d were given", 
-                proc_name, proc->argc, argc);
-        free(proc_name);
-        return false;
-    }
-    // too much arguments?
-    else if (!proc->variadic && argc > proc->argc) {
-        ERROR("procedure application: %s expects %d arguments, but %d were given", 
+    if (argc < proc->argc /* too few? */
+            || (!proc->variadic && argc > proc->argc)) /* too much? */
+    {
+        THROWF("procedure application: %s expects at least %d arguments, but %d were given", 
                 proc_name, proc->argc, argc);
         free(proc_name);
         return false;
@@ -163,11 +157,11 @@ static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
     // 1. validate the AST
     int argc = List_len(ast_list) - 1;
     if (argc < 2) {
-        ERROR("if expects at least 2 arguments, but %d were given", argc);
+        BADSTX("if expects at least 2 arguments, but %d were given", argc);
         return NULL;
     }
     if (argc > 3) {
-        ERROR("if expects at most 3 arguments, but %d were given", argc);
+        BADSTX("if expects at most 3 arguments, but %d were given", argc);
         return NULL;
     }
 
@@ -194,7 +188,7 @@ static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
 static MalDatum *eval_do(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc == 0) {
-        ERROR("do expects at least 1 argument");
+        BADSTX("do expects at least 1 argument");
         return NULL;
     }
 
@@ -221,7 +215,7 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
 static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc < 2) {
-        ERROR("fn*: cannot have empty body");
+        BADSTX("fn*: cannot have empty body");
         return NULL;
     }
 
@@ -230,7 +224,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     {
         MalDatum *snd = List_ref(list, 1);
         if (!MalDatum_islist(snd)) {
-            ERROR("fn*: bad syntax at parameter declaration");
+            BADSTX("fn*: bad syntax at parameter declaration");
             return NULL;
         }
         params = snd->value.list;
@@ -240,7 +234,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     for (struct Node *node = params->head; node != NULL; node = node->next) {
         MalDatum *par = node->value;
         if (!MalDatum_istype(par, SYMBOL)) {
-            ERROR("fn* bad parameter list: expected a list of symbols, but %s was found in the list",
+            BADSTX("fn* bad parameter list: expected a list of symbols, but %s was found in the list",
                     MalType_tostr(par->type));
             return NULL;
         }
@@ -259,7 +253,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
         // NOTE: we allow that parameter to also be named '&'
         if (Symbol_eq_str(sym, "&")) {
             if (node->next == NULL || node->next->next != NULL) {
-                ERROR("fn* bad parameter list: 1 parameter expected after '&'");
+                BADSTX("fn* bad parameter list: 1 parameter expected after '&'");
                 return NULL;
             }
             Symbol *last_sym = node->next->value->value.sym;
@@ -297,13 +291,13 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
 static MalDatum *eval_def(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc != 2) {
-        ERROR("def! expects 2 arguments, but %d were given", argc);
+        BADSTX("def! expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
     MalDatum *snd = List_ref(list, 1);
     if (snd->type != SYMBOL) {
-        ERROR("def! expects a symbol as a 2nd argument, but %s was given",
+        BADSTX("def! expects a symbol as a 2nd argument, but %s was given",
                 MalType_tostr(snd->type));
         return NULL;
     }
@@ -331,13 +325,13 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
 static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
     size_t argc = List_len(list) - 1;
     if (argc != 2) {
-        ERROR("defmacro! expects 2 arguments, but %zu were given", argc);
+        BADSTX("defmacro! expects 2 arguments, but %zu were given", argc);
         return NULL;
     }
 
     const MalDatum *arg1 = List_ref(list, 1);
     if (!(MalDatum_istype(arg1, SYMBOL))) {
-        ERROR("defmacro!: 1st arg must be a symbol, but was %s", MalType_tostr(arg1->type));
+        BADSTX("defmacro!: 1st arg must be a symbol, but was %s", MalType_tostr(arg1->type));
         return NULL;
     }
     Symbol *id = arg1->value.sym;
@@ -346,30 +340,30 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
     {
         MalDatum *arg2 = List_ref(list, 2);
         if (!MalDatum_islist(arg2)) {
-            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
 
         const List *arg2_list = arg2->value.list;
         if (List_isempty(arg2_list)) {
-            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
         const MalDatum *arg2_list_ref0 = List_ref(arg2_list, 0);
         if (!MalDatum_istype(arg2_list_ref0, SYMBOL)) {
-            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
         const Symbol *sym = arg2_list_ref0->value.sym;
         if (!Symbol_eq_str(sym, "fn*")) {
-            ERROR("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
         MalDatum *evaled = eval(arg2, env);
         if (!evaled) return NULL;
         if (!MalDatum_istype(evaled, PROCEDURE)) {
             MalDatum_free(evaled);
-            ERROR("defmacro!: 2nd arg must evaluate to a procedure");
+            BADSTX("defmacro!: 2nd arg must evaluate to a procedure");
             return NULL;
         }
         macro_datum = evaled;
@@ -392,24 +386,24 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
     int argc = List_len(list) - 1;
     if (argc != 2) {
-        ERROR("let* expects 2 arguments, but %d were given", argc);
+        BADSTX("let* expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
     MalDatum *snd = List_ref(list, 1);
     if (snd->type != LIST) {
-        ERROR("let* expects a list as a 2nd argument, but %s was given",
+        BADSTX("let* expects a list as a 2nd argument, but %s was given",
                 MalType_tostr(snd->type));
         return NULL;
     }
 
     List *bindings = snd->value.list;
     if (List_isempty(bindings)) {
-        ERROR("let* expects a non-empty list of bindings");
+        BADSTX("let* expects a non-empty list of bindings");
         return NULL;
     }
     if (List_len(bindings) % 2 != 0) {
-        ERROR("let*: illegal bindings (expected an even-length list)");
+        BADSTX("let*: illegal bindings (expected an even-length list)");
         return NULL;
     }
 
@@ -422,7 +416,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     for (struct Node *id_node = bindings->head; id_node != NULL; id_node = id_node->next->next) {
         // make sure that a symbol is being bound
         if (!MalDatum_istype(id_node->value, SYMBOL)) {
-            ERROR("let*: illegal bindings (expected a symbol to be bound, but %s was given)", 
+            BADSTX("let*: illegal bindings (expected a symbol to be bound, but %s was given)", 
                     MalType_tostr(id_node->value->type));
             FREE(let_env);
             MalEnv_free(let_env);
@@ -466,7 +460,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
 static MalDatum *eval_quote(const List *list, MalEnv *env) {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
-        ERROR("quote expects 1 argument, but %zd were given", argc);
+        BADSTX("quote expects 1 argument, but %zd were given", argc);
         return NULL;
     }
 
@@ -479,7 +473,7 @@ static MalDatum *eval_unquote(const List *list, MalEnv *env)
 {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
-        ERROR("unquote expects 1 argument, but %zd were given", argc);
+        BADSTX("unquote expects 1 argument, but %zd were given", argc);
         return NULL;
     }
 
@@ -492,14 +486,14 @@ static List *eval_splice_unquote(const List *list, MalEnv *env)
 {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
-        ERROR("splice-unquote expects 1 argument, but %zd were given", argc);
+        BADSTX("splice-unquote expects 1 argument, but %zd were given", argc);
         return NULL;
     }
 
     MalDatum *arg1 = List_ref(list, 1);
     MalDatum *evaled = eval(arg1, env);
     if (!MalDatum_islist(evaled)) {
-        ERROR("splice-unquote: resulting value must be a list, but was %s",
+        BADSTX("splice-unquote: resulting value must be a list, but was %s",
                 MalType_tostr(evaled->type));
         MalDatum_free(evaled);
         return NULL;
@@ -579,7 +573,7 @@ static MalDatum *eval_quasiquote(const List *list, MalEnv *env)
 {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
-        ERROR("quasiquote expects 1 argument, but %zd were given", argc);
+        BADSTX("quasiquote expects 1 argument, but %zd were given", argc);
         return NULL;
     }
 
@@ -596,7 +590,7 @@ static MalDatum *eval_quasiquote(const List *list, MalEnv *env)
     if (MalDatum_istype(ast0, SYMBOL)) {
         Symbol *sym = ast0->value.sym;
         if (Symbol_eq_str(sym, "splice-unquote")) {
-            ERROR("splice-unquote: illegal context within quasiquote (nothing to splice into)");
+            BADSTX("splice-unquote: illegal context within quasiquote (nothing to splice into)");
             return NULL;
         }
     }
@@ -641,7 +635,7 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
             Symbol *sym = datum->value.sym;
             MalDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
-                ERROR("symbol binding '%s' not found", sym->name);
+                THROWF("symbol binding '%s' not found", sym->name);
             } else {
                 out = assoc;;
             }
@@ -719,7 +713,7 @@ static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
 {
     size_t argc = List_len(ast_list) - 1;
     if (argc != 1) {
-        ERROR("macroexpand expects 1 argument, but %zu were given", argc);
+        BADSTX("macroexpand expects 1 argument, but %zu were given", argc);
         return NULL;
     }
 
@@ -734,7 +728,7 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
 {
     size_t argc = List_len(ast_list) - 1;
     if (argc != 2) {
-        ERROR("try* expects 2 arguments, but %zu were given", argc);
+        BADSTX("try* expects 2 arguments, but %zu were given", argc);
         return NULL;
     }
 
@@ -745,13 +739,13 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
     MalDatum *expr2 = NULL;
     {
         if (!MalDatum_islist(catch_form)) {
-            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
         List *catch_list = catch_form->value.list;
 
         if (List_len(catch_list) != 3) {
-            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
 
@@ -760,13 +754,13 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
         if (!MalDatum_istype(catch0, SYMBOL) 
                 || !Symbol_eq_str(catch0->value.sym, "catch*")) 
         {
-            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
 
         MalDatum *catch1 = List_ref(catch_list, 1);
         if (!MalDatum_istype(catch1, SYMBOL)) {
-            ERROR("bad syntax: try* expects (catch* SYMBOL EXPR) as 2nd arg");
+            BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
 
@@ -889,7 +883,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             // 2. make sure that the 1st element is a procedure
             MalDatum *first = List_ref(evaled_list, 0);
             if (!MalDatum_istype(first, PROCEDURE)) {
-                ERROR("application: expected a procedure");
+                THROWF("application: expected a procedure");
                 out = NULL;
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -1016,7 +1010,7 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
 
     const MalDatum *arg_last = Arr_last(args);
     if (!MalDatum_islist(arg_last)) {
-        ERROR("apply: bad last arg: expected a list");
+        THROWF("apply: bad last arg: expected a list");
         return NULL;
     }
     const List *arg_list = arg_last->value.list;
@@ -1056,7 +1050,7 @@ static MalDatum *mal_read_string(const Proc *proc, const Arr *args, MalEnv *env)
     MalDatum *ast = read(string);
 
     if (ast == NULL) {
-        ERROR("read-string: could not parse bad syntax");
+        THROWF("read-string: could not parse bad syntax");
         return NULL;
     }
 
@@ -1071,13 +1065,13 @@ static MalDatum *mal_slurp(const Proc *proc, const Arr *args, MalEnv *env)
 
     const char *path = arg0->value.string;
     if (!file_readable(path)) {
-        ERROR("slurp: can't read file %s", path);
+        THROWF("slurp: can't read file %s", path);
         return NULL;
     }
 
     char *contents = file_to_str(path);
     if (!contents) {
-        ERROR("slurp: failed to read file %s", path);
+        THROWF("slurp: failed to read file %s", path);
         return NULL;
     }
 

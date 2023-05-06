@@ -32,3 +32,6 @@ typedef void (*free_t)(void *ptr);
 
 #define LOG_NULL(name)\
     DEBUG(#name " was NULL");
+
+#define BADSTX(fmt, ...) \
+    fprintf(stderr, "bad syntax: " fmt "\n", ##__VA_ARGS__);
