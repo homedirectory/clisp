@@ -21,6 +21,7 @@ char *pr_str(MalDatum *datum, bool print_readably)
             sprintf(str, "%d", datum->value.i);
             break;
         case SYMBOL:
+            // TODO symbols with spaces
             str = dyn_strcpy(datum->value.sym->name);
             break;
         case LIST:

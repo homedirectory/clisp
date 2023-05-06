@@ -113,6 +113,40 @@ static MalDatum *mal_gt(const Proc *proc, const Arr *args, MalEnv *env) {
     return arg1->value.i > arg2->value.i ? MalDatum_true() : MalDatum_false();
 }
 
+// symbol : string to symbol 
+static MalDatum *mal_symbol(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
+    if (!arg0) return NULL;
+
+    return MalDatum_new_sym(Symbol_new(arg0->value.string));
+}
+
+// symbol?
+static MalDatum *mal_symbolp(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_istype(arg0, SYMBOL) ? MalDatum_true() : MalDatum_false();
+}
+
+// string?
+static MalDatum *mal_stringp(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_istype(arg0, STRING) ? MalDatum_true() : MalDatum_false();
+}
+
+// true?
+static MalDatum *mal_truep(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_istype(arg0, TRUE) ? MalDatum_true() : MalDatum_false();
+}
+
+// false?
+static MalDatum *mal_falsep(const Proc *proc, const Arr *args, MalEnv *env) {
+    MalDatum *arg0 = Arr_get(args, 0);
+    return MalDatum_istype(arg0, FALSE) ? MalDatum_true() : MalDatum_false();
+}
+
+// list
 static MalDatum *mal_list(const Proc *proc, const Arr *args, MalEnv *env) {
     if (args->len == 0)
         return MalDatum_empty_list();
@@ -548,6 +582,14 @@ void core_def_procs(MalEnv *env)
     DEF("/", 2, true, mal_div);
     DEF("=", 2, false, mal_eq);
     DEF(">", 2, false, mal_gt);
+
+    DEF("symbol", 1, false, mal_symbol);
+    DEF("symbol?", 1, false, mal_symbolp);
+
+    DEF("string?", 1, false, mal_stringp);
+
+    DEF("true?", 1, false, mal_truep);
+    DEF("false?", 1, false, mal_falsep);
 
     DEF("list", 0, true, mal_list);
     DEF("list?", 1, false, mal_listp);
