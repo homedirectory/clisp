@@ -504,7 +504,6 @@ char *MalType_tostr(MalType type) {
         "INT", 
         "SYMBOL", 
         "LIST", 
-        "EMPTY_LIST",
         "STRING", 
         "NIL", 
         "TRUE", 
@@ -534,7 +533,7 @@ char *MalType_tostr(MalType type) {
 
 static MalDatum _MalDatum_empty_list = { 
     .refc = 1,
-    .type = EMPTY_LIST, 
+    .type = LIST, 
     .value.list = &_empty_list
 };
 
@@ -662,9 +661,6 @@ void MalDatum_free(MalDatum *datum) {
         case FALSE: 
             DEBUG("WTF? freeing FALSE");
             return;
-        case EMPTY_LIST: 
-            DEBUG("WTF? freeing EMPTY_LIST");
-            return;
         case INT: break;
         case LIST:
             List_free(datum->value.list);
@@ -709,7 +705,7 @@ bool MalDatum_istype(const MalDatum *datum, MalType type) {
 }
 
 bool MalDatum_islist(const MalDatum *datum) {
-    return datum->type == LIST || datum->type == EMPTY_LIST;
+    return datum->type == LIST;
 }
 
 MalDatum *MalDatum_copy(const MalDatum *datum) {
@@ -729,9 +725,6 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             break;
         case STRING:
             out = MalDatum_new_string(datum->value.string);
-            break;
-        case EMPTY_LIST:
-            out = MalDatum_empty_list();
             break;
         case LIST:
             out = MalDatum_new_list(List_copy(datum->value.list));
@@ -823,8 +816,6 @@ bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
             return strcmp(md1->value.string, md2->value.string) == 0;
         case LIST:
             return List_eq(md1->value.list, md2->value.list);
-        case EMPTY_LIST:
-            return true;
         case NIL:
             return true;
         case TRUE:

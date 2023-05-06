@@ -66,7 +66,6 @@ typedef enum MalType {
     INT, 
     SYMBOL, 
     LIST, 
-    EMPTY_LIST, // to use as a singleton
     STRING, // code-form may differ from data-form (e.g., escaped characters)
     // --- only data ---
     NIL, 
