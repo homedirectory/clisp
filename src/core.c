@@ -113,6 +113,31 @@ static MalDatum *mal_gt(const Proc *proc, const Arr *args, MalEnv *env) {
     return arg1->value.i > arg2->value.i ? MalDatum_true() : MalDatum_false();
 }
 
+/* % : modulus */
+static MalDatum *mal_mod(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    const MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, INT);
+    if (!arg0) return NULL;
+    const MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, INT);
+    if (!arg1) return NULL;
+
+    int i0 = arg0->value.i;
+    int i1 = arg1->value.i;
+    int rslt = i0 % i1;
+
+    return MalDatum_new_int(rslt);
+}
+
+/* even? */
+static MalDatum *mal_evenp(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    const MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, INT);
+    if (!arg0) return NULL;
+
+    int i = arg0->value.i;
+    return i & 1 ? MalDatum_false() : MalDatum_true();
+}
+
 // symbol : string to symbol 
 static MalDatum *mal_symbol(const Proc *proc, const Arr *args, MalEnv *env) 
 {
@@ -582,6 +607,8 @@ void core_def_procs(MalEnv *env)
     DEF("/", 2, true, mal_div);
     DEF("=", 2, false, mal_eq);
     DEF(">", 2, false, mal_gt);
+    DEF("%", 2, false, mal_mod);
+    DEF("even?", 1, false, mal_evenp);
 
     DEF("symbol", 1, false, mal_symbol);
     DEF("symbol?", 1, false, mal_symbolp);
