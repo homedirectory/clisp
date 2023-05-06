@@ -55,10 +55,13 @@ size_t Arr_add(Arr *arr, void *ptr) {
 }
 
 void *Arr_replace(Arr *arr, size_t idx, void *ptr) {
-    void *old = Arr_get(arr, idx);
-    if (old) {
-        arr->items[idx] = ptr;
+    if (idx >= arr->cap) {
+        LOG("idx >= arr->cap");
+        return NULL;
     }
+
+    void *old = arr->items[idx];
+    arr->items[idx] = ptr;
     return old;
 }
 

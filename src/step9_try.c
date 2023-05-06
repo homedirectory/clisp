@@ -1138,6 +1138,45 @@ static MalDatum *mal_swap_bang(const Proc *proc, const Arr *args, MalEnv *env) {
     return rslt;
 }
 
+// map : maps over a list/vector using a procedure
+// TODO accept multiple lists/vectors
+static MalDatum *mal_map(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, PROCEDURE);
+    if (!arg0) return NULL;
+    Proc *mapper = arg0->value.proc;
+
+    MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, LIST);
+    if (!arg1) return NULL;
+    List *list = arg1->value.list;
+
+    if (List_isempty(list)) {
+        return MalDatum_empty_list();
+    }
+
+    List *out = List_new();
+    // args to mapper proc
+    Arr *mapper_args = Arr_newn(1);
+    Arr_add(mapper_args, NULL); // to increase length to 1
+
+    for (struct Node *node = list->head; node != NULL; node = node->next) {
+        MalDatum *list_elt = node->value;
+
+        Arr_replace(mapper_args, 0, list_elt);
+        MalDatum *new_elt = apply_proc(mapper, mapper_args, env);
+        if (!new_elt) {
+            List_free(out);
+            Arr_free(mapper_args);
+            return NULL;
+        }
+
+        List_add(out, new_elt);
+    }
+
+    Arr_free(mapper_args);
+
+    return MalDatum_new_list(out);
+}
 
 int main(int argc, char **argv) {
     MalEnv *env = MalEnv_new(NULL);
@@ -1161,6 +1200,9 @@ int main(int argc, char **argv) {
 
     MalEnv_put(env, Symbol_new("swap!"), MalDatum_new_proc(
             Proc_builtin("swap!", 2, true, mal_swap_bang)));
+
+    MalEnv_put(env, Symbol_new("map"), MalDatum_new_proc(
+            Proc_builtin("map", 2, false, mal_map)));
 
     core_def_procs(env);
 
