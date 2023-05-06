@@ -191,11 +191,10 @@ void Exception_last_val_set(const MalDatum *);
 
 Exception *Exception_last_copy();
 
-#define ERROR(fmt, ...) do { \
-    LOG("ERROR: " fmt, ##__VA_ARGS__); \
+#define THROWF(fmt, ...) do { \
+    fprintf(stderr, "ERROR! " fmt "\n", ##__VA_ARGS__); \
     Exception_last_sprintf(fmt, ##__VA_ARGS__); \
 } while (0);
-
 
 // MalDatum -------------------------------------------------------------------
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */

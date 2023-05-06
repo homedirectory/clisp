@@ -14,7 +14,7 @@ MalDatum *verify_proc_arg_type(const Proc *proc, const Arr *args, size_t arg_idx
     MalDatum *arg = Arr_get(args, arg_idx);
     if (!MalDatum_istype(arg, expect_type)) {
         char *proc_name = Proc_name(proc);
-        ERROR("%s: bad arg no. %zd: expected a %s", 
+        THROWF("%s: bad arg no. %zd: expected a %s", 
                 proc_name, arg_idx + 1, MalType_tostr(expect_type));
         free(proc_name);
         return NULL;
@@ -26,11 +26,8 @@ MalDatum *verify_proc_arg_type(const Proc *proc, const Arr *args, size_t arg_idx
 static MalDatum *mal_add(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
-        MalDatum *arg = args->items[i];
-        if (!MalDatum_istype(arg, INT)) {
-            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+        if (!verify_proc_arg_type(proc, args, i, INT)) 
             return NULL;
-        }
     }
 
     int rslt = ((MalDatum*)args->items[0])->value.i;
@@ -45,11 +42,8 @@ static MalDatum *mal_add(const Proc *proc, const Arr *args, MalEnv *env) {
 static MalDatum *mal_sub(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
-        MalDatum *arg = args->items[i];
-        if (!MalDatum_istype(arg, INT)) {
-            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+        if (!verify_proc_arg_type(proc, args, i, INT)) 
             return NULL;
-        }
     }
 
     int rslt = ((MalDatum*)args->items[0])->value.i;
@@ -64,11 +58,8 @@ static MalDatum *mal_sub(const Proc *proc, const Arr *args, MalEnv *env) {
 static MalDatum *mal_mul(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
-        MalDatum *arg = args->items[i];
-        if (!MalDatum_istype(arg, INT)) {
-            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+        if (!verify_proc_arg_type(proc, args, i, INT)) 
             return NULL;
-        }
     }
 
     int rslt = ((MalDatum*)args->items[0])->value.i;
@@ -83,11 +74,8 @@ static MalDatum *mal_mul(const Proc *proc, const Arr *args, MalEnv *env) {
 static MalDatum *mal_div(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
-        MalDatum *arg = args->items[i];
-        if (!MalDatum_istype(arg, INT)) {
-            ERROR("+: expected INT arguments, but received %s", MalType_tostr(arg->type));
+        if (!verify_proc_arg_type(proc, args, i, INT)) 
             return NULL;
-        }
     }
 
     int rslt = ((MalDatum*)args->items[0])->value.i;
@@ -115,11 +103,8 @@ static MalDatum *mal_eq(const Proc *proc, const Arr *args, MalEnv *env) {
 static MalDatum *mal_gt(const Proc *proc, const Arr *args, MalEnv *env) {
     // validate arg types
     for (int i = 0; i < args->len; i++) {
-        MalDatum *arg = args->items[i];
-        if (!MalDatum_istype(arg, INT)) {
-            ERROR(">: expected INT arguments, but received %s", MalType_tostr(arg->type));
+        if (!verify_proc_arg_type(proc, args, i, INT)) 
             return NULL;
-        }
     }
 
     MalDatum *arg1 = args->items[0];
@@ -146,13 +131,9 @@ static MalDatum *mal_listp(const Proc *proc, const Arr *args, MalEnv *env) {
 }
 
 static MalDatum *mal_emptyp(const Proc *proc, const Arr *args, MalEnv *env) {
-    // validate arg type
-    MalDatum *arg = args->items[0];
-    if (!MalDatum_islist(arg)) {
-        ERROR("empty?: expected a list, but got %s instead", MalType_tostr(arg->type));
-        return NULL;
-    }
-    List *list = arg->value.list;
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, LIST);
+    if (!arg0) return NULL;
+    List *list = arg0->value.list;
     return List_isempty(list) ? MalDatum_true() : MalDatum_false();
 }
 
@@ -166,7 +147,7 @@ static MalDatum *mal_count(const Proc *proc, const Arr *args, MalEnv *env) {
     else if (MalDatum_islist(arg))
         len = List_len(arg->value.list);
     else {
-        ERROR("count: expected a list, but got %s instead", MalType_tostr(arg->type));
+        THROWF("count: expected a list, but got %s instead", MalType_tostr(arg->type));
         return NULL;
     }
 
@@ -184,12 +165,12 @@ static MalDatum *mal_list_ref(const Proc *proc, const Arr *args, MalEnv *env)
     int idx = arg1->value.i;
 
     if (idx < 0) {
-        ERROR("list-ref: expected non-negative index");
+        THROWF("list-ref: expected non-negative index");
         return NULL;
     }
     size_t list_len = List_len(list);
     if (idx >= list_len) {
-        ERROR("list-ref: index too large (%d >= %zu)", idx, list_len);
+        THROWF("list-ref: index too large (%d >= %zu)", idx, list_len);
         return NULL;
     }
 
@@ -204,7 +185,7 @@ static MalDatum *mal_list_rest(const Proc *proc, const Arr *args, MalEnv *env)
     List *list = arg0->value.list;
 
     if (List_isempty(list)) {
-        ERROR("list-rest: received an empty list");
+        THROWF("list-rest: received an empty list");
         return NULL;
     }
 
@@ -228,7 +209,7 @@ static MalDatum *mal_nth(const Proc *proc, const Arr *args, MalEnv *env)
     //     return mal_vec_ref(proc, args, env);
     // }
     else {
-        ERROR("nth: bad 1st arg: expected LIST or VECTOR, but was %s",
+        THROWF("nth: bad 1st arg: expected LIST or VECTOR, but was %s",
                 MalType_tostr(arg0->type));
         return NULL;
     }
@@ -247,7 +228,7 @@ static MalDatum *mal_rest(const Proc *proc, const Arr *args, MalEnv *env)
     //     return mal_vec_rest(proc, args, env);
     // }
     else {
-        ERROR("rest: bad 1st arg: expected LIST or VECTOR, but was %s",
+        THROWF("rest: bad 1st arg: expected LIST or VECTOR, but was %s",
                 MalType_tostr(arg0->type));
         return NULL;
     }
@@ -370,13 +351,10 @@ static MalDatum *mal_procedurep(const Proc *proc, const Arr *args, MalEnv *env) 
  * 2. true if procedure is variadic, false otherwise
  */
 static MalDatum *mal_arity(const Proc *proc, const Arr *args, MalEnv *env) {
-    MalDatum *arg = Arr_get(args, 0);
-    if (!MalDatum_istype(arg, PROCEDURE)) {
-        ERROR("arity: expected a procedure");
-        return NULL;
-    }
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, PROCEDURE);
+    if (!arg0) return NULL;
 
-    Proc *proc_arg = arg->value.proc;
+    Proc *proc_arg = arg0->value.proc;
     List *list = List_new();
     List_add(list, MalDatum_new_int(proc_arg->argc));
     List_add(list, proc_arg->variadic ? MalDatum_true() : MalDatum_false());
@@ -386,13 +364,10 @@ static MalDatum *mal_arity(const Proc *proc, const Arr *args, MalEnv *env) {
 
 // Returns true if a procedure (1st arg) is builtin
 static MalDatum *mal_builtinp(const Proc *proc, const Arr *args, MalEnv *env) {
-    MalDatum *arg = Arr_get(args, 0);
-    if (!MalDatum_istype(arg, PROCEDURE)) {
-        ERROR("builtin?: expected a procedure");
-        return NULL;
-    }
+    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, PROCEDURE);
+    if (!arg0) return NULL;
 
-    Proc *proc_arg = arg->value.proc;
+    Proc *proc_arg = arg0->value.proc;
 
     return proc_arg->builtin ? MalDatum_true() : MalDatum_false();
 }
@@ -511,11 +486,8 @@ static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
 
     List *lists[args->len];
     for (size_t i = 0; i < args->len; i++) {
-        MalDatum *arg = Arr_get(args, i);
-        if (!MalDatum_islist(arg)) {
-            ERROR("concat: bad arg no. %zd, expected LIST", i + 1);
-            return NULL;
-        }
+        MalDatum *arg = verify_proc_arg_type(proc, args, i, LIST);
+        if (!arg) return NULL;
         lists[i] = arg->value.list;
     }
 
