@@ -10,12 +10,15 @@
 
 typedef struct MalDatum MalDatum;
 
-// mal linked list
+// -----------------------------------------------------------------
+// List ------------------------------------------------------------
+
 struct Node {
+    long refc; // reference count
     MalDatum *value;
     struct Node *next;
 };
-typedef struct List {
+typedef struct {
     size_t len;
     struct Node *head;
     struct Node *tail;
@@ -31,6 +34,12 @@ void List_free(List *);
 void List_shlw_free(List *);
 
 void List_add(List *, MalDatum *);
+
+// creates a new list headed by datum followed by the elements of the given list
+List *List_cons_new(List *list, MalDatum *datum);
+// creates a new list containing the tail of the given list
+List *List_rest_new(List *list);
+
 void List_append(List *dst, const List *src);
 
 MalDatum *List_ref(const List *, size_t);

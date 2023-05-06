@@ -11,6 +11,9 @@
 #include "printer.h"
 #include <stdarg.h>
 
+// -----------------------------------------------------------------
+// List ------------------------------------------------------------
+
 List *List_new() {
     List *list = malloc(sizeof(List));
     list->len = 0;
@@ -78,8 +81,11 @@ bool List_isempty(const List *list) {
 
 void List_add(List *list, MalDatum *datum) {
     struct Node *node = malloc(sizeof(struct Node));
+    node->refc = 1;
     node->value = datum;
     node->next = NULL;
+
+    MalDatum_own(datum);
 
     if (list->tail == NULL) {
         list->head = node;
@@ -89,9 +95,49 @@ void List_add(List *list, MalDatum *datum) {
         list->tail = node;
     }
 
-    MalDatum_own(datum);
-
     list->len += 1;
+}
+
+List *List_cons_new(List *list, MalDatum *datum)
+{
+    List *out = List_new();
+
+    struct Node *node = malloc(sizeof(struct Node));
+    node->refc = 1;
+    node->value = datum;
+    MalDatum_own(datum);
+    node->next = list->head; // potentially NULL
+    out->head = node;
+    if (list->head) {
+        list->head->refc++;
+        out->tail = list->tail;
+    }
+    else {
+        out->tail = node;
+    }
+
+    out->len = 1 + list->len;
+
+    return out;
+}
+
+List *List_rest_new(List *list)
+{
+    if (List_isempty(list)) {
+        DEBUG("got empty list");
+        return NULL;
+    }
+
+    List *out = List_new();
+    size_t tail_len = List_len(list) - 1;
+    if (tail_len > 0) {
+        struct Node *tail_head = list->head->next;
+        out->head = out->tail = tail_head;
+        tail_head->refc += 1;
+        out->len = tail_len;
+    }
+
+    return out;
 }
 
 void List_append(List *dst, const List *src)
@@ -105,9 +151,19 @@ void List_append(List *dst, const List *src)
         return;
     }
 
-    for (struct Node *node = src->head; node != NULL; node = node->next) {
-        List_add(dst, node->value);
+    if (List_isempty(src)) return;
+
+    struct Node *src_head = src->head;
+    if (List_isempty(dst)) {
+        dst->head = dst->tail = src_head;
     }
+    else {
+        dst->tail->next = src_head;
+        dst->tail = src->tail;
+    }
+    src_head->refc += 1;
+
+    dst->len += src->len;
 }
 
 MalDatum *List_ref(const List *list, size_t idx) { 
@@ -130,20 +186,19 @@ MalDatum *List_ref(const List *list, size_t idx) {
 /* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *list) {
     if (list == NULL || list == &_empty_list) return;
-    else if (list->head == NULL) {
-        free(list);
-    } 
-    else {
+
+    if (list->head) {
         struct Node *node = list->head;
-        while (node) {
+        while (node && --node->refc == 0) {
             MalDatum_release(node->value);
             MalDatum_free(node->value);
             struct Node *p = node;
             node = node->next;
             free(p);
         }
-        free(list);
     }
+
+    free(list);
 }
 
 bool List_eq(const List *lst1, const List *lst2) {

@@ -1,0 +1,7 @@
+- refactor using OOP and compare performance
+    - add 'time-ms' procedure
+- intern symbols (use a proper hash-table)
+- access procedure bodies
+- FFI
+
++ refactor List structure

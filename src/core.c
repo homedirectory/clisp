@@ -240,7 +240,6 @@ static MalDatum *mal_list_rest(const Proc *proc, const Arr *args, MalEnv *env)
 {
     MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, LIST);
     if (!arg0) return NULL;
-
     List *list = arg0->value.list;
 
     if (List_isempty(list)) {
@@ -248,11 +247,7 @@ static MalDatum *mal_list_rest(const Proc *proc, const Arr *args, MalEnv *env)
         return NULL;
     }
 
-    List *out = List_new();
-    for (struct Node *node = list->head->next; node != NULL; node = node->next)
-        List_add(out, node->value);
-
-    return MalDatum_new_list(out);
+    return MalDatum_new_list(List_rest_new(list));
 }
 
 // nth : takes a list (or vector) and a number (index) as arguments, returns
@@ -526,13 +521,8 @@ static MalDatum *mal_cons(const Proc *proc, const Arr *args, MalEnv *env)
     }
 
     MalDatum *arg0 = Arr_get(args, 0);
-    List *new_list = List_new();
-    List_add(new_list, arg0);
 
-    for (struct Node *node = list->head; node != NULL; node = node->next) {
-        List_add(new_list, node->value);
-    }
-
+    List *new_list = List_cons_new(list, arg0);
     return MalDatum_new_list(new_list);
 }
 
@@ -553,8 +543,7 @@ static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
     List *new_list = List_new();
     for (size_t i = 0; i < args->len; i++) {
         List *lst = lists[i];
-        for (struct Node *node = lst->head; node != NULL; node = node->next)
-            List_add(new_list, node->value);
+        List_append(new_list, lst);
     }
 
     return MalDatum_new_list(new_list);
