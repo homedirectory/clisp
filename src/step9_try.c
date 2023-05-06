@@ -17,6 +17,9 @@
 #define PROMPT "user> "
 #define HISTORY_FILE ".mal_history"
 
+#define BADSTX(fmt, ...) \
+    error("bad syntax: " fmt "\n", ##__VA_ARGS__);
+
 MalDatum *eval(MalDatum *datum, MalEnv *env);
 MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
@@ -44,7 +47,7 @@ static bool verify_proc_application(const Proc *proc, const Arr* args)
     if (argc < proc->argc /* too few? */
             || (!proc->variadic && argc > proc->argc)) /* too much? */
     {
-        THROWF("procedure application: %s expects at least %d arguments, but %d were given", 
+        throwf("procedure application: %s expects at least %d arguments, but %d were given", 
                 proc_name, proc->argc, argc);
         free(proc_name);
         return false;
@@ -635,7 +638,7 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
             Symbol *sym = datum->value.sym;
             MalDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
-                THROWF("symbol binding '%s' not found", sym->name);
+                throwf("symbol binding '%s' not found", sym->name);
             } else {
                 out = assoc;;
             }
@@ -723,7 +726,8 @@ static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
 
 // 'try*' special form
 // (try* <expr1> (catch* <symbol> <expr2>))
-// if <expr1> raises an error, then the error is bound to <symbol> and <expr2> is evaluated
+// if <expr1> throws an exception, then the exception is bound to <symbol> 
+// and <expr2> is evaluated
 static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
 {
     size_t argc = List_len(ast_list) - 1;
@@ -769,10 +773,9 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
     }
 
     MalDatum *expr1_rslt = eval(expr1, env);
-    if (expr1_rslt) { return expr1_rslt; }
-    else {
+    if (expr1_rslt == NULL && didthrow()) {
         MalEnv *catch_env = MalEnv_new(env);
-        Exception *exn = Exception_last_copy();
+        Exception *exn = thrown_copy();
         MalEnv_put(catch_env, err_sym, MalDatum_new_exn(exn));
 
         MalDatum *expr2_rslt = eval(expr2, catch_env);
@@ -782,6 +785,9 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
         if (expr2_rslt) MalDatum_release(expr2_rslt); // hack release
 
         return expr2_rslt;
+    }
+    else {
+        return expr1_rslt;
     }
 }
 
@@ -883,7 +889,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             // 2. make sure that the 1st element is a procedure
             MalDatum *first = List_ref(evaled_list, 0);
             if (!MalDatum_istype(first, PROCEDURE)) {
-                THROWF("application: expected a procedure");
+                throwf("application: expected a procedure");
                 out = NULL;
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -1010,7 +1016,7 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
 
     const MalDatum *arg_last = Arr_last(args);
     if (!MalDatum_islist(arg_last)) {
-        THROWF("apply: bad last arg: expected a list");
+        throwf("apply: bad last arg: expected a list");
         return NULL;
     }
     const List *arg_list = arg_last->value.list;
@@ -1050,7 +1056,7 @@ static MalDatum *mal_read_string(const Proc *proc, const Arr *args, MalEnv *env)
     MalDatum *ast = read(string);
 
     if (ast == NULL) {
-        THROWF("read-string: could not parse bad syntax");
+        throwf("read-string: could not parse bad syntax");
         return NULL;
     }
 
@@ -1065,13 +1071,13 @@ static MalDatum *mal_slurp(const Proc *proc, const Arr *args, MalEnv *env)
 
     const char *path = arg0->value.string;
     if (!file_readable(path)) {
-        THROWF("slurp: can't read file %s", path);
+        throwf("slurp: can't read file %s", path);
         return NULL;
     }
 
     char *contents = file_to_str(path);
     if (!contents) {
-        THROWF("slurp: failed to read file %s", path);
+        throwf("slurp: failed to read file %s", path);
         return NULL;
     }
 

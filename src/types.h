@@ -184,17 +184,13 @@ void Exception_free(Exception *);
 Exception *Exception_copy(const Exception *);
 bool Exception_eq(const Exception *, const Exception *);
 
-void Exception_last_sprintf(const char *fmt, /*args*/ ...);
+Exception *thrown_copy();
 
-// copies datum
-void Exception_last_val_set(const MalDatum *);
+void throw(const MalDatum *);
+void throwf(const char *fmt, ...);
+bool didthrow();
 
-Exception *Exception_last_copy();
-
-#define THROWF(fmt, ...) do { \
-    fprintf(stderr, "ERROR! " fmt "\n", ##__VA_ARGS__); \
-    Exception_last_sprintf(fmt, ##__VA_ARGS__); \
-} while (0);
+void error(const char *fmt, ...);
 
 // MalDatum -------------------------------------------------------------------
 /* represents a dynamic mal type, which is determined by looking at the "tag" ('type' member) */

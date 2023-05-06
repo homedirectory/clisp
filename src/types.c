@@ -436,8 +436,30 @@ static Exception _Exception_last = {
     .datum = NULL
 };
 
-void Exception_last_val_set(const MalDatum *dtm) 
+Exception *thrown_copy()
 {
+    if (!_Exception_last.datum) {
+        LOG_NULL(_Exception_last.datum);
+    }
+    return Exception_copy(&_Exception_last);
+}
+
+// we need to know the last thing that happened: error or exception?
+enum LastFail {
+    LF_NONE,
+    LF_ERROR,
+    LF_EXCEPTION
+} _LastFail = LF_NONE;
+
+bool didthrow()
+{
+    return _LastFail == LF_EXCEPTION;
+}
+
+void throw(const MalDatum *dtm)
+{
+    _LastFail = LF_EXCEPTION;
+
     MalDatum *old = _Exception_last.datum;
     if (old) {
         MalDatum_release(old);
@@ -448,8 +470,10 @@ void Exception_last_val_set(const MalDatum *dtm)
     _Exception_last.datum = copy;
 }
 
-void Exception_last_sprintf(const char *fmt, ...)
+void throwf(const char *fmt, ...)
 {
+    _LastFail = LF_EXCEPTION;
+
     char buf[2048]; // TODO fix rigid limit
 
     va_list va;
@@ -457,16 +481,22 @@ void Exception_last_sprintf(const char *fmt, ...)
     vsprintf(buf, fmt, va);
     va_end(va);
 
-    Exception_last_val_set(MalDatum_new_string(buf));
+    fprintf(stderr, buf);
+    fprintf(stderr, "\n");
+
+    throw(MalDatum_new_string(buf));
 }
 
-Exception *Exception_last_copy()
+void error(const char *fmt, ...)
 {
-    if (!_Exception_last.datum) {
-        LOG_NULL(_Exception_last.datum);
-    }
-    return Exception_copy(&_Exception_last);
+    _LastFail = LF_ERROR;
+
+    va_list va;
+    va_start(va, fmt);
+    vfprintf(stderr, fmt, va);
+    va_end(va);
 }
+
 
 // MalType ----------------------------------------
 char *MalType_tostr(MalType type) {

@@ -14,7 +14,7 @@ MalDatum *verify_proc_arg_type(const Proc *proc, const Arr *args, size_t arg_idx
     MalDatum *arg = Arr_get(args, arg_idx);
     if (!MalDatum_istype(arg, expect_type)) {
         char *proc_name = Proc_name(proc);
-        THROWF("%s: bad arg no. %zd: expected a %s", 
+        throwf("%s: bad arg no. %zd: expected a %s", 
                 proc_name, arg_idx + 1, MalType_tostr(expect_type));
         free(proc_name);
         return NULL;
@@ -147,7 +147,7 @@ static MalDatum *mal_count(const Proc *proc, const Arr *args, MalEnv *env) {
     else if (MalDatum_islist(arg))
         len = List_len(arg->value.list);
     else {
-        THROWF("count: expected a list, but got %s instead", MalType_tostr(arg->type));
+        throwf("count: expected a list, but got %s instead", MalType_tostr(arg->type));
         return NULL;
     }
 
@@ -165,12 +165,12 @@ static MalDatum *mal_list_ref(const Proc *proc, const Arr *args, MalEnv *env)
     int idx = arg1->value.i;
 
     if (idx < 0) {
-        THROWF("list-ref: expected non-negative index");
+        throwf("list-ref: expected non-negative index");
         return NULL;
     }
     size_t list_len = List_len(list);
     if (idx >= list_len) {
-        THROWF("list-ref: index too large (%d >= %zu)", idx, list_len);
+        throwf("list-ref: index too large (%d >= %zu)", idx, list_len);
         return NULL;
     }
 
@@ -185,7 +185,7 @@ static MalDatum *mal_list_rest(const Proc *proc, const Arr *args, MalEnv *env)
     List *list = arg0->value.list;
 
     if (List_isempty(list)) {
-        THROWF("list-rest: received an empty list");
+        throwf("list-rest: received an empty list");
         return NULL;
     }
 
@@ -209,7 +209,7 @@ static MalDatum *mal_nth(const Proc *proc, const Arr *args, MalEnv *env)
     //     return mal_vec_ref(proc, args, env);
     // }
     else {
-        THROWF("nth: bad 1st arg: expected LIST or VECTOR, but was %s",
+        throwf("nth: bad 1st arg: expected LIST or VECTOR, but was %s",
                 MalType_tostr(arg0->type));
         return NULL;
     }
@@ -228,7 +228,7 @@ static MalDatum *mal_rest(const Proc *proc, const Arr *args, MalEnv *env)
     //     return mal_vec_rest(proc, args, env);
     // }
     else {
-        THROWF("rest: bad 1st arg: expected LIST or VECTOR, but was %s",
+        throwf("rest: bad 1st arg: expected LIST or VECTOR, but was %s",
                 MalType_tostr(arg0->type));
         return NULL;
     }
