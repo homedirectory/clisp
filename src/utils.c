@@ -310,7 +310,7 @@ char *file_to_str(const char *path)
 
     if (tot_size % chunk_size == 0) { // filled up to the brim?
         // make room for null-byte
-        buf = realloc(buf, tot_size + 1);
+        buf = realloc(buf, tot_size++);
     } else {
         // get rid of unused space
         buf = realloc(buf, tot_size);
