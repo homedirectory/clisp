@@ -259,9 +259,12 @@ void init_symbol_table()
     g_symbol_table = HashTbl_new((hashkey_t) hash_str);
 }
 
+static void noop(void *ptr) { }
 void free_symbol_table()
 {
-    HashTbl_free(g_symbol_table, free, (free_t) Symbol_free);
+    // key == value->name, where value is Symbol
+    // so we don't need to free keys
+    HashTbl_free(g_symbol_table, noop, (free_t) Symbol_free);
 }
 
 const Symbol *Symbol_get(const char *name)
