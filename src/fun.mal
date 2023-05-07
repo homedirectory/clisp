@@ -2,7 +2,7 @@
       (fn* (x acc) 
            (if (= x 0) 
              acc 
-             (tco (- x 1) (+ x acc)))))
+             (sum-acc (- x 1) (+ x acc)))))
 
 (def! collatz
       (fn* (n) 
