@@ -83,7 +83,7 @@ void HashTbl_free(HashTbl *tbl, free_t keyfree, free_t valfree)
 static void try_grow(HashTbl *tbl)
 {
     if (tbl->size >= SIZE_THRESH_RATIO * tbl->cap) {
-        uint newcap = tbl->cap *= GROW_RATIO;
+        uint newcap = tbl->cap * GROW_RATIO;
         tbl->buckets = realloc(tbl->buckets, sizeof(Bucket*) * newcap);
         // NULL-out added memory
         for (uint i = tbl->cap; i < newcap; i++)
