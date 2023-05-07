@@ -26,7 +26,7 @@ void MalEnv_free(MalEnv *env) {
 
     DEBUG("freeing MalEnv (refc = %ld)", env->refc);
 
-    Arr_freep(env->symbols, (free_t) Symbol_free);
+    Arr_free(env->symbols);
     Arr_freep(env->datums, (free_t) MalDatum_release_free);
     // the enclosing env should not be freed, but simply released
     if (env->enclosing)

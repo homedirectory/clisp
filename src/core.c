@@ -144,7 +144,7 @@ static MalDatum *mal_symbol(const Proc *proc, const Arr *args, MalEnv *env)
     MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
     if (!arg0) return NULL;
 
-    return MalDatum_new_sym(Symbol_new(arg0->value.string));
+    return MalDatum_new_sym(Symbol_get(arg0->value.string));
 }
 
 // symbol?
@@ -447,7 +447,7 @@ static MalDatum *mal_refc(const Proc *proc, const Arr *args, MalEnv *env)
 static MalDatum *mal_type(const Proc *proc, const Arr *args, MalEnv *env)
 {
     MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_new_sym(Symbol_new(MalType_tostr(arg0->type)));
+    return MalDatum_new_sym(Symbol_get(MalType_tostr(arg0->type)));
 }
 
 // env : returns the current (relative) environment as a list
@@ -597,12 +597,8 @@ static MalDatum *mal_exn_datum(const Proc *proc, const Arr *args, MalEnv *env)
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
-    do { \
-        Symbol *sym = Symbol_new(name); \
-        MalEnv_put(env, sym, MalDatum_new_proc(\
-                    Proc_builtin(name, arity, variadic, func_ptr))); \
-        Symbol_free(sym); \
-    } while (0);
+        MalEnv_put(env, Symbol_get(name), MalDatum_new_proc(\
+                    Proc_builtin(name, arity, variadic, func_ptr)));
 
     DEF("+", 2, true, mal_add);
     DEF("-", 2, true, mal_sub);

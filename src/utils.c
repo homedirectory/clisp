@@ -275,6 +275,11 @@ char *addr_to_str(void *ptr)
     return str;
 }
 
+bool streq(const char *s1, const char *s2)
+{
+    return strcmp(s1, s2) == 0;
+}
+
 // File utilities ----------------------------------------
 bool file_readable(const char *path)
 {

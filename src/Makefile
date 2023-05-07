@@ -32,5 +32,5 @@ step8_macros: step8_macros.c printer.c reader.c types.c utils.c env.c core.c mem
 step9_try: step9_try.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@
 
-mylisp: mylisp.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c
+mylisp: mylisp.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c hashtbl.c
 	$(CC) $(CFLAGS) $^ -lreadline -o $@

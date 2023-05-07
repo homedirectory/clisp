@@ -10,6 +10,7 @@
 #include <assert.h>
 #include "printer.h"
 #include <stdarg.h>
+#include "hashtbl.h"
 
 // -----------------------------------------------------------------
 // List ------------------------------------------------------------
@@ -219,20 +220,17 @@ bool List_eq(const List *lst1, const List *lst2) {
     return true;
 }
 
-// Symbol ----------------------------------------
-Symbol *Symbol_new(const char *name) {
+// -----------------------------------------------------------------------------
+// Symbol ----------------------------------------------------------------------
+
+/*static*/ Symbol *Symbol_new(const char *name) {
     Symbol *sym = malloc(sizeof(Symbol));
     sym->name = dyn_strcpy(name);
     return sym;
 }
 
-void Symbol_free(Symbol *symbol) {
-    free(symbol->name);
-    free(symbol);
-}
-
-// TODO intern all symbols
-bool Symbol_eq(const Symbol *sym1, const Symbol *sym2) {
+bool Symbol_eq(const Symbol *sym1, const Symbol *sym2)
+{
     if (sym1 == NULL) {
         LOG_NULL(sym1);
         return false;
@@ -243,6 +241,44 @@ bool Symbol_eq(const Symbol *sym1, const Symbol *sym2) {
     }
 
     return sym1 == sym2 || strcmp(sym1->name, sym2->name) == 0;
+}
+
+static uint hash_str(const char *str)
+{
+    // FIXME
+    uint h = 0;
+    while (*str++) h += *str;
+    return h;
+}
+
+// key char*, value Symbol*
+static HashTbl *g_symbol_table;
+
+void init_symbol_table()
+{
+    g_symbol_table = HashTbl_new((hashkey_t) hash_str);
+}
+
+void free_symbol_table()
+{
+    HashTbl_free(g_symbol_table, free, (free_t) Symbol_free);
+}
+
+const Symbol *Symbol_get(const char *name)
+{
+    const Symbol *sym = HashTbl_get(g_symbol_table, name, (keyeq_t) streq);
+    if (sym)
+        return sym;
+    else {
+        Symbol *sym_new = Symbol_new(name);
+        HashTbl_put(g_symbol_table, sym_new->name, sym_new);
+        return sym_new;
+    }
+}
+
+void Symbol_free(Symbol *symbol) {
+    free(symbol->name);
+    free(symbol);
 }
 
 bool Symbol_eq_str(const Symbol *sym, const char *str) {
@@ -265,6 +301,7 @@ Symbol *Symbol_copy(const Symbol *sym) {
     }
 
     return Symbol_new(sym->name);
+    // return sym;
 }
 
 // Procedures ----------------------------------------
@@ -352,7 +389,7 @@ void Proc_free(Proc *proc) {
 
     if (!proc->builtin) {
         // free params
-        Arr_freep(proc->params, (free_t) Symbol_free);
+        Arr_free(proc->params);
         // free body
         Arr_freep(proc->logic.body, (free_t) MalDatum_release_free);
     }
@@ -613,7 +650,7 @@ MalDatum *MalDatum_new_int(const int i) {
     return mdp;
 }
 
-MalDatum *MalDatum_new_sym(Symbol *symbol) { 
+MalDatum *MalDatum_new_sym(const Symbol *symbol) { 
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;
     mdp->type = SYMBOL;
@@ -724,7 +761,6 @@ void MalDatum_free(MalDatum *datum) {
             free(datum->value.string);
             break;
         case SYMBOL:
-            Symbol_free(datum->value.sym);
             break;
         case PROCEDURE:
             Proc_free(datum->value.proc);
@@ -776,7 +812,7 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_int(datum->value.i);
             break;
         case SYMBOL:
-            out = MalDatum_new_sym(Symbol_new(datum->value.sym->name));
+            out = MalDatum_new_sym(Symbol_copy(datum->value.sym));
             break;
         case STRING:
             out = MalDatum_new_string(datum->value.string);

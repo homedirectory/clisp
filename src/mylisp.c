@@ -84,14 +84,14 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     // 1. bind params to args in the local env
     // mandatory arguments
     for (int i = 0; i < proc->argc; i++) {
-        Symbol *param = Arr_get(proc->params, i);
+        const Symbol *param = Arr_get(proc->params, i);
         MalDatum *arg = Arr_get(args, i);
         MalEnv_put(proc_env, param, arg); 
     }
 
     // if variadic, then bind the last param to the rest of arguments
     if (proc->variadic) {
-        Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
+        const Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
         List *var_args = List_new();
         for (size_t i = proc->argc; i < args->len; i++) {
             MalDatum *arg = Arr_get(args, i);
@@ -129,7 +129,7 @@ static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv 
     if (!verify_proc_application(proc, args)) return NULL;
 
     for (size_t i = 0; i < args->len; i++) {
-        Symbol *param_name = Arr_get(proc->params, i);
+        const Symbol *param_name = Arr_get(proc->params, i);
         MalEnv_put(env, param_name, args->items[i]);
     }
 
@@ -249,7 +249,7 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     OWN(param_names_symbols);
 
     for (struct Node *node = params->head; node != NULL; node = node->next) {
-        Symbol *sym = node->value->value.sym;
+        const Symbol *sym = node->value->value.sym;
 
         // '&' is a special symbol that marks a variadic procedure
         // exactly one parameter is expected after it
@@ -259,14 +259,14 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
                 BADSTX("fn* bad parameter list: 1 parameter expected after '&'");
                 return NULL;
             }
-            Symbol *last_sym = node->next->value->value.sym;
-            Arr_add(param_names_symbols, last_sym); // no need to copy
+            const Symbol *last_sym = node->next->value->value.sym;
+            Arr_add(param_names_symbols, (Symbol*) last_sym); // no need to copy
             variadic = true;
             break;
         }
         else {
             proc_argc++;
-            Arr_add(param_names_symbols, sym); // no need to copy
+            Arr_add(param_names_symbols, (Symbol*) sym); // no need to copy
         }
     }
 
@@ -304,7 +304,7 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
                 MalType_tostr(snd->type));
         return NULL;
     }
-    Symbol *id = snd->value.sym;
+    const Symbol *id = snd->value.sym;
 
     MalDatum *new_assoc = eval(List_ref(list, 2), env);
     if (new_assoc == NULL) {
@@ -337,7 +337,7 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
         BADSTX("defmacro!: 1st arg must be a symbol, but was %s", MalType_tostr(arg1->type));
         return NULL;
     }
-    Symbol *id = arg1->value.sym;
+    const Symbol *id = arg1->value.sym;
 
     MalDatum *macro_datum = NULL;
     {
@@ -425,7 +425,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             MalEnv_free(let_env);
             return NULL;
         }
-        Symbol *id = id_node->value->value.sym;
+        const Symbol *id = id_node->value->value.sym;
 
         // it's important to evaluate the bound value using the let* env,
         // so that previous bindings can be used during evaluation
@@ -514,7 +514,7 @@ static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splic
 
     MalDatum *ref0 = List_ref(list, 0);
     if (MalDatum_istype(ref0, SYMBOL)) {
-        Symbol *sym = ref0->value.sym;
+        const Symbol *sym = ref0->value.sym;
 
         if (Symbol_eq_str(sym, "unquote")) {
             return eval_unquote(list, env);
@@ -591,7 +591,7 @@ static MalDatum *eval_quasiquote(const List *list, MalEnv *env)
     // splice-unquote may only appear in an enclosing list form
     MalDatum *ast0 = List_ref(ast_list, 0);
     if (MalDatum_istype(ast0, SYMBOL)) {
-        Symbol *sym = ast0->value.sym;
+        const Symbol *sym = ast0->value.sym;
         if (Symbol_eq_str(sym, "splice-unquote")) {
             BADSTX("splice-unquote: illegal context within quasiquote (nothing to splice into)");
             return NULL;
@@ -635,7 +635,7 @@ MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
 
     switch (datum->type) {
         case SYMBOL:
-            Symbol *sym = datum->value.sym;
+            const Symbol *sym = datum->value.sym;
             MalDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
                 throwf("symbol binding '%s' not found", sym->name);
@@ -739,7 +739,7 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
     MalDatum *expr1 = List_ref(ast_list, 1);
     MalDatum *catch_form = List_ref(ast_list, 2);
     // validate catch_form
-    Symbol *err_sym = NULL;
+    const Symbol *err_sym = NULL;
     MalDatum *expr2 = NULL;
     {
         if (!MalDatum_islist(catch_form)) {
@@ -829,7 +829,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             // handle special forms: def!, let*, if, do, fn*, quote, quasiquote,
             // defmacro!, macroexpand, try*/catch*
             if (MalDatum_istype(head, SYMBOL)) {
-                Symbol *sym = head->value.sym;
+                const Symbol *sym = head->value.sym;
                 if (Symbol_eq_str(sym, "def!")) {
                     out = eval_def(ast_list, apply_env);
                     break;
@@ -1179,29 +1179,31 @@ static MalDatum *mal_map(const Proc *proc, const Arr *args, MalEnv *env)
 }
 
 int main(int argc, char **argv) {
+    init_symbol_table();
+
     MalEnv *env = MalEnv_new(NULL);
     OWN(env);
     MalEnv_own(env);
 
     // FIXME memory leak
-    MalEnv_put(env, Symbol_new("nil"), MalDatum_nil());
-    MalEnv_put(env, Symbol_new("true"), MalDatum_true());
-    MalEnv_put(env, Symbol_new("false"), MalDatum_false());
+    MalEnv_put(env, Symbol_get("nil"), MalDatum_nil());
+    MalEnv_put(env, Symbol_get("true"), MalDatum_true());
+    MalEnv_put(env, Symbol_get("false"), MalDatum_false());
 
-    MalEnv_put(env, Symbol_new("apply"), MalDatum_new_proc(
+    MalEnv_put(env, Symbol_get("apply"), MalDatum_new_proc(
                 Proc_builtin("apply", 2, true, mal_apply)));
 
-    MalEnv_put(env, Symbol_new("read-string"), MalDatum_new_proc(
+    MalEnv_put(env, Symbol_get("read-string"), MalDatum_new_proc(
             Proc_builtin("read-string", 1, false, mal_read_string)));
-    MalEnv_put(env, Symbol_new("slurp"), MalDatum_new_proc(
+    MalEnv_put(env, Symbol_get("slurp"), MalDatum_new_proc(
             Proc_builtin("slurp", 1, false, mal_slurp)));
-    MalEnv_put(env, Symbol_new("eval"), MalDatum_new_proc(
+    MalEnv_put(env, Symbol_get("eval"), MalDatum_new_proc(
             Proc_builtin("eval", 1, false, mal_eval)));
 
-    MalEnv_put(env, Symbol_new("swap!"), MalDatum_new_proc(
+    MalEnv_put(env, Symbol_get("swap!"), MalDatum_new_proc(
             Proc_builtin("swap!", 2, true, mal_swap_bang)));
 
-    MalEnv_put(env, Symbol_new("map"), MalDatum_new_proc(
+    MalEnv_put(env, Symbol_get("map"), MalDatum_new_proc(
             Proc_builtin("map", 2, false, mal_map)));
 
     core_def_procs(env);
@@ -1249,4 +1251,6 @@ int main(int argc, char **argv) {
     MalEnv_free(env);
 
     clear_history();
+
+    free_symbol_table();
 }

@@ -210,7 +210,7 @@ static MalDatum *read_atom(const char *token) {
     }
     // symbol
     else if (strchr(SYMBOL_INV_CHARS, token[0]) == NULL) {
-        return MalDatum_new_sym(Symbol_new(token));
+        return MalDatum_new_sym(Symbol_get(token));
     }
     else {
         DEBUG("Unknown atom: %s", token);
@@ -270,7 +270,7 @@ MalDatum *read_form(Reader *rdr) {
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_new_sym(Symbol_new("quote")));
+        List_add(list, MalDatum_new_sym(Symbol_get("quote")));
         List_add(list, next_form);
         return MalDatum_new_list(list);
     }
@@ -282,7 +282,7 @@ MalDatum *read_form(Reader *rdr) {
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_new_sym(Symbol_new("quasiquote")));
+        List_add(list, MalDatum_new_sym(Symbol_get("quasiquote")));
         List_add(list, next_form);
         return MalDatum_new_list(list);
     }
@@ -294,7 +294,7 @@ MalDatum *read_form(Reader *rdr) {
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_new_sym(Symbol_new("splice-unquote")));
+        List_add(list, MalDatum_new_sym(Symbol_get("splice-unquote")));
         List_add(list, next_form);
         return MalDatum_new_list(list);
     }
@@ -306,7 +306,7 @@ MalDatum *read_form(Reader *rdr) {
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_new_sym(Symbol_new("unquote")));
+        List_add(list, MalDatum_new_sym(Symbol_get("unquote")));
         List_add(list, next_form);
         return MalDatum_new_list(list);
     }
