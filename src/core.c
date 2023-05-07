@@ -533,20 +533,34 @@ static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
         return MalDatum_empty_list();
     }
 
-    List *lists[args->len];
+    // verify argument types and
+    // find locations of the 1st and 2nd non-empty lists
+    size_t idxs[2] = { -1, -1 };
+    size_t j = 0;
     for (size_t i = 0; i < args->len; i++) {
-        MalDatum *arg = verify_proc_arg_type(proc, args, i, LIST);
+        const MalDatum *arg = verify_proc_arg_type(proc, args, i, LIST);
         if (!arg) return NULL;
-        lists[i] = arg->value.list;
+        const List *list = arg->value.list;
+
+        if (j < 2 && !List_isempty(list)) {
+            idxs[j++] = i;
+        }
     }
 
-    List *new_list = List_new();
-    for (size_t i = 0; i < args->len; i++) {
-        List *lst = lists[i];
-        List_append(new_list, lst);
-    }
+    if (j == 0) return MalDatum_empty_list();
+    else if (j == 1) return Arr_get(args, idxs[0]);
+    else {
+        // copy the 1st non-empty list and append everything else to it
+        const List *first = ((MalDatum*)Arr_get(args, idxs[0]))->value.list;
+        List *new_list = List_copy(first);
 
-    return MalDatum_new_list(new_list);
+        for (size_t i = idxs[1]; i < args->len; i++) {
+            const List *list = ((MalDatum*)Arr_get(args, i))->value.list;
+            List_append(new_list, list);
+        }
+
+        return MalDatum_new_list(new_list);
+    }
 }
 
 static MalDatum *mal_macrop(const Proc *proc, const Arr *args, MalEnv *env) {
