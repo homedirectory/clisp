@@ -88,7 +88,7 @@ char *MalType_tostr(MalType type);
 
 // Symbol ----------------------------------------
 typedef struct Symbol {
-    char name[256];
+    char *name;
 } Symbol;
 
 Symbol *Symbol_new(const char *name);

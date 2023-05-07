@@ -222,11 +222,12 @@ bool List_eq(const List *lst1, const List *lst2) {
 // Symbol ----------------------------------------
 Symbol *Symbol_new(const char *name) {
     Symbol *sym = malloc(sizeof(Symbol));
-    strcpy(sym->name, name);
+    sym->name = dyn_strcpy(name);
     return sym;
 }
 
 void Symbol_free(Symbol *symbol) {
+    free(symbol->name);
     free(symbol);
 }
 
