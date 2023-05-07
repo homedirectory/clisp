@@ -30,9 +30,6 @@ size_t List_len(const List *list);
 /* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *);
 
-// shallow free does not free the values pointed to by nodes
-void List_shlw_free(List *);
-
 void List_add(List *, MalDatum *);
 
 // creates a new list headed by datum followed by the elements of the given list
@@ -222,14 +219,20 @@ void MalDatum_own(MalDatum *);
 // decrements ref count (use when you want to *release* owned memory)
 void MalDatum_release(MalDatum *);
 
+void MalDatum_free(MalDatum *);
+// MalDatum_release + MalDatum_free
+void MalDatum_release_free(MalDatum *);
+
 // singletons
 MalDatum *MalDatum_nil();
 MalDatum *MalDatum_true();
 MalDatum *MalDatum_false();
 MalDatum *MalDatum_empty_list();
 
-bool MalDatum_isnil(MalDatum *datum);
-bool MalDatum_isfalse(MalDatum *datum);
+bool MalDatum_istype(const MalDatum *, MalType);
+bool MalDatum_islist(const MalDatum *);
+bool MalDatum_isnil(const MalDatum *datum);
+bool MalDatum_isfalse(const MalDatum *datum);
 
 // constructors
 MalDatum *MalDatum_new_int(const int);
@@ -240,10 +243,6 @@ MalDatum *MalDatum_new_proc(Proc *);
 MalDatum *MalDatum_new_atom(Atom *);
 MalDatum *MalDatum_new_exn(Exception *);
 
-bool MalDatum_istype(const MalDatum *, MalType);
-bool MalDatum_islist(const MalDatum *);
-void MalDatum_free(MalDatum *);
-void MalDatum_release_free(MalDatum *);
 MalDatum *MalDatum_copy(const MalDatum *);
 MalDatum *MalDatum_deep_copy(const MalDatum *);
 

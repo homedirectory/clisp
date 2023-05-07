@@ -14,6 +14,9 @@
 // -----------------------------------------------------------------
 // List ------------------------------------------------------------
 
+static const List _empty_list = { .len = 0, .head = NULL, .tail = NULL };
+List *List_empty() { return (List*) &_empty_list; }
+
 List *List_new() {
     List *list = malloc(sizeof(List));
     list->len = 0;
@@ -32,6 +35,8 @@ List *List_copy(const List *list) {
         return NULL;
     }
 
+    if (List_isempty(list)) return List_empty();
+
     List *out = List_new();
 
     struct Node *node = list->head;
@@ -49,6 +54,8 @@ List *List_deep_copy(const List *list) {
         return NULL;
     }
 
+    if (List_isempty(list)) return List_empty();
+
     List *out = List_new();
 
     struct Node *node = list->head;
@@ -64,11 +71,6 @@ List *List_deep_copy(const List *list) {
     }
 
     return out;
-}
-
-static List _empty_list = { .len = 0, .head = NULL, .tail = NULL };
-List *List_empty() {
-    return &_empty_list;
 }
 
 bool List_isempty(const List *list) {
@@ -553,7 +555,9 @@ void error(const char *fmt, ...)
 }
 
 
-// MalType ----------------------------------------
+// -----------------------------------------------------------------
+// MalType ---------------------------------------------------------
+
 char *MalType_tostr(MalType type) {
     static char* const names[] = {
         "INT", 
@@ -572,16 +576,19 @@ char *MalType_tostr(MalType type) {
     return names[type];
 }
 
+// -----------------------------------------------------------------
+// MalDatum --------------------------------------------------------
+
 // singletons
-/*const*/ static MalDatum _MalDatum_nil = { 
+static MalDatum _MalDatum_nil = { 
     .refc = 1,
     .type = NIL 
 };
-/*const*/ static MalDatum _MalDatum_true = { 
+static MalDatum _MalDatum_true = { 
     .refc = 1,
     .type = TRUE 
 };
-/*const*/ static MalDatum _MalDatum_false = { 
+static MalDatum _MalDatum_false = { 
     .refc = 1,
     .type = FALSE 
 };
@@ -589,21 +596,13 @@ char *MalType_tostr(MalType type) {
 static MalDatum _MalDatum_empty_list = { 
     .refc = 1,
     .type = LIST, 
-    .value.list = &_empty_list
+    .value.list = (List*) &_empty_list
 };
 
-MalDatum *MalDatum_nil() {
-    return &_MalDatum_nil;
-};
-MalDatum *MalDatum_true() {
-    return &_MalDatum_true;
-};
-MalDatum *MalDatum_false() {
-    return &_MalDatum_false;
-};
-MalDatum *MalDatum_empty_list() {
-    return &_MalDatum_empty_list;
-}
+MalDatum *MalDatum_nil()        { return (MalDatum*) &_MalDatum_nil;        }
+MalDatum *MalDatum_true()       { return (MalDatum*) &_MalDatum_true;       }
+MalDatum *MalDatum_false()      { return (MalDatum*) &_MalDatum_false;      }
+MalDatum *MalDatum_empty_list() { return (MalDatum*) &_MalDatum_empty_list; }
 
 MalDatum *MalDatum_new_int(const int i) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
@@ -833,7 +832,7 @@ MalDatum *MalDatum_deep_copy(const MalDatum *datum) {
     return out;
 }
 
-bool MalDatum_isnil(MalDatum *datum) {
+bool MalDatum_isnil(const MalDatum *datum) {
     if (datum == NULL) {
         LOG_NULL(datum);
         return false;
@@ -841,7 +840,7 @@ bool MalDatum_isnil(MalDatum *datum) {
     return datum->type == NIL;
 }
 
-bool MalDatum_isfalse(MalDatum *datum) {
+bool MalDatum_isfalse(const MalDatum *datum) {
     if (datum == NULL) {
         LOG_NULL(datum);
         return false;
