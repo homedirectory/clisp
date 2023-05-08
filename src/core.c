@@ -174,7 +174,7 @@ static MalDatum *mal_falsep(const Proc *proc, const Arr *args, MalEnv *env) {
 // list
 static MalDatum *mal_list(const Proc *proc, const Arr *args, MalEnv *env) {
     if (args->len == 0)
-        return MalDatum_empty_list();
+        return (MalDatum*) MalDatum_empty_list();
 
     List *list = List_new();
     for (int i = 0; i < args->len; i++) {
@@ -309,7 +309,7 @@ static MalDatum *mal_prn(const Proc *proc, const Arr *args, MalEnv *env)
             free(strings[i]);
     }
 
-    return MalDatum_nil();
+    return (MalDatum*) MalDatum_nil();
 }
 
 // pr-str: calls pr_str on each argument with print_readably set to true, joins
@@ -391,7 +391,7 @@ static MalDatum *mal_println(const Proc *proc, const Arr *args, MalEnv *env)
             free(strings[i]);
     }
 
-    return MalDatum_nil();
+    return (MalDatum*) MalDatum_nil();
 }
 
 /* (procedure? datum) : predicate for procedures */
@@ -530,7 +530,7 @@ static MalDatum *mal_cons(const Proc *proc, const Arr *args, MalEnv *env)
 static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
 {
     if (args->len == 0) {
-        return MalDatum_empty_list();
+        return (MalDatum*) MalDatum_empty_list();
     }
 
     // verify argument types and
@@ -547,7 +547,7 @@ static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
         }
     }
 
-    if (j == 0) return MalDatum_empty_list();
+    if (j == 0) return (MalDatum*) MalDatum_empty_list();
     else if (j == 1) return Arr_get(args, idxs[0]);
     else {
         // copy the 1st non-empty list and append everything else to it

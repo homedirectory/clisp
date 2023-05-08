@@ -41,7 +41,6 @@ void List_append(List *dst, const List *src);
 
 MalDatum *List_ref(const List *, size_t);
 
-List *List_empty();
 bool List_isempty(const List *);
 
 /* Returns a shallow copy of a list: the nodes are copied, but MalDatums they point to are not. */
@@ -229,10 +228,12 @@ void MalDatum_free(MalDatum *);
 void MalDatum_release_free(MalDatum *);
 
 // singletons
-MalDatum *MalDatum_nil();
-MalDatum *MalDatum_true();
-MalDatum *MalDatum_false();
-MalDatum *MalDatum_empty_list();
+const MalDatum *MalDatum_nil();
+const MalDatum *MalDatum_true();
+const MalDatum *MalDatum_false();
+const MalDatum *MalDatum_empty_list();
+
+bool MalDatum_is_singleton(const MalDatum *datum);
 
 bool MalDatum_istype(const MalDatum *, MalType);
 bool MalDatum_islist(const MalDatum *);

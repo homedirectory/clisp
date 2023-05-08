@@ -180,7 +180,7 @@ static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
         return List_ref(ast_list, 3);
     } 
     else {
-        return MalDatum_nil();
+        return (MalDatum*) MalDatum_nil();
     }
 }
 
@@ -510,7 +510,7 @@ static List *eval_splice_unquote(const List *list, MalEnv *env)
 static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splice)
 {
     if (List_isempty(list)) 
-        return MalDatum_empty_list();
+        return (MalDatum*) MalDatum_empty_list();
 
     MalDatum *ref0 = List_ref(list, 0);
     if (MalDatum_istype(ref0, SYMBOL)) {
@@ -821,7 +821,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
 
             List *ast_list = ast->value.list;
             if (List_isempty(ast_list)) {
-                out = MalDatum_empty_list();
+                out = (MalDatum*) MalDatum_empty_list();
                 break;
             }
 
@@ -1151,7 +1151,7 @@ static MalDatum *mal_map(const Proc *proc, const Arr *args, MalEnv *env)
     List *list = arg1->value.list;
 
     if (List_isempty(list)) {
-        return MalDatum_empty_list();
+        return (MalDatum*) MalDatum_empty_list();
     }
 
     List *out = List_new();
@@ -1186,9 +1186,9 @@ int main(int argc, char **argv) {
     MalEnv_own(env);
 
     // FIXME memory leak
-    MalEnv_put(env, "nil", MalDatum_nil());
-    MalEnv_put(env, "true", MalDatum_true());
-    MalEnv_put(env, "false", MalDatum_false());
+    MalEnv_put(env, "nil", (MalDatum*) MalDatum_nil());
+    MalEnv_put(env, "true", (MalDatum*) MalDatum_true());
+    MalEnv_put(env, "false", (MalDatum*) MalDatum_false());
 
     MalEnv_put(env, "apply", MalDatum_new_proc(
                 Proc_builtin("apply", 2, true, mal_apply)));

@@ -15,9 +15,6 @@
 // -----------------------------------------------------------------
 // List ------------------------------------------------------------
 
-static const List _empty_list = { .len = 0, .head = NULL, .tail = NULL };
-List *List_empty() { return (List*) &_empty_list; }
-
 List *List_new() {
     List *list = malloc(sizeof(List));
     list->len = 0;
@@ -25,6 +22,9 @@ List *List_new() {
     list->tail = NULL;
     return list;
 }
+
+static const List g_empty_list = { .len = 0, .head = NULL, .tail = NULL };
+const List *List_empty() { return &g_empty_list; }
 
 size_t List_len(const List *list) {
     return list->len;
@@ -36,7 +36,7 @@ List *List_copy(const List *list) {
         return NULL;
     }
 
-    if (List_isempty(list)) return List_empty();
+    if (List_isempty(list)) return (List*) List_empty();
 
     List *out = List_new();
 
@@ -55,7 +55,7 @@ List *List_deep_copy(const List *list) {
         return NULL;
     }
 
-    if (List_isempty(list)) return List_empty();
+    if (List_isempty(list)) return (List*) List_empty();
 
     List *out = List_new();
 
@@ -188,7 +188,7 @@ MalDatum *List_ref(const List *list, size_t idx) {
 
 /* Frees the memory allocated for each Node of the list including the MalDatums they point to. */
 void List_free(List *list) {
-    if (list == NULL || list == &_empty_list) return;
+    if (list == NULL || list == &g_empty_list) return;
 
     if (list->head) {
         struct Node *node = list->head;
@@ -621,29 +621,52 @@ char *MalType_tostr(MalType type) {
 // MalDatum --------------------------------------------------------
 
 // singletons
-static MalDatum _MalDatum_nil = { 
+static const MalDatum g_MalDatum_nil = { 
     .refc = 1,
     .type = NIL 
 };
-static MalDatum _MalDatum_true = { 
+static const MalDatum g_MalDatum_true = { 
     .refc = 1,
     .type = TRUE 
 };
-static MalDatum _MalDatum_false = { 
+static const MalDatum g_MalDatum_false = { 
     .refc = 1,
     .type = FALSE 
 };
-
-static MalDatum _MalDatum_empty_list = { 
+static const MalDatum g_MalDatum_empty_list = { 
     .refc = 1,
     .type = LIST, 
-    .value.list = (List*) &_empty_list
+    .value.list = (List*) &g_empty_list
 };
 
-MalDatum *MalDatum_nil()        { return (MalDatum*) &_MalDatum_nil;        }
-MalDatum *MalDatum_true()       { return (MalDatum*) &_MalDatum_true;       }
-MalDatum *MalDatum_false()      { return (MalDatum*) &_MalDatum_false;      }
-MalDatum *MalDatum_empty_list() { return (MalDatum*) &_MalDatum_empty_list; }
+const MalDatum *MalDatum_nil()        { return &g_MalDatum_nil;        }
+const MalDatum *MalDatum_true()       { return &g_MalDatum_true;       }
+const MalDatum *MalDatum_false()      { return &g_MalDatum_false;      }
+const MalDatum *MalDatum_empty_list() { return &g_MalDatum_empty_list; }
+
+bool MalDatum_isnil(const MalDatum *datum) {
+    if (datum == NULL) {
+        LOG_NULL(datum);
+        return false;
+    }
+    return datum->type == NIL;
+}
+
+bool MalDatum_isfalse(const MalDatum *datum) {
+    if (datum == NULL) {
+        LOG_NULL(datum);
+        return false;
+    }
+    return datum->type == FALSE;
+}
+
+bool MalDatum_is_singleton(const MalDatum *datum)
+{
+    return datum == &g_MalDatum_nil 
+        || datum == &g_MalDatum_true
+        || datum == &g_MalDatum_false
+        || datum == &g_MalDatum_empty_list;
+}
 
 MalDatum *MalDatum_new_int(const int i) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
@@ -711,6 +734,8 @@ void MalDatum_own(MalDatum *datum)
         return;
     }
 
+    if (MalDatum_is_singleton(datum)) return;
+
     datum->refc += 1;
 
     char *repr = pr_repr(datum);
@@ -724,6 +749,9 @@ void MalDatum_release(MalDatum *datum)
         LOG_NULL(datum);
         return;
     }
+
+    if (MalDatum_is_singleton(datum)) return;
+
     if (datum->refc <= 0) {
         char *repr = pr_repr(datum);
         FATAL("Invalid ref count %ld @ %p -> %s", datum->refc, datum, repr);
@@ -824,13 +852,13 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_list(List_copy(datum->value.list));
             break;
         case NIL:
-            out = MalDatum_nil();
+            out = (MalDatum*) MalDatum_nil();
             break;
         case TRUE:
-            out = MalDatum_true();
+            out = (MalDatum*) MalDatum_true();
             break;
         case FALSE:
-            out = MalDatum_false();
+            out = (MalDatum*) MalDatum_false();
             break;
         case PROCEDURE:
             out = MalDatum_new_proc(Proc_copy(datum->value.proc));
@@ -870,22 +898,6 @@ MalDatum *MalDatum_deep_copy(const MalDatum *datum) {
     }
 
     return out;
-}
-
-bool MalDatum_isnil(const MalDatum *datum) {
-    if (datum == NULL) {
-        LOG_NULL(datum);
-        return false;
-    }
-    return datum->type == NIL;
-}
-
-bool MalDatum_isfalse(const MalDatum *datum) {
-    if (datum == NULL) {
-        LOG_NULL(datum);
-        return false;
-    }
-    return datum->type == FALSE;
 }
 
 bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {

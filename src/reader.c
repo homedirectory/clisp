@@ -246,7 +246,7 @@ static MalDatum *read_list(Reader *rdr) {
     }
 
     Reader_next(rdr); // skip over closing paren
-    return List_isempty(list) ? MalDatum_empty_list() : MalDatum_new_list(list);
+    return List_isempty(list) ? (MalDatum*) MalDatum_empty_list() : MalDatum_new_list(list);
 }
 
 MalDatum *read_form(Reader *rdr) {
