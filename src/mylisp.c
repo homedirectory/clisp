@@ -1215,7 +1215,7 @@ int main(int argc, char **argv) {
                         "(println \"loaded file\" path) nil))", 
             env);
 
-    rep("(load-file \"core.mal\")", env);
+    rep("(load-file \"lisp/core.lisp\")", env);
 
     // TODO if the first arg is a filename, then eval (load-file <filename>)
     // TODO bind *ARGV* to command line arguments

@@ -1,0 +1,11 @@
+- All globally bound values have ref count of 2, instead of 1.
+
++ TCO doesn't isolate procedure envs properly:
+    (def! f1 (fn* (x) (f2)))
+    (def! f2 (fn* () x))
+    (f1 10) ;=> 10
+
+
++ Address boundary error for def! inside a procedure
+FIX: prevent early free of return value of apply_proc, which could happen if it
+     was the same value as an argument; e.g., ((fn* (x) x) 10)
