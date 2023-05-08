@@ -120,7 +120,34 @@ void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
     tbl->size += 1;
 }
 
-void *HashTbl_pop(HashTbl *tbl, const void *key)
+void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)
 {
-    FATAL("UNIMPLEMENTED");
+    uint idx = tbl->hashkey(key) % tbl->cap;
+    Bucket *bkt = tbl->buckets[idx];
+    const void *val_out = NULL;
+
+    if (bkt) {
+        Bucket *prev = NULL;
+        while (bkt) {
+            if (keyeq(bkt->key, key)) {
+                val_out = bkt->val;
+
+                if (prev)
+                    prev->next = bkt->next;
+                else {
+                    // this was the 1st key in the bucket
+                    tbl->buckets[idx] = bkt->next;
+                }
+
+                // free key?
+                free(bkt);
+                tbl->size -= 1;
+                break;
+            }
+            prev = bkt;
+            bkt = bkt->next;
+        }
+    }
+
+    return (void*) val_out;
 }
