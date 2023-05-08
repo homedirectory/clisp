@@ -252,7 +252,7 @@ static uint hash_str(const char *str)
     return h;
 }
 
-// key char*, value Symbol*
+// key char*, value MalDatum* representing a symbol
 static HashTbl *g_symbol_table;
 
 void init_symbol_table()
@@ -263,21 +263,32 @@ void init_symbol_table()
 static void noop(void *ptr) { }
 void free_symbol_table()
 {
-    // key == value->name, where value is Symbol
-    // so we don't need to free keys
-    HashTbl_free(g_symbol_table, noop, (free_t) Symbol_free);
+    // key is the same pointer that's stored by a symbol, so we don't need to free keys
+    HashTbl_free(g_symbol_table, noop, (free_t) MalDatum_free);
+}
+
+const MalDatum *MalDatum_symbol_get(const char *name)
+{
+    const MalDatum *dtm = HashTbl_get(g_symbol_table, name, (keyeq_t) streq);
+    if (dtm)
+        return dtm;
+    else {
+        Symbol *sym = Symbol_new(name);
+        MalDatum *dtm_sym = MalDatum_new_sym(sym);
+        HashTbl_put(g_symbol_table, sym->name, dtm_sym);
+        return dtm_sym;
+    }
 }
 
 const Symbol *Symbol_get(const char *name)
 {
-    const Symbol *sym = HashTbl_get(g_symbol_table, name, (keyeq_t) streq);
-    if (sym)
-        return sym;
-    else {
-        Symbol *sym_new = Symbol_new(name);
-        HashTbl_put(g_symbol_table, sym_new->name, sym_new);
-        return sym_new;
-    }
+    const MalDatum *dtm = MalDatum_symbol_get(name);
+    return dtm ? dtm->value.sym : NULL;
+}
+
+static MalDatum *sym_tbl_pop(const char *name)
+{
+    return HashTbl_pop(g_symbol_table, name, (keyeq_t) streq);
 }
 
 void Symbol_free(Symbol *symbol) {
@@ -807,6 +818,10 @@ void MalDatum_free(MalDatum *datum) {
             free(datum->value.string);
             break;
         case SYMBOL:
+            const Symbol *sym = datum->value.sym;
+            printf("freeing Symbol %s\n", sym->name);
+            sym_tbl_pop(sym->name);
+            // Symbol_free((Symbol*) sym);
             break;
         case PROCEDURE:
             Proc_free(datum->value.proc);
@@ -858,8 +873,7 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_int(datum->value.i);
             break;
         case SYMBOL:
-            out = MalDatum_new_sym(Symbol_copy(datum->value.sym));
-            break;
+            return (MalDatum*) datum;
         case STRING:
             out = MalDatum_new_string(datum->value.string);
             break;
