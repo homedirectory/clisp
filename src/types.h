@@ -235,6 +235,8 @@ const MalDatum *MalDatum_empty_list();
 
 bool MalDatum_is_singleton(const MalDatum *datum);
 
+const MalDatum *MalDatum_bool(bool b);
+
 bool MalDatum_istype(const MalDatum *, MalType);
 bool MalDatum_islist(const MalDatum *);
 bool MalDatum_isnil(const MalDatum *datum);

@@ -668,6 +668,11 @@ bool MalDatum_is_singleton(const MalDatum *datum)
         || datum == &g_MalDatum_empty_list;
 }
 
+const MalDatum *MalDatum_bool(bool b)
+{
+    return b ? MalDatum_true() : MalDatum_false();
+}
+
 MalDatum *MalDatum_new_int(const int i) {
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;

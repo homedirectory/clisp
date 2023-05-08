@@ -96,7 +96,7 @@ static MalDatum *mal_eq(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg1 = args->items[0];
     MalDatum *arg2 = args->items[1];
 
-    return MalDatum_eq(arg1, arg2) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_eq(arg1, arg2));
 }
 
 /* '>' : compare the first two numeric parameters */
@@ -110,7 +110,7 @@ static MalDatum *mal_gt(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg1 = args->items[0];
     MalDatum *arg2 = args->items[1];
 
-    return arg1->value.i > arg2->value.i ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(arg1->value.i > arg2->value.i);
 }
 
 /* % : modulus */
@@ -135,7 +135,7 @@ static MalDatum *mal_evenp(const Proc *proc, const Arr *args, MalEnv *env)
     if (!arg0) return NULL;
 
     int i = arg0->value.i;
-    return i & 1 ? MalDatum_false() : MalDatum_true();
+    return (MalDatum*) MalDatum_bool(!(i & 1));
 }
 
 // symbol : string to symbol 
@@ -150,25 +150,25 @@ static MalDatum *mal_symbol(const Proc *proc, const Arr *args, MalEnv *env)
 // symbol?
 static MalDatum *mal_symbolp(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_istype(arg0, SYMBOL) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg0, SYMBOL));
 }
 
 // string?
 static MalDatum *mal_stringp(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_istype(arg0, STRING) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg0, STRING));
 }
 
 // true?
 static MalDatum *mal_truep(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_istype(arg0, TRUE) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg0, TRUE));
 }
 
 // false?
 static MalDatum *mal_falsep(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_istype(arg0, FALSE) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg0, FALSE));
 }
 
 // list
@@ -186,14 +186,14 @@ static MalDatum *mal_list(const Proc *proc, const Arr *args, MalEnv *env) {
 }
 
 static MalDatum *mal_listp(const Proc *proc, const Arr *args, MalEnv *env) {
-    return MalDatum_islist(args->items[0]) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_islist(args->items[0]));
 }
 
 static MalDatum *mal_emptyp(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, LIST);
     if (!arg0) return NULL;
     List *list = arg0->value.list;
-    return List_isempty(list) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(List_isempty(list));
 }
 
 static MalDatum *mal_count(const Proc *proc, const Arr *args, MalEnv *env) {
@@ -397,7 +397,7 @@ static MalDatum *mal_println(const Proc *proc, const Arr *args, MalEnv *env)
 /* (procedure? datum) : predicate for procedures */
 static MalDatum *mal_procedurep(const Proc *proc, const Arr *args, MalEnv *env) {
     MalDatum *arg = Arr_get(args, 0);
-    return MalDatum_istype(arg, PROCEDURE) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg, PROCEDURE));
 }
 
 /* (arity proc) : returns a list of 2 elements:
@@ -411,7 +411,7 @@ static MalDatum *mal_arity(const Proc *proc, const Arr *args, MalEnv *env) {
     Proc *proc_arg = arg0->value.proc;
     List *list = List_new();
     List_add(list, MalDatum_new_int(proc_arg->argc));
-    List_add(list, proc_arg->variadic ? MalDatum_true() : MalDatum_false());
+    List_add(list, (MalDatum*) MalDatum_bool(proc_arg->variadic));
 
     return MalDatum_new_list(list);
 }
@@ -423,7 +423,7 @@ static MalDatum *mal_builtinp(const Proc *proc, const Arr *args, MalEnv *env) {
 
     Proc *proc_arg = arg0->value.proc;
 
-    return proc_arg->builtin ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(proc_arg->builtin);
 }
 
 // Returns the address of a MalDatum as a string
@@ -457,7 +457,7 @@ static MalDatum *mal_env(const Proc *proc, const Arr *args, MalEnv *env)
     Arr *datums = env->datums;
 
     if (ids->len == 0) {
-        return MalDatum_empty_list();
+        return (MalDatum*) MalDatum_empty_list();
     }
     else {
         List *list = List_new();
@@ -484,7 +484,8 @@ static MalDatum *mal_atom(const Proc *proc, const Arr *args, MalEnv *env)
 
 // atom?
 static MalDatum *mal_atomp(const Proc *proc, const Arr *args, MalEnv *env) {
-    return MalDatum_istype(args->items[0], ATOM) ? MalDatum_true() : MalDatum_false();
+    MalDatum *arg0 = Arr_get(args, 0);
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg0, ATOM));
 }
 
 // deref : Takes an atom argument and returns the Mal value referenced by this atom.
@@ -565,9 +566,10 @@ static MalDatum *mal_concat(const Proc *proc, const Arr *args, MalEnv *env)
 
 static MalDatum *mal_macrop(const Proc *proc, const Arr *args, MalEnv *env) {
     const MalDatum *arg0 = Arr_get(args, 0);
-    if (!MalDatum_istype(arg0, PROCEDURE)) return MalDatum_false();
+    if (!MalDatum_istype(arg0, PROCEDURE)) 
+        return (MalDatum*) MalDatum_false();
     const Proc *arg0_proc = arg0->value.proc;
-    return Proc_is_macro(arg0_proc) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(Proc_is_macro(arg0_proc));
 }
 
 // exn : exception constructor
@@ -581,7 +583,7 @@ static MalDatum *mal_exn(const Proc *proc, const Arr *args, MalEnv *env)
 static MalDatum *mal_exnp(const Proc *proc, const Arr *args, MalEnv *env)
 {
     const MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_istype(arg0, EXCEPTION) ? MalDatum_true() : MalDatum_false();
+    return (MalDatum*) MalDatum_bool(MalDatum_istype(arg0, EXCEPTION));
 }
 
 // exn-datum : returns the value which the exception was constructed with
