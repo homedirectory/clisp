@@ -464,9 +464,9 @@ static MalDatum *mal_env(const Proc *proc, const Arr *args, MalEnv *env)
 
         for (size_t i = 0; i < ids->len; i++) {
             List *pair = List_new();
-            Symbol *sym = ids->items[i];
+            char *id = ids->items[i];
             MalDatum *dtm = datums->items[i];
-            List_add(pair, MalDatum_new_sym(Symbol_copy(sym)));
+            List_add(pair, (MalDatum*) MalDatum_symbol_get(id));
             List_add(pair, dtm);
             List_add(list, MalDatum_new_list(pair));
         }
