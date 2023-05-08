@@ -33,12 +33,12 @@ static void Bucket_free(Bucket *bkt, const free_t keyfree, const free_t valfree)
     }
 }
 
-static void *Bucket_find(Bucket *bkt, const void *key, const keyeq_t keyeq)
+static void *Bucket_find(const Bucket *bkt, const void *key, const keyeq_t keyeq)
 {
-    Bucket *b = bkt;
-    while (b) {
-        if (keyeq(b->key, key)) return (void*) b->val;
-        b = b->next;
+    while (bkt) {
+        if (keyeq(bkt->key, key)) 
+            return (void*) bkt->val;
+        bkt = bkt->next;
     }
 
     return NULL;

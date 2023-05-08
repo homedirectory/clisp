@@ -8,5 +8,6 @@
 - laziness
 - bignums
 - double-linked list
+- base 16 and 8 notations
 
 + refactor List structure

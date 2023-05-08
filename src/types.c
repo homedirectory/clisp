@@ -245,9 +245,10 @@ bool Symbol_eq(const Symbol *sym1, const Symbol *sym2)
 
 static uint hash_str(const char *str)
 {
-    // FIXME
-    uint h = 0;
-    while (*str++) h += *str;
+    // simple and works (unique hash for each unique string)
+    // collisions will happen only if str is longer than (2^32 - 1) / (2^8 - 1) = 16843009 bytes
+    uint h = *(str++);
+    while (*str) h += *str++;
     return h;
 }
 
@@ -307,7 +308,9 @@ Symbol *Symbol_copy(const Symbol *sym) {
     // return sym;
 }
 
-// Procedures ----------------------------------------
+// ----------------------------------------------------------------------------
+// Procedures ----------------------------------------------------------------
+
 Proc *Proc_new(const char *name, 
         int argc, bool variadic, 
         const Arr *params, const Arr *body, 
@@ -317,6 +320,7 @@ Proc *Proc_new(const char *name,
     proc->name = dyn_strcpy(name);
     proc->argc = argc;
     proc->variadic = variadic;
+    // FIXME symbols
     proc->params = Arr_copy(params, (copier_t) Symbol_copy);
     proc->builtin = false;
     proc->macro = false;
