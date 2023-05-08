@@ -5,6 +5,9 @@
 #include "common.h"
 #include <sys/types.h>
 
+// -----------------------------------------------------------------------------
+// Array -----------------------------------------------------------------------
+
 // this is a dynamic array of pointers
 // it only makes sense to store pointers to dynamically allocated memory in this struct
 typedef struct Arr {
@@ -37,7 +40,9 @@ int Arr_findf(const Arr *arr, const void *ptr, const equals_t);
 typedef void (*unary_void_t)(void*);
 void Arr_foreach(const Arr *arr, const unary_void_t func);
 
-// String utilities ----------------------------------------
+// -----------------------------------------------------------------------------
+// String utilities ------------------------------------------------------------
+
 char *dyn_strcpy(const char *);
 char *dyn_strncpy(const char *s, size_t n);
 const char *strchrs(const char *str, const char *chars);
@@ -50,7 +55,7 @@ char *str_join(/*const*/ char *strings[], size_t n, const char *sep);
 char *addr_to_str(void *ptr);
 bool streq(const char *s1, const char *s2);
 
-// string assembler
+// string assembler ------------------------------------------------------------
 typedef struct StrAsm {
     char *str;
     size_t len;
@@ -67,6 +72,8 @@ void StrAsm_drop(StrAsm *sasm, size_t n);
 size_t StrAsm_len(const StrAsm *sasm);
 char *StrAsm_str(const StrAsm *sasm);
 
-// File utilities ----------------------------------------
+// -----------------------------------------------------------------------------
+// File utilities --------------------------------------------------------------
+ 
 bool file_readable(const char *path);
 char *file_to_str(const char *path);

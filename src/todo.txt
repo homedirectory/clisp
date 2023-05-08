@@ -4,5 +4,9 @@
 - access procedure bodies
 - FFI
 - sizeof
+- exception stack trace
+- laziness
+- bignums
+- double-linked list
 
 + refactor List structure

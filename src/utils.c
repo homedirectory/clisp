@@ -13,7 +13,7 @@
 #define DEFAULT_CAPACITY 10
 
 static void resize(Arr* arr, const size_t new_cap) {
-    arr->items = realloc(arr->items, new_cap * sizeof(void*));
+    arr->items = realloc(arr->items, new_cap * sizeof(*(arr->items)));
     arr->cap = new_cap;
 }
 

@@ -743,9 +743,11 @@ void MalDatum_own(MalDatum *datum)
 
     datum->refc += 1;
 
+#ifdef _MAL_TRACE
     char *repr = pr_repr(datum);
     DEBUG("own %p (refc %ld) -> %s", datum, datum->refc, repr);
     free(repr);
+#endif
 }
 
 void MalDatum_release(MalDatum *datum)
@@ -757,17 +759,21 @@ void MalDatum_release(MalDatum *datum)
 
     if (MalDatum_is_singleton(datum)) return;
 
+#ifdef _MAL_TRACE
     if (datum->refc <= 0) {
         char *repr = pr_repr(datum);
         FATAL("Invalid ref count %ld @ %p -> %s", datum->refc, datum, repr);
         free(repr);
     }
+#endif
 
     datum->refc -= 1;
 
+#ifdef _MAL_TRACE
     char *repr = pr_repr(datum);
     DEBUG("release %p (refc %ld) -> %s", datum, datum->refc, repr);
     free(repr);
+#endif
 }
 
 void MalDatum_free(MalDatum *datum) {
