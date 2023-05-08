@@ -860,17 +860,16 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_string(datum->value.string);
             break;
         case LIST:
-            out = MalDatum_new_list(List_copy(datum->value.list));
-            break;
+            List *list = datum->value.list;
+            return List_isempty(list) ? 
+                (MalDatum*) MalDatum_empty_list() :  
+                MalDatum_new_list(List_copy(list));
         case NIL:
-            out = (MalDatum*) MalDatum_nil();
-            break;
+            return (MalDatum*) MalDatum_nil();
         case TRUE:
-            out = (MalDatum*) MalDatum_true();
-            break;
+            return (MalDatum*) MalDatum_true();
         case FALSE:
-            out = (MalDatum*) MalDatum_false();
-            break;
+            return (MalDatum*) MalDatum_false();
         case PROCEDURE:
             out = MalDatum_new_proc(Proc_copy(datum->value.proc));
             break;
