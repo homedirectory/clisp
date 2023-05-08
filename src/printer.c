@@ -15,6 +15,7 @@ char *pr_str(MalDatum *datum, bool print_readably)
     if (datum == NULL) return NULL;
 
     char *str = NULL;
+
     switch (datum->type) {
         case INT:
             str = malloc(MAX_INT_DIGITS + 1);
@@ -25,8 +26,7 @@ char *pr_str(MalDatum *datum, bool print_readably)
             str = dyn_strcpy(datum->value.sym->name);
             break;
         case LIST:
-            List *list = datum->value.list;
-            str = list ? pr_list(list, print_readably) : NULL;
+            str = pr_list(datum->value.list, print_readably);
             break;
         case STRING:
             char *string = datum->value.string;
@@ -60,16 +60,19 @@ char *pr_str(MalDatum *datum, bool print_readably)
             break;
         case PROCEDURE:
             Proc *proc = datum->value.proc;
-            char *type = dyn_strcpy(Proc_is_macro(proc) ? "macro" : "procedure");
+
+            StrAsm sa;
+            StrAsm_init(&sa);
+
+            StrAsm_add(&sa, "#<");
+            StrAsm_add(&sa, Proc_is_macro(proc) ? "macro" : "procedure");
             if (proc->name) {
-                char *parts[] = { "#<", type, ":", proc->name, ">" };
-                str = str_join(parts, ARR_LEN(parts), "");
+                StrAsm_addc(&sa, ':');
+                StrAsm_add(&sa, proc->name);
             }
-            else {
-                char *parts[] = { "#<", type, ">" };
-                str = str_join(parts, ARR_LEN(parts), "");
-            }
-            free(type);
+            StrAsm_addc(&sa, '>');
+
+            str = StrAsm_str(&sa);
             break;
         case ATOM:
             Atom *atom = datum->value.atom;
@@ -103,38 +106,26 @@ char *pr_str(MalDatum *datum, bool print_readably)
 char *pr_list(List *list, bool print_readably) 
 {
     if (list == NULL) return NULL;
-    size_t cap = 256;
-    char *str = malloc(sizeof(*str) * cap);
-    str[0] = '(';
-    size_t len = 1;
 
-    struct Node *node = list->head;
-    while (node) {
+    StrAsm sa;
+    StrAsm_initsz(&sa, List_len(list) * 6);
+    StrAsm_addc(&sa, '(');
+
+    for (struct Node *node = list->head; node != NULL; node = node->next) {
         char *s = pr_str(node->value, print_readably);
-        int slen = strlen(s);
-
-        if (len + slen >= cap) {
-            cap = slen + cap * 1.5;
-            str = realloc(str, cap * sizeof(char));
-        }
-
-        memcpy(str + len, s, slen);
-        len += slen;
-        str[len++] = ' ';
+        StrAsm_add(&sa, s);
         free(s);
-
-        node = node->next;
+        StrAsm_addc(&sa, ' ');
     }
-    // if non-empty replace last redundant ' '
-    if (len > 1) {
-        len--;
-    }
-    str[len++] = ')';
-    str[len] = '\0';
 
-    return str;
+    // if non-empty list, drop last redundant ' '
+    if (StrAsm_len(&sa) > 0)
+        StrAsm_drop(&sa, 1);
+
+    StrAsm_addc(&sa, ')');
+
+    return StrAsm_str(&sa);
 }
-
 
 char *pr_repr(MalDatum *datum)
 {
