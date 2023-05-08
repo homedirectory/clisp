@@ -280,6 +280,86 @@ bool streq(const char *s1, const char *s2)
     return strcmp(s1, s2) == 0;
 }
 
+// String assembler
+#define STR_ASM_DEF_CAP 128
+#define STR_ASM_GROW_RAT 1.75
+
+StrAsm *StrAsm_init(StrAsm *sasm)
+{
+    return StrAsm_initsz(sasm, STR_ASM_DEF_CAP);
+}
+
+StrAsm *StrAsm_initsz(StrAsm *sasm, size_t cap)
+{
+    sasm->str = malloc(cap * sizeof(*(sasm->str)));
+    sasm->len = 0;
+    sasm->cap = cap;
+    return sasm;
+}
+
+void StrAsm_destroy(StrAsm *sasm)
+{
+    free(sasm->str);
+}
+
+static bool StrAsm_hasroom(const StrAsm *sasm, size_t n)
+{
+    // need to remember about the last null-byte
+    return sasm->cap - sasm->len - 1 >= n;
+}
+
+static void StrAsm_mkroom(StrAsm *sasm, size_t n)
+{
+    size_t newcap = (sasm->cap * STR_ASM_GROW_RAT) + n;
+    sasm->str = realloc(sasm->str, newcap * sizeof(*(sasm->str)));
+    sasm->cap = newcap;
+}
+
+void StrAsm_add(StrAsm *sasm, const char *s)
+{
+    StrAsm_addn(sasm, s, strlen(s));
+}
+
+void StrAsm_addn(StrAsm *sasm, const char *s, size_t n)
+{
+    if (n == 0) return;
+
+    if (!StrAsm_hasroom(sasm, n))
+        StrAsm_mkroom(sasm, n);
+
+    memcpy(sasm->str + sasm->len, s, n);
+    sasm->len += n;
+    sasm->str[sasm->len] = 0;
+}
+
+void StrAsm_addc(StrAsm *sasm, char c)
+{
+    if (!StrAsm_hasroom(sasm, 1))
+        StrAsm_mkroom(sasm, 1);
+
+    sasm->str[sasm->len++] = c;
+    sasm->str[sasm->len] = 0;
+}
+
+void StrAsm_drop(StrAsm *sasm, size_t n)
+{
+#ifdef _MAL_TRACE
+    if (sasm->len < n)
+        DEBUG("drop %zu, but len = %zu", n, sasm->len);
+#endif
+    sasm->len -= n;
+}
+
+size_t StrAsm_len(const StrAsm *sasm)
+{
+    return sasm->len;
+}
+
+char *StrAsm_str(const StrAsm *sasm)
+{
+    return sasm->str;
+}
+
 // File utilities ----------------------------------------
 bool file_readable(const char *path)
 {
@@ -338,3 +418,16 @@ int main(int argc, char **argv) {
     Arr_free(arr);
 }
 */
+
+// int main(int argc, char **argv)
+// {
+//     StrAsm sa;
+//     StrAsm_init(&sa);
+//     StrAsm_add(&sa, "hello");
+//     StrAsm_addc(&sa, ' ');
+//     StrAsm_addn(&sa, "world", 2);
+//     StrAsm_add(&sa, "rld");
+//     char *s = StrAsm_str(&sa);
+//     printf("%s\n", s);
+//     free(s);
+// }

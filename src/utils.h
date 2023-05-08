@@ -50,6 +50,23 @@ char *str_join(/*const*/ char *strings[], size_t n, const char *sep);
 char *addr_to_str(void *ptr);
 bool streq(const char *s1, const char *s2);
 
+// string assembler
+typedef struct StrAsm {
+    char *str;
+    size_t len;
+    size_t cap;
+} StrAsm;
+
+StrAsm *StrAsm_init(StrAsm *sasm);
+StrAsm *StrAsm_initsz(StrAsm *sasm, size_t cap);
+void StrAsm_destroy(StrAsm *sasm);
+void StrAsm_add(StrAsm *sasm, const char *s);
+void StrAsm_addn(StrAsm *sasm, const char *s, size_t n);
+void StrAsm_addc(StrAsm *sasm, char c);
+void StrAsm_drop(StrAsm *sasm, size_t n);
+size_t StrAsm_len(const StrAsm *sasm);
+char *StrAsm_str(const StrAsm *sasm);
+
 // File utilities ----------------------------------------
 bool file_readable(const char *path);
 char *file_to_str(const char *path);
