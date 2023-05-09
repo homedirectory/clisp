@@ -119,7 +119,7 @@ char *pr_list(List *list, bool print_readably)
     }
 
     // if non-empty list, drop last redundant ' '
-    if (StrAsm_len(&sa) > 0)
+    if (!List_isempty(list))
         StrAsm_drop(&sa, 1);
 
     StrAsm_addc(&sa, ')');
