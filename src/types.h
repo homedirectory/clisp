@@ -92,8 +92,9 @@ typedef struct Symbol {
     char *name;
 } Symbol;
 
+// Symbol *Symbol_new(const char *name);
 const MalDatum *MalDatum_symbol_get(const char *name);
-const Symbol *Symbol_get(const char *name);
+// const Symbol *Symbol_get(const char *name);
 void Symbol_free(Symbol *);
 bool Symbol_eq(const Symbol *sym1, const Symbol *sym2);
 bool Symbol_eq_str(const Symbol *sym1, const char *str);
@@ -245,7 +246,6 @@ bool MalDatum_isfalse(const MalDatum *datum);
 
 // constructors
 MalDatum *MalDatum_new_int(const int);
-MalDatum *MalDatum_new_sym(const Symbol *);
 MalDatum *MalDatum_new_list(List *);
 MalDatum *MalDatum_new_string(const char *);
 MalDatum *MalDatum_new_proc(Proc *);
@@ -256,3 +256,5 @@ MalDatum *MalDatum_copy(const MalDatum *);
 MalDatum *MalDatum_deep_copy(const MalDatum *);
 
 bool MalDatum_eq(const MalDatum *, const MalDatum *);
+
+void MalDatum_print(const MalDatum *dtm);

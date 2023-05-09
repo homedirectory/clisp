@@ -17,3 +17,7 @@ void HashTbl_free(HashTbl *tbl, free_t keyfree, free_t valfree);
 void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq);
 void HashTbl_put(HashTbl *tbl, const void *key, const void *val);
 void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq);
+
+typedef void (*printkey_t)(const void*);
+typedef void (*printval_t)(const void*);
+void HashTbl_print(const HashTbl *tbl, const printkey_t printkey, const printval_t printval);

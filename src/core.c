@@ -144,7 +144,7 @@ static MalDatum *mal_symbol(const Proc *proc, const Arr *args, MalEnv *env)
     MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
     if (!arg0) return NULL;
 
-    return MalDatum_new_sym(Symbol_get(arg0->value.string));
+    return (MalDatum*) MalDatum_symbol_get(arg0->value.string);
 }
 
 // symbol?
@@ -447,7 +447,7 @@ static MalDatum *mal_refc(const Proc *proc, const Arr *args, MalEnv *env)
 static MalDatum *mal_type(const Proc *proc, const Arr *args, MalEnv *env)
 {
     MalDatum *arg0 = Arr_get(args, 0);
-    return MalDatum_new_sym(Symbol_get(MalType_tostr(arg0->type)));
+    return (MalDatum*) MalDatum_symbol_get(MalType_tostr(arg0->type));
 }
 
 // env : returns the current (relative) environment as a list

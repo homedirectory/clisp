@@ -84,6 +84,7 @@ static void try_grow(HashTbl *tbl)
 {
     if (tbl->size >= SIZE_THRESH_RATIO * tbl->cap) {
         uint newcap = tbl->cap * GROW_RATIO;
+        DEBUG("Growing HashTbl %u -> %u", tbl->cap, newcap);
         tbl->buckets = realloc(tbl->buckets, sizeof(Bucket*) * newcap);
         // NULL-out added memory
         for (uint i = tbl->cap; i < newcap; i++)
@@ -150,4 +151,21 @@ void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)
     }
 
     return (void*) val_out;
+}
+
+void HashTbl_print(const HashTbl *tbl, const printkey_t printkey, const printval_t printval)
+{
+    for (size_t i = 0; i < tbl->cap; i++) {
+        Bucket *bkt = tbl->buckets[i];
+        if (!bkt)
+            continue;
+        printf("%zu\n", i);
+        for (Bucket *b = bkt; b != NULL; b = b->next) {
+            printf("  ");
+            printkey(b->key);
+            printf(" : ");
+            printval(b->val);
+            printf("\n");
+        }
+    }
 }

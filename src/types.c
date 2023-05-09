@@ -12,6 +12,8 @@
 #include <stdarg.h>
 #include "hashtbl.h"
 
+static MalDatum *MalDatum_new_sym(const Symbol *symbol);
+
 // -----------------------------------------------------------------
 // List ------------------------------------------------------------
 
@@ -257,7 +259,7 @@ static HashTbl *g_symbol_table;
 
 void init_symbol_table()
 {
-    g_symbol_table = HashTbl_new((hashkey_t) hash_str);
+    g_symbol_table = HashTbl_newc(256, (hashkey_t) hash_str);
 }
 
 static void noop(void *ptr) { }
@@ -265,6 +267,18 @@ void free_symbol_table()
 {
     // key is the same pointer that's stored by a symbol, so we don't need to free keys
     HashTbl_free(g_symbol_table, noop, (free_t) MalDatum_free);
+}
+
+static void print_str(const char *s)
+{
+    printf("\"%s\"", s);
+}
+
+void print_symbol_table()
+{
+    puts("----- START SYMBOL TABLE -----");
+    HashTbl_print(g_symbol_table, (printkey_t) print_str, (printval_t) MalDatum_print);
+    puts("----- END SYMBOL TABLE -----");
 }
 
 const MalDatum *MalDatum_symbol_get(const char *name)
@@ -280,11 +294,11 @@ const MalDatum *MalDatum_symbol_get(const char *name)
     }
 }
 
-const Symbol *Symbol_get(const char *name)
-{
-    const MalDatum *dtm = MalDatum_symbol_get(name);
-    return dtm ? dtm->value.sym : NULL;
-}
+// const Symbol *Symbol_get(const char *name)
+// {
+//     const MalDatum *dtm = MalDatum_symbol_get(name);
+//     return dtm ? dtm->value.sym : NULL;
+// }
 
 static MalDatum *sym_tbl_pop(const char *name)
 {
@@ -315,6 +329,8 @@ Symbol *Symbol_copy(const Symbol *sym) {
         return NULL;
     }
 
+    // let's play it safe with symbols
+    // TODO figure this out
     return Symbol_new(sym->name);
     // return sym;
 }
@@ -696,7 +712,7 @@ MalDatum *MalDatum_new_int(const int i) {
     return mdp;
 }
 
-MalDatum *MalDatum_new_sym(const Symbol *symbol) { 
+static MalDatum *MalDatum_new_sym(const Symbol *symbol) { 
     MalDatum *mdp = malloc(sizeof(MalDatum));
     mdp->refc = 0;
     mdp->type = SYMBOL;
@@ -821,7 +837,7 @@ void MalDatum_free(MalDatum *datum) {
             const Symbol *sym = datum->value.sym;
             printf("freeing Symbol %s\n", sym->name);
             sym_tbl_pop(sym->name);
-            // Symbol_free((Symbol*) sym);
+            Symbol_free((Symbol*) sym);
             break;
         case PROCEDURE:
             Proc_free(datum->value.proc);
@@ -873,7 +889,10 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_int(datum->value.i);
             break;
         case SYMBOL:
-            return (MalDatum*) datum;
+            // let's play it safe with symbols
+            // TODO figure this out
+            return MalDatum_new_sym(Symbol_copy(datum->value.sym));
+            // return (MalDatum*) datum;
         case STRING:
             out = MalDatum_new_string(datum->value.string);
             break;
@@ -966,3 +985,12 @@ bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
             FATAL("unknown MalType");
     }
 }
+
+void MalDatum_print(const MalDatum *dtm)
+{
+    // FIXME make pr_str accept const
+    char *str = pr_str((MalDatum*) dtm, false);
+    printf("%s", str);
+    free(str);
+}
+

@@ -1,0 +1,3 @@
++ symbols are freed before being removed from the table
+  had to replace all external usages of MalDatum_new_sym with MalDatum_symbol_get,
+  so that they all go through the table
