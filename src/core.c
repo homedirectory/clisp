@@ -464,9 +464,9 @@ static MalDatum *mal_env(const Proc *proc, const Arr *args, MalEnv *env)
 
         for (size_t i = 0; i < ids->len; i++) {
             List *pair = List_new();
-            char *id = ids->items[i];
+            MalDatum *id = ids->items[i];
             MalDatum *dtm = datums->items[i];
-            List_add(pair, (MalDatum*) MalDatum_symbol_get(id));
+            List_add(pair, id);
             List_add(pair, dtm);
             List_add(list, MalDatum_new_list(pair));
         }
@@ -599,7 +599,7 @@ static MalDatum *mal_exn_datum(const Proc *proc, const Arr *args, MalEnv *env)
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, func_ptr) \
-        MalEnv_put(env, name, MalDatum_new_proc(\
+        MalEnv_put(env, (MalDatum*) MalDatum_symbol_get(name), MalDatum_new_proc(\
                     Proc_builtin(name, arity, variadic, func_ptr)));
 
     DEF("+", 2, true, mal_add);

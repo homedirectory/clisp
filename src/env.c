@@ -6,8 +6,8 @@
 
 MalEnv *MalEnv_new(MalEnv *enclosing) {
     MalEnv *env = malloc(sizeof(MalEnv));
-    env->ids = Arr_new();
-    env->datums = Arr_new();
+    env->ids = Arr_newn(32);
+    env->datums = Arr_newn(32);
     env->enclosing = enclosing;
     if (enclosing)
         MalEnv_own(enclosing);
@@ -27,7 +27,7 @@ void MalEnv_free(MalEnv *env) {
 
     DEBUG("freeing MalEnv (refc = %ld)", env->refc);
 
-    Arr_freep(env->ids, free);
+    Arr_freep(env->ids, (free_t) MalDatum_release_free);
     Arr_freep(env->datums, (free_t) MalDatum_release_free);
     // the enclosing env should not be freed, but simply released
     if (env->enclosing)
@@ -35,7 +35,7 @@ void MalEnv_free(MalEnv *env) {
     free(env);
 }
 
-MalDatum *MalEnv_put(MalEnv *env, const char *id, MalDatum *datum) {
+MalDatum *MalEnv_put(MalEnv *env, MalDatum *id, MalDatum *datum) {
     if (env == NULL) {
         LOG_NULL(env);
         return NULL;
@@ -47,13 +47,15 @@ MalDatum *MalEnv_put(MalEnv *env, const char *id, MalDatum *datum) {
     if (MalDatum_istype(datum, PROCEDURE)) {
         Proc *proc = datum->value.proc;
         if (!Proc_is_named(proc)) {
-            proc->name = dyn_strcpy(id);
+            const char *id_name = id->value.sym->name;
+            proc->name = dyn_strcpy(id_name);
         }
     }
 
-    int idx = Arr_findf(env->ids, id, (equals_t) streq);
+    int idx = Arr_findf(env->ids, id, (equals_t) MalDatum_eq);
     if (idx == -1) { // new identifier
-        Arr_add(env->ids, dyn_strcpy(id));
+        Arr_add(env->ids, (void*) id);
+        MalDatum_own(id);
         Arr_add(env->datums, datum);
         return NULL;
     } else { // existing identifier
@@ -63,7 +65,7 @@ MalDatum *MalEnv_put(MalEnv *env, const char *id, MalDatum *datum) {
     }
 }
 
-MalDatum *MalEnv_get(const MalEnv *env, const char *id) {
+MalDatum *MalEnv_get(const MalEnv *env, const MalDatum *id) {
     if (env == NULL) {
         LOG_NULL(env);
         return NULL;
@@ -72,7 +74,7 @@ MalDatum *MalEnv_get(const MalEnv *env, const char *id) {
     const MalEnv *e = env;
     int idx = -1;
     while (e != NULL) {
-        idx = Arr_findf(e->ids, id, (equals_t) streq);
+        idx = Arr_findf(e->ids, id, (equals_t) MalDatum_eq);
         if (idx != -1)
             return e->datums->items[idx];
         e = e->enclosing;
