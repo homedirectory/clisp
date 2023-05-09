@@ -86,7 +86,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     for (int i = 0; i < proc->argc; i++) {
         const Symbol *param = Arr_get(proc->params, i);
         MalDatum *arg = Arr_get(args, i);
-        MalEnv_put(proc_env, (MalDatum*) MalDatum_symbol_get(param->name), arg); 
+        MalEnv_put(proc_env, MalDatum_symbol_get(param->name), arg); 
     }
 
     // if variadic, then bind the last param to the rest of arguments
@@ -98,7 +98,7 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
             List_add(var_args, arg);
         }
 
-        MalEnv_put(proc_env, (MalDatum*) MalDatum_symbol_get(var_param->name), MalDatum_new_list(var_args));
+        MalEnv_put(proc_env, MalDatum_symbol_get(var_param->name), MalDatum_new_list(var_args));
     }
 
     // 2. evaluate the body
@@ -130,7 +130,7 @@ static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv 
 
     for (size_t i = 0; i < args->len; i++) {
         const Symbol *param_name = Arr_get(proc->params, i);
-        MalEnv_put(env, (MalDatum*) MalDatum_symbol_get(param_name->name), args->items[i]);
+        MalEnv_put(env, MalDatum_symbol_get(param_name->name), args->items[i]);
     }
 
     Arr *body = proc->logic.body;
@@ -319,7 +319,7 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
         }
     }
 
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get(id->name), new_assoc);
+    MalEnv_put(env, MalDatum_symbol_get(id->name), new_assoc);
 
     return new_assoc;
 }
@@ -377,7 +377,7 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
     Proc *macro_proc = macro_datum->value.proc;
     macro_proc->macro = true;
 
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get(id->name), macro_datum);
+    MalEnv_put(env, MalDatum_symbol_get(id->name), macro_datum);
 
     return macro_datum;
 }
@@ -437,7 +437,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             return NULL;
         }
 
-        MalEnv_put(let_env, (MalDatum*) MalDatum_symbol_get(id->name), val);
+        MalEnv_put(let_env, MalDatum_symbol_get(id->name), val);
     }
 
     // 3. evaluate the expr using the let* env
@@ -774,7 +774,7 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
     if (expr1_rslt == NULL && didthrow()) {
         MalEnv *catch_env = MalEnv_new(env);
         Exception *exn = thrown_copy();
-        MalEnv_put(catch_env, (MalDatum*) MalDatum_symbol_get(err_sym->name), MalDatum_new_exn(exn));
+        MalEnv_put(catch_env, MalDatum_symbol_get(err_sym->name), MalDatum_new_exn(exn));
 
         MalDatum *expr2_rslt = eval(expr2, catch_env);
 
@@ -1184,24 +1184,24 @@ int main(int argc, char **argv) {
     MalEnv_own(env);
 
     // FIXME memory leak
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("nil"), (MalDatum*) MalDatum_nil());
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("true"), (MalDatum*) MalDatum_true());
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("false"), (MalDatum*) MalDatum_false());
+    MalEnv_put(env, MalDatum_symbol_get("nil"), (MalDatum*) MalDatum_nil());
+    MalEnv_put(env, MalDatum_symbol_get("true"), (MalDatum*) MalDatum_true());
+    MalEnv_put(env, MalDatum_symbol_get("false"), (MalDatum*) MalDatum_false());
 
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("apply"), MalDatum_new_proc(
+    MalEnv_put(env, MalDatum_symbol_get("apply"), MalDatum_new_proc(
                 Proc_builtin("apply", 2, true, mal_apply)));
 
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("read-string"), MalDatum_new_proc(
+    MalEnv_put(env, MalDatum_symbol_get("read-string"), MalDatum_new_proc(
             Proc_builtin("read-string", 1, false, mal_read_string)));
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("slurp"), MalDatum_new_proc(
+    MalEnv_put(env, MalDatum_symbol_get("slurp"), MalDatum_new_proc(
             Proc_builtin("slurp", 1, false, mal_slurp)));
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("eval"), MalDatum_new_proc(
+    MalEnv_put(env, MalDatum_symbol_get("eval"), MalDatum_new_proc(
             Proc_builtin("eval", 1, false, mal_eval)));
 
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("swap!"), MalDatum_new_proc(
+    MalEnv_put(env, MalDatum_symbol_get("swap!"), MalDatum_new_proc(
             Proc_builtin("swap!", 2, true, mal_swap_bang)));
 
-    MalEnv_put(env, (MalDatum*) MalDatum_symbol_get("map"), MalDatum_new_proc(
+    MalEnv_put(env, MalDatum_symbol_get("map"), MalDatum_new_proc(
             Proc_builtin("map", 2, false, mal_map)));
 
     core_def_procs(env);

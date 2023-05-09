@@ -93,7 +93,7 @@ typedef struct Symbol {
 } Symbol;
 
 // Symbol *Symbol_new(const char *name);
-const MalDatum *MalDatum_symbol_get(const char *name);
+MalDatum *MalDatum_symbol_get(const char *name);
 // const Symbol *Symbol_get(const char *name);
 void Symbol_free(Symbol *);
 bool Symbol_eq(const Symbol *sym1, const Symbol *sym2);

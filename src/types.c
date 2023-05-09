@@ -281,9 +281,9 @@ void print_symbol_table()
     puts("----- END SYMBOL TABLE -----");
 }
 
-const MalDatum *MalDatum_symbol_get(const char *name)
+MalDatum *MalDatum_symbol_get(const char *name)
 {
-    const MalDatum *dtm = HashTbl_get(g_symbol_table, name, (keyeq_t) streq);
+    MalDatum *dtm = HashTbl_get(g_symbol_table, name, (keyeq_t) streq);
     if (dtm)
         return dtm;
     else {
