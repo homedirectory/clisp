@@ -988,8 +988,7 @@ bool MalDatum_eq(const MalDatum *md1, const MalDatum *md2) {
 
 void MalDatum_print(const MalDatum *dtm)
 {
-    // FIXME make pr_str accept const
-    char *str = pr_str((MalDatum*) dtm, false);
+    char *str = pr_str(dtm, false);
     printf("%s", str);
     free(str);
 }

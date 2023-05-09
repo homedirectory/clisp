@@ -10,7 +10,7 @@
 // When print_readably is true, doublequotes, newlines, and backslashes are
 // translated into their printed representations (the reverse of the reader).
 // In other words, print escapes as 2 characters
-char *pr_str(MalDatum *datum, bool print_readably) 
+char *pr_str(const MalDatum *datum, bool print_readably) 
 {
     if (datum == NULL) return NULL;
 
@@ -103,7 +103,7 @@ char *pr_str(MalDatum *datum, bool print_readably)
 
 // returns a new string with the contents of the given list separeted by spaces 
 // and wrapped in parens
-char *pr_list(List *list, bool print_readably) 
+char *pr_list(const List *list, bool print_readably) 
 {
     if (list == NULL) return NULL;
 
@@ -127,7 +127,7 @@ char *pr_list(List *list, bool print_readably)
     return StrAsm_str(&sa);
 }
 
-char *pr_repr(MalDatum *datum)
+char *pr_repr(const MalDatum *datum)
 {
     char *str = pr_str(datum, false);
     char *type_str = MalType_tostr(datum->type);
