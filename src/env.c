@@ -9,7 +9,8 @@ MalEnv *MalEnv_new(MalEnv *enclosing) {
     env->ids = Arr_new();
     env->datums = Arr_new();
     env->enclosing = enclosing;
-    MalEnv_own(enclosing);
+    if (enclosing)
+        MalEnv_own(enclosing);
     env->refc = 0;
     return env;
 }
