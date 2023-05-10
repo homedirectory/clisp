@@ -3,6 +3,7 @@
 #include "env.h"
 #include <stdlib.h>
 #include "common.h"
+#include <assert.h>
 
 MalEnv *MalEnv_new(MalEnv *enclosing) {
     MalEnv *env = malloc(sizeof(MalEnv));
@@ -40,6 +41,7 @@ MalDatum *MalEnv_put(MalEnv *env, MalDatum *id, MalDatum *datum) {
         LOG_NULL(env);
         return NULL;
     }
+    assert(MalDatum_istype(id, SYMBOL));
 
     MalDatum_own(datum);
 

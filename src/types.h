@@ -123,7 +123,7 @@ struct Proc {
      * is variadic, then the name of the variadic declared parameter. So the amount of these
      * is given by (+ argc (if variadic 1 0)).
      */
-    Arr *params; // of *Symbol (makes sense only for MAL procedures) 
+    Arr *params; // of MalDatum* representing symbols (makes sense only for MAL procedures) 
     bool builtin;
     bool macro;
     union {

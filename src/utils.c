@@ -29,7 +29,24 @@ Arr *Arr_newn(const size_t cap) {
     return arr;
 }
 
-Arr *Arr_copy(const Arr *arr, const copier_t copier) {
+Arr *Arr_copy(const Arr *arr)
+{
+    if (arr == NULL) {
+        LOG_NULL(arr);
+        return NULL;
+    }
+
+    Arr *copy = Arr_newn(arr->cap);
+    copy->len = arr->len;
+
+    for (int i = 0; i < arr->len; i++) {
+        copy->items[i] = arr->items[i];
+    }
+
+    return copy;
+}
+
+Arr *Arr_copyf(const Arr *arr, const copier_t copier) {
     if (arr == NULL) {
         LOG_NULL(arr);
         return NULL;

@@ -84,21 +84,21 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     // 1. bind params to args in the local env
     // mandatory arguments
     for (int i = 0; i < proc->argc; i++) {
-        const Symbol *param = Arr_get(proc->params, i);
+        MalDatum *param = Arr_get(proc->params, i);
         MalDatum *arg = Arr_get(args, i);
-        MalEnv_put(proc_env, MalDatum_symbol_get(param->name), arg); 
+        MalEnv_put(proc_env, param, arg); 
     }
 
     // if variadic, then bind the last param to the rest of arguments
     if (proc->variadic) {
-        const Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
+        MalDatum *var_param = Arr_get(proc->params, proc->params->len - 1);
         List *var_args = List_new();
         for (size_t i = proc->argc; i < args->len; i++) {
             MalDatum *arg = Arr_get(args, i);
             List_add(var_args, arg);
         }
 
-        MalEnv_put(proc_env, MalDatum_symbol_get(var_param->name), MalDatum_new_list(var_args));
+        MalEnv_put(proc_env, var_param, MalDatum_new_list(var_args));
     }
 
     // 2. evaluate the body
@@ -129,8 +129,8 @@ static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv 
     if (!verify_proc_application(proc, args)) return NULL;
 
     for (size_t i = 0; i < args->len; i++) {
-        const Symbol *param_name = Arr_get(proc->params, i);
-        MalEnv_put(env, MalDatum_symbol_get(param_name->name), args->items[i]);
+        MalDatum *param = Arr_get(proc->params, i);
+        MalEnv_put(env, param, args->items[i]);
     }
 
     Arr *body = proc->logic.body;
@@ -245,11 +245,12 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
 
     size_t proc_argc = 0; // mandatory arg count
     bool variadic = false;
-    Arr *param_names_symbols = Arr_newn(List_len(params));
+    Arr *param_names_symbols = Arr_newn(List_len(params)); // of MalDatum*
     OWN(param_names_symbols);
 
     for (struct Node *node = params->head; node != NULL; node = node->next) {
-        const Symbol *sym = node->value->value.sym;
+        MalDatum *dtm_sym = node->value;
+        const Symbol *sym = dtm_sym->value.sym;
 
         // '&' is a special symbol that marks a variadic procedure
         // exactly one parameter is expected after it
@@ -259,14 +260,14 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
                 BADSTX("fn* bad parameter list: 1 parameter expected after '&'");
                 return NULL;
             }
-            const Symbol *last_sym = node->next->value->value.sym;
-            Arr_add(param_names_symbols, (Symbol*) last_sym); // no need to copy
+            MalDatum *last_dtm_sym = node->next->value;
+            Arr_add(param_names_symbols, last_dtm_sym); // no need to copy
             variadic = true;
             break;
         }
         else {
             proc_argc++;
-            Arr_add(param_names_symbols, (Symbol*) sym); // no need to copy
+            Arr_add(param_names_symbols, dtm_sym); // no need to copy
         }
     }
 
@@ -319,7 +320,7 @@ static MalDatum *eval_def(const List *list, MalEnv *env) {
         }
     }
 
-    MalEnv_put(env, MalDatum_symbol_get(id->name), new_assoc);
+    MalEnv_put(env, snd, new_assoc);
 
     return new_assoc;
 }
@@ -332,12 +333,11 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
         return NULL;
     }
 
-    const MalDatum *arg1 = List_ref(list, 1);
+    MalDatum *arg1 = List_ref(list, 1);
     if (!(MalDatum_istype(arg1, SYMBOL))) {
         BADSTX("defmacro!: 1st arg must be a symbol, but was %s", MalType_tostr(arg1->type));
         return NULL;
     }
-    const Symbol *id = arg1->value.sym;
 
     MalDatum *macro_datum = NULL;
     {
@@ -377,7 +377,7 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
     Proc *macro_proc = macro_datum->value.proc;
     macro_proc->macro = true;
 
-    MalEnv_put(env, MalDatum_symbol_get(id->name), macro_datum);
+    MalEnv_put(env, arg1, macro_datum);
 
     return macro_datum;
 }
@@ -425,7 +425,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             MalEnv_free(let_env);
             return NULL;
         }
-        const Symbol *id = id_node->value->value.sym;
+        MalDatum *id = id_node->value;
 
         // it's important to evaluate the bound value using the let* env,
         // so that previous bindings can be used during evaluation
@@ -437,7 +437,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             return NULL;
         }
 
-        MalEnv_put(let_env, MalDatum_symbol_get(id->name), val);
+        MalEnv_put(let_env, id, val);
     }
 
     // 3. evaluate the expr using the let* env
@@ -737,7 +737,7 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
     MalDatum *expr1 = List_ref(ast_list, 1);
     MalDatum *catch_form = List_ref(ast_list, 2);
     // validate catch_form
-    const Symbol *err_sym = NULL;
+    MalDatum *catch_sym = 0;
     MalDatum *expr2 = NULL;
     {
         if (!MalDatum_islist(catch_form)) {
@@ -760,13 +760,12 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
             return NULL;
         }
 
-        MalDatum *catch1 = List_ref(catch_list, 1);
-        if (!MalDatum_istype(catch1, SYMBOL)) {
+        catch_sym = List_ref(catch_list, 1);
+        if (!MalDatum_istype(catch_sym, SYMBOL)) {
             BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
 
-        err_sym = catch1->value.sym;
         expr2 = List_ref(catch_list, 2);
     }
 
@@ -774,7 +773,7 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
     if (expr1_rslt == NULL && didthrow()) {
         MalEnv *catch_env = MalEnv_new(env);
         Exception *exn = thrown_copy();
-        MalEnv_put(catch_env, MalDatum_symbol_get(err_sym->name), MalDatum_new_exn(exn));
+        MalEnv_put(catch_env, catch_sym, MalDatum_new_exn(exn));
 
         MalDatum *expr2_rslt = eval(expr2, catch_env);
 

@@ -347,12 +347,14 @@ Proc *Proc_new(const char *name,
     proc->name = dyn_strcpy(name);
     proc->argc = argc;
     proc->variadic = variadic;
-    // FIXME symbols
-    proc->params = Arr_copy(params, (copier_t) Symbol_copy);
+
+    proc->params = Arr_copy(params);
+    Arr_foreach(proc->params, (unary_void_t) MalDatum_own);
+
     proc->builtin = false;
     proc->macro = false;
     {
-        Arr *proc_body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+        Arr *proc_body = Arr_copyf(body, (copier_t) MalDatum_deep_copy);
         Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
         proc->logic.body = proc_body;
     }
@@ -380,11 +382,14 @@ Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *bod
     proc->name = NULL;
     proc->argc = argc;
     proc->variadic = variadic;
-    proc->params = Arr_copy(params, (copier_t) Symbol_copy);
+
+    proc->params = Arr_copy(params);
+    Arr_foreach(proc->params, (unary_void_t) MalDatum_own);
+
     proc->builtin = false;
     proc->macro = false;
     {
-        Arr *proc_body = Arr_copy(body, (copier_t) MalDatum_deep_copy);
+        Arr *proc_body = Arr_copyf(body, (copier_t) MalDatum_deep_copy);
         Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
         proc->logic.body = proc_body;
     }
@@ -423,6 +428,7 @@ void Proc_free(Proc *proc) {
 
     if (!proc->builtin) {
         // free params
+        Arr_foreach(proc->params, (unary_void_t) MalDatum_release_free);
         Arr_free(proc->params);
         // free body
         Arr_freep(proc->logic.body, (free_t) MalDatum_release_free);
@@ -447,12 +453,12 @@ Proc *Proc_copy(const Proc *proc) {
         return Proc_builtin(proc->name, proc->argc, proc->variadic, proc->logic.apply);
     }
     else if (proc->name) { // named procedure?
-        return Proc_new(proc->name, proc->argc, proc->variadic, proc->params, proc->logic.body, 
-                proc->env);
+        return Proc_new(proc->name, proc->argc, proc->variadic, proc->params, 
+                proc->logic.body, proc->env);
     }
     else { // lambda
-        return Proc_new_lambda(proc->argc, proc->variadic, proc->params, proc->logic.body, 
-                proc->env);
+        return Proc_new_lambda(proc->argc, proc->variadic, proc->params, 
+                proc->logic.body, proc->env);
     }
 }
 
