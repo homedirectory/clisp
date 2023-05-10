@@ -323,7 +323,7 @@ bool Symbol_eq_str(const Symbol *sym, const char *str) {
     return strcmp(sym->name, str) == 0;
 }
 
-Symbol *Symbol_copy(const Symbol *sym) {
+Symbol *Symbol_copy(Symbol *sym) {
     if (sym == NULL) {
         LOG_NULL(sym);
         return NULL;

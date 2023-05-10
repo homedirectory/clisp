@@ -98,7 +98,7 @@ MalDatum *MalDatum_symbol_get(const char *name);
 void Symbol_free(Symbol *);
 bool Symbol_eq(const Symbol *sym1, const Symbol *sym2);
 bool Symbol_eq_str(const Symbol *sym1, const char *str);
-Symbol *Symbol_copy(const Symbol *sym);
+Symbol *Symbol_copy(Symbol *sym);
 
 void init_symbol_table();
 void free_symbol_table();
