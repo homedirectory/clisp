@@ -329,9 +329,6 @@ Symbol *Symbol_copy(Symbol *sym) {
         return NULL;
     }
 
-    // // let's play it safe with symbols
-    // // TODO figure this out
-    // return Symbol_new(sym->name);
     return sym;
 }
 
@@ -841,7 +838,6 @@ void MalDatum_free(MalDatum *datum) {
             break;
         case SYMBOL:
             const Symbol *sym = datum->value.sym;
-            printf("freeing Symbol %s\n", sym->name);
             sym_tbl_pop(sym->name);
             Symbol_free((Symbol*) sym);
             break;
@@ -895,9 +891,6 @@ MalDatum *MalDatum_copy(const MalDatum *datum) {
             out = MalDatum_new_int(datum->value.i);
             break;
         case SYMBOL:
-            // // let's play it safe with symbols
-            // // TODO figure this out
-            // return MalDatum_new_sym(Symbol_copy(datum->value.sym));
             return (MalDatum*) datum;
         case STRING:
             out = MalDatum_new_string(datum->value.string);
