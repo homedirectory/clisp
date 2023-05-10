@@ -348,13 +348,14 @@ Proc *Proc_new(const char *name,
     proc->argc = argc;
     proc->variadic = variadic;
 
+    // TODO optimise by avoiding copying the array
     proc->params = Arr_copy(params);
     Arr_foreach(proc->params, (unary_void_t) MalDatum_own);
 
     proc->builtin = false;
     proc->macro = false;
     {
-        Arr *proc_body = Arr_copyf(body, (copier_t) MalDatum_deep_copy);
+        Arr *proc_body = Arr_copy(body);
         Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
         proc->logic.body = proc_body;
     }
@@ -389,7 +390,7 @@ Proc *Proc_new_lambda(int argc, bool variadic, const Arr *params, const Arr *bod
     proc->builtin = false;
     proc->macro = false;
     {
-        Arr *proc_body = Arr_copyf(body, (copier_t) MalDatum_deep_copy);
+        Arr *proc_body = Arr_copy(body);
         Arr_foreach(proc_body, (unary_void_t) MalDatum_own);
         proc->logic.body = proc_body;
     }
@@ -428,8 +429,7 @@ void Proc_free(Proc *proc) {
 
     if (!proc->builtin) {
         // free params
-        Arr_foreach(proc->params, (unary_void_t) MalDatum_release_free);
-        Arr_free(proc->params);
+        Arr_freep(proc->params, (free_t) MalDatum_release_free);
         // free body
         Arr_freep(proc->logic.body, (free_t) MalDatum_release_free);
     }
