@@ -383,7 +383,7 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
 }
 
 /* (let* (bindings) expr) 
- * bindings := (id val ...) // must have an even number of elements 
+ * bindings := ((id val) ...)
  */
 static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
@@ -405,10 +405,6 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
         BADSTX("let* expects a non-empty list of bindings");
         return NULL;
     }
-    if (List_len(bindings) % 2 != 0) {
-        BADSTX("let*: illegal bindings (expected an even-length list)");
-        return NULL;
-    }
 
     MalDatum *expr = List_ref(list, 2);
 
@@ -416,20 +412,38 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
     MalEnv *let_env = MalEnv_new(env);
     OWN(let_env);
     // step = 2
-    for (struct Node *id_node = bindings->head; id_node != NULL; id_node = id_node->next->next) {
-        // make sure that a symbol is being bound
-        if (!MalDatum_istype(id_node->value, SYMBOL)) {
-            BADSTX("let*: illegal bindings (expected a symbol to be bound, but %s was given)", 
-                    MalType_tostr(id_node->value->type));
+    for (struct Node *bind_node = bindings->head; bind_node; bind_node = bind_node->next) {
+        const MalDatum *dtm = bind_node->value;
+        // bind_node must be a List
+        if (!MalDatum_istype(dtm, LIST)) {
+            BADSTX("let*: expected a list of bindings");
             FREE(let_env);
             MalEnv_free(let_env);
             return NULL;
         }
-        MalDatum *id = id_node->value;
+        List *bind = dtm->value.list;
+        // must be a list of length 2
+        if (List_len(bind) != 2) { 
+            char *s = pr_list(bind, true);
+            BADSTX("let*: bad binding form: %s", s);
+            free(s);
+            FREE(let_env);
+            MalEnv_free(let_env);
+            return NULL;
+        }
+        // must be headed by a symbol
+        MalDatum *bind_sym = List_ref(bind, 0);
+        if (!MalDatum_istype(bind_sym, SYMBOL)) {
+            BADSTX("let*: bad binding form (expected a symbol to be bound, but was %s)", 
+                    MalType_tostr(bind_sym->type));
+            FREE(let_env);
+            MalEnv_free(let_env);
+            return NULL;
+        }
 
         // it's important to evaluate the bound value using the let* env,
         // so that previous bindings can be used during evaluation
-        MalDatum *val = eval(id_node->next->value, let_env);
+        MalDatum *val = eval(List_ref(bind, 1), let_env);
         OWN(val);
         if (val == NULL) {
             FREE(let_env);
@@ -437,7 +451,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             return NULL;
         }
 
-        MalEnv_put(let_env, id, val);
+        MalEnv_put(let_env, bind_sym, val);
     }
 
     // 3. evaluate the expr using the let* env
