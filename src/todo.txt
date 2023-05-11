@@ -1,6 +1,5 @@
 - refactor using OOP and compare performance
     - add 'time-ms' procedure
-+ intern symbols (use a proper hash-table)
 - access procedure bodies
 - FFI
 - sizeof
@@ -11,3 +10,4 @@
 - base 16 and 8 notations
 
 + refactor List structure
++ intern symbols (use a proper hash-table)
