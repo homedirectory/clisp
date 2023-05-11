@@ -80,17 +80,52 @@ void HashTbl_free(HashTbl *tbl, free_t keyfree, free_t valfree)
     free(tbl);
 }
 
+static uint HashTbl_keyidx(HashTbl *tbl, const void *key)
+{
+    return tbl->hashkey(key) % tbl->cap;
+}
+
 static void try_grow(HashTbl *tbl)
 {
-    if (tbl->size >= SIZE_THRESH_RATIO * tbl->cap) {
-        uint newcap = tbl->cap * GROW_RATIO;
-        DEBUG("Growing HashTbl %u -> %u", tbl->cap, newcap);
-        tbl->buckets = realloc(tbl->buckets, sizeof(Bucket*) * newcap);
-        // NULL-out added memory
-        for (uint i = tbl->cap; i < newcap; i++)
-            tbl->buckets[i] = NULL;
-        tbl->cap = newcap;
+    if (tbl->size < SIZE_THRESH_RATIO * tbl->cap)
+        return;
+
+    uint newcap = tbl->cap * GROW_RATIO;
+    DEBUG("Growing HashTbl %u -> %u", tbl->cap, newcap);
+    uint oldcap = tbl->cap;
+    tbl->cap = newcap;
+
+    // 1. allocate memory for a new array of buckets
+    // 2. recalculate hashes to get a new position of each bucket and put it
+    // into the new array
+    // 3. free memory used by the previous bucket array
+
+    Bucket **new_buckets = malloc(sizeof(Bucket*) * newcap);
+    for (uint i = 0; i < newcap; i++)
+        new_buckets[i] = NULL;
+
+    for (uint i = 0; i < oldcap; i++) {
+        Bucket *bkt = tbl->buckets[i];
+        if (!bkt)
+            continue;
+
+        // go through all buckets at the current index
+        while (bkt) {
+            Bucket *next_bkt = bkt->next;
+
+            uint newidx = HashTbl_keyidx(tbl, bkt->key);
+            Bucket *curr_bkt = new_buckets[newidx];
+            new_buckets[newidx] = bkt;
+            bkt->next = curr_bkt;
+
+            bkt = next_bkt;
+        }
     }
+
+    free(tbl->buckets);
+    tbl->buckets = new_buckets;
+
+    DEBUG("Grew HashTbl %u -> %u\n", oldcap, newcap);
 }
 
 void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq)
