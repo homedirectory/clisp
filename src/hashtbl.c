@@ -80,7 +80,7 @@ void HashTbl_free(HashTbl *tbl, free_t keyfree, free_t valfree)
     free(tbl);
 }
 
-static uint HashTbl_keyidx(HashTbl *tbl, const void *key)
+static uint HashTbl_keyidx(const HashTbl *tbl, const void *key)
 {
     return tbl->hashkey(key) % tbl->cap;
 }
@@ -130,7 +130,7 @@ static void try_grow(HashTbl *tbl)
 
 void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq)
 {
-    uint idx = tbl->hashkey(key) % tbl->cap;
+    uint idx = HashTbl_keyidx(tbl, key);
     Bucket *bkt = tbl->buckets[idx];
     if (!bkt)
         return NULL;
@@ -144,7 +144,7 @@ void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
 
     Bucket *bkt_new = Bucket_new(key, val);
 
-    uint idx = tbl->hashkey(key) % tbl->cap;
+    uint idx = HashTbl_keyidx(tbl, key);
     Bucket *bkt = tbl->buckets[idx];
     if (!bkt)
         tbl->buckets[idx] = bkt_new;
@@ -158,7 +158,7 @@ void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
 
 void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)
 {
-    uint idx = tbl->hashkey(key) % tbl->cap;
+    uint idx = HashTbl_keyidx(tbl, key);
     Bucket *bkt = tbl->buckets[idx];
     const void *val_out = NULL;
 
