@@ -128,6 +128,7 @@ LispDatum *LispDatum_copy(const LispDatum *dtm)
 enum {
     SYMBOL,
     LIST,
+    NUMBER,
     TYPE_COUNT
 };
 
@@ -460,8 +461,77 @@ void List_append(List *dst, const List *src)
 }
 
 
+// -----------------------------------------------------------------------------
+// Number < LispDatum
 
+Number *Number_new(long val)
+{
+    static const DtmMethods number_methods = {
+        .type = (dtm_type_ft) Number_type,
+        .free = (dtm_free_ft) Number_free,
+        .eq = (dtm_eq_ft) Number_eq,
+        .typename = (dtm_typename_ft) Number_typename,
+        .copy = (dtm_copy_ft) Number_copy
+    };
 
+    Number *num = malloc(sizeof(Number));
+    num->val = val;
+    num->super = _LispDatum_new(&number_methods);
+    return num;
+}
+
+// generic method implementations
+uint Number_type()
+{
+    return NUMBER;
+}
+
+void Number_free(Number *num)
+{
+    _LispDatum_free(num->super);
+    free(num);
+}
+
+bool Number_eq(const Number *a, const Number *b)
+{
+    return a->val == b->val;
+}
+
+char *Number_typename(const Number *num)
+{
+    return dyn_strcpy("Number");
+}
+
+Number *Number_copy(const Number *num)
+{
+    return (Number*) num;
+}
+
+// Number-specific methods
+void Number_add(Number *a, const Number *b)
+{
+    a->val += b->val;
+}
+
+void Number_sub(Number *a, const Number *b)
+{
+    a->val -= b->val;
+}
+
+void Number_div(Number *a, const Number *b)
+{
+    a->val /= b->val;
+}
+
+void Number_mul(Number *a, const Number *b)
+{
+    a->val *= b->val;
+}
+
+long Number_tol(const Number *num)
+{
+    return num->val;
+}
 
 int main(int argc, char **argv) {
     init_symbol_table();
@@ -496,6 +566,8 @@ int main(int argc, char **argv) {
     Symbol *s_hello = Symbol_intern("hello");
     Symbol *s_world = Symbol_intern("world");
 
+    printf("%s\n", LispDatum_type((LispDatum*) s_hello) == SYMBOL ? "true" : "false");
+
     {
         List *list = List_new();
         List_add(list, (LispDatum*) s_hello);
@@ -505,7 +577,18 @@ int main(int argc, char **argv) {
             printf("%s\n", s);
             free(s);
         }
+        printf("%s\n", LispDatum_type((LispDatum*) list) == LIST ? "true" : "false");
         List_free(list);
+    }
+
+    {
+        Number *n1 = Number_new(123);
+        Number *n2 = Number_new(8872);
+        Number *sum = Number_add(n1, n2);
+        printf("%ld + %ld = %ld\n", Number_tol(n1), Number_tol(n2), Number_tol(sum));
+        Number_free(n1);
+        Number_free(n2);
+        Number_free(sum);
     }
 
     free_symbol_table();

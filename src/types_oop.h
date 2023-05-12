@@ -133,3 +133,30 @@ List *List_cons_new(List *list, LispDatum *dtm);
 List *List_rest_new(List *list);
 
 void List_append(List *dst, const List *src);
+
+
+// -----------------------------------------------------------------------------
+// Number < LispDatum
+
+// TODO support arbitrary large numbers
+// TODO support floating point numbers (potentially as another type)
+typedef struct {
+    /*void*/ _LispDatum *super;
+    long val;
+} Number;
+
+// generic method implementations
+uint Number_type();
+Number *Number_new(long val);
+void Number_free(Number *num);
+bool Number_eq(const Number *a, const Number *b);
+char *Number_typename(const Number *num);
+Number *Number_copy(const Number *num);
+
+// Number-specific methods
+void Number_add(Number *a, const Number *b);
+void Number_sub(Number *a, const Number *b);
+void Number_div(Number *a, const Number *b);
+void Number_mul(Number *a, const Number *b);
+
+long Number_tol(const Number *num);
