@@ -224,6 +224,224 @@ bool Symbol_eq_str(const Symbol *sym, const char *str)
     return strcmp(sym->name, str) == 0;
 }
 
+// -----------------------------------------------------------------------------
+// List < LispDatum
+
+// singleton empty list
+static const List g_empty_list = { .len = 0, .head = NULL, .tail = NULL };
+const List *List_empty() { return &g_empty_list; }
+
+/* Frees the memory allocated for each Node of the list including the LispDatums they point to. */
+void List_free(List *list) {
+    if (list == NULL || list == &g_empty_list) return;
+
+    if (list->head) {
+        struct Node *node = list->head;
+        while (node && --node->refc == 0) {
+            LispDatum_rls(node->value);
+            LispDatum_free(node->value);
+            struct Node *p = node;
+            node = node->next;
+            free(p);
+        }
+    }
+
+    free(list);
+}
+
+bool List_eq(const List *lst1, const List *lst2) {
+    if (lst1 == lst2) return true;
+    if (lst1->len != lst2->len) return false;
+
+    struct Node *node1 = lst1->head;
+    struct Node *node2 = lst2->head;
+    while (node1 != NULL) {
+        if (!LispDatum_eq(node1->value, node2->value))
+            return false;
+        node1 = node1->next;
+        node2 = node2->next;
+    }
+    
+    return true;
+}
+
+char *List_typename(const List *list) {
+    return dyn_strcpy("List");
+}
+
+List *List_copy(const List *list) {
+    if (list == NULL)
+        FATAL("list == NULL");
+
+    if (List_isempty(list)) return (List*) List_empty();
+
+    List *out = List_new();
+
+    struct Node *node = list->head;
+    while (node) {
+        LispDatum *cpy = LispDatum_copy(node->value);
+        if (cpy == NULL)
+            FATAL("cpy == NULL");
+        List_add(out, cpy);
+        node = node->next;
+    }
+
+    return out;
+}
+
+List *List_new() {
+    static const DtmMethods list_methods = {
+        .free = (dtm_free_ft) List_free,
+        .eq = (dtm_eq_ft) List_eq,
+        .typename = (dtm_typename_ft) List_typename,
+        .copy = (dtm_copy_ft) List_copy
+    };
+
+    List *list = malloc(sizeof(List));
+    list->len = 0;
+    list->head = NULL;
+    list->tail = NULL;
+    list->super = _LispDatum_new(&list_methods);
+    return list;
+}
+
+size_t List_len(const List *list) {
+    return list->len;
+}
+
+bool List_isempty(const List *list) {
+    if (list == NULL) {
+        LOG_NULL(list);
+        exit(EXIT_FAILURE);
+    }
+    return list->len == 0;
+}
+
+void List_add(List *list, LispDatum *datum) {
+    struct Node *node = malloc(sizeof(struct Node));
+    node->refc = 1;
+    node->value = datum;
+    node->next = NULL;
+
+    LispDatum_own(datum);
+
+    if (list->tail == NULL) {
+        list->head = node;
+        list->tail = node;
+    } else {
+        list->tail->next = node;
+        list->tail = node;
+    }
+
+    list->len += 1;
+}
+
+LispDatum *List_ref(const List *list, size_t idx) {
+    if (list == NULL) {
+        LOG_NULL(list);
+        return NULL;
+    }
+    if (idx >= list->len)
+        return NULL;
+
+    size_t i = 0;
+    struct Node *node = list->head;
+    while (i < idx) {
+        node = node->next;
+        i++;
+    }
+    return node->value;
+}
+
+List *List_shlw_copy(const List *list) {
+    if (list == NULL)
+        FATAL("list == NULL")
+
+    if (List_isempty(list)) return (List*) List_empty();
+
+    List *out = List_new();
+
+    struct Node *node = list->head;
+    while (node) {
+        List_add(out, node->value);
+        node = node->next;
+    }
+
+    return out;
+}
+
+List *List_cons_new(List *list, LispDatum *datum)
+{
+    List *out = List_new();
+
+    struct Node *node = malloc(sizeof(struct Node));
+    node->refc = 1;
+    node->value = datum;
+    LispDatum_own(datum);
+    node->next = list->head; // potentially NULL
+    out->head = node;
+    if (list->head) {
+        list->head->refc++;
+        out->tail = list->tail;
+    }
+    else {
+        out->tail = node;
+    }
+
+    out->len = 1 + list->len;
+
+    return out;
+}
+
+List *List_rest_new(List *list)
+{
+    if (List_isempty(list)) {
+        DEBUG("got empty list");
+        return NULL;
+    }
+
+    List *out = List_new();
+    size_t tail_len = List_len(list) - 1;
+    if (tail_len > 0) {
+        struct Node *tail_head = list->head->next;
+        out->head = out->tail = tail_head;
+        tail_head->refc += 1;
+        out->len = tail_len;
+    }
+
+    return out;
+}
+
+void List_append(List *dst, const List *src)
+{
+    if (dst == NULL) {
+        LOG_NULL(dst);
+        return;
+    }
+    if (src == NULL) {
+        LOG_NULL(src);
+        return;
+    }
+
+    if (List_isempty(src)) return;
+
+    struct Node *src_head = src->head;
+    if (List_isempty(dst)) {
+        dst->head = dst->tail = src_head;
+    }
+    else {
+        dst->tail->next = src_head;
+        dst->tail = src->tail;
+    }
+    src_head->refc += 1;
+
+    dst->len += src->len;
+}
+
+
+
+
+
 int main(int argc, char **argv) {
     init_symbol_table();
 
@@ -252,6 +470,21 @@ int main(int argc, char **argv) {
         printf("%s\n", s);
         free(s);
         LispDatum_free(dtm);
+    }
+
+    Symbol *s_hello = Symbol_intern("hello");
+    Symbol *s_world = Symbol_intern("world");
+
+    {
+        List *list = List_new();
+        List_add(list, (LispDatum*) s_hello);
+        List_add(list, (LispDatum*) s_world);
+        for (struct Node *node = list->head; node; node = node->next) {
+            char *s = LispDatum_typename(node->value);
+            printf("%s\n", s);
+            free(s);
+        }
+        List_free(list);
     }
 
     free_symbol_table();

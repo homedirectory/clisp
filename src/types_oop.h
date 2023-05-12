@@ -81,3 +81,43 @@ Symbol *Symbol_copy(const Symbol *sym);
 // Symbol-specific methods
 Symbol* Symbol_intern(const char *name);
 bool Symbol_eq_str(const Symbol *sym, const char *str);
+
+
+// -----------------------------------------------------------------------------
+// List < LispDatum
+
+struct Node {
+    long refc; // reference count
+    LispDatum *value;
+    struct Node *next;
+};
+typedef struct {
+    /*void*/ _LispDatum *super;
+    size_t len;
+    struct Node *head;
+    struct Node *tail;
+} List;
+
+// generic method implementations
+void List_free(List *list);
+bool List_eq(const List *l1, const List *l2);
+char *List_typename(const List *list);
+/* Returns a deep copy of a list: both the nodes and LispDatums they point to are copied. */
+List *List_copy(const List *list);
+
+// List methods
+List *List_new();
+size_t List_len(const List *list);
+bool List_isempty(const List *list);
+void List_add(List *list, LispDatum *dtm);
+LispDatum *List_ref(const List *list, size_t idx);
+// shallow copy: only nodes are copied
+List *List_shlw_copy(const List *list);
+
+// creates a new list headed by datum followed by the elements of the given list
+List *List_cons_new(List *list, LispDatum *dtm);
+
+// creates a new list containing the tail of the given list
+List *List_rest_new(List *list);
+
+void List_append(List *dst, const List *src);
