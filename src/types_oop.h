@@ -147,13 +147,13 @@ typedef struct {
 
 // generic method implementations
 uint Number_type();
-Number *Number_new(long val);
 void Number_free(Number *num);
 bool Number_eq(const Number *a, const Number *b);
 char *Number_typename(const Number *num);
 Number *Number_copy(const Number *num);
 
-// Number-specific methods
+// Number methods
+Number *Number_new(long val);
 void Number_add(Number *a, const Number *b);
 void Number_sub(Number *a, const Number *b);
 void Number_div(Number *a, const Number *b);
