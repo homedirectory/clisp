@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include "utils.h"
 
 
 // pre-declare
@@ -80,12 +81,24 @@ typedef struct _LispDatum {
     long refc; // reference count
 } _LispDatum;
 
-static _LispDatum *_LispDatum_new(const DtmMethods *);
-static long _LispDatum_refc(const _LispDatum *_dtm);
+// internal
+//static _LispDatum *_LispDatum_new(const DtmMethods *);
+//static long _LispDatum_refc(const _LispDatum *_dtm);
 // default implementations of ref. management methods
-static void _LispDatum_free(_LispDatum *);
-static void _LispDatum_own(_LispDatum *);
-static void _LispDatum_rls(_LispDatum *);
+//static void _LispDatum_free(_LispDatum *);
+//static void _LispDatum_own(_LispDatum *);
+//static void _LispDatum_rls(_LispDatum *);
+
+// datum type identifiers
+enum {
+    SYMBOL,
+    LIST,
+    NUMBER,
+    STRING,
+    NIL, FALSE, TRUE,
+    PROCEDURE,
+    TYPE_COUNT
+};
 
 
 // -----------------------------------------------------------------------------
@@ -251,3 +264,76 @@ True *True_copy(const True *tru);
 
 // True methods
 const True *True_get();
+
+
+// -----------------------------------------------------------------------------
+// Proc < LispDatum
+
+// *** A note on procedure application ***
+// Racket and Python evaluate function arguments before checking the arity.
+// I shall do this the other way around
+
+// pre-declare 
+typedef struct Proc Proc;
+typedef struct MalEnv MalEnv; // env.h
+
+// the type of built-in procedures (e.g., list?, empty?, numeric ones, etc.)
+// args - array of arguments (LispDatum*)
+// env - application environment
+typedef LispDatum* (*builtin_apply_t)(const Proc *proc, const Arr *args, MalEnv *env);
+
+typedef struct Proc {
+    /*void*/ _LispDatum *super;
+    Symbol *name; // NULL for lambdas
+    // number of mandatory arguments, if negative then it's also variadic
+    int argc;
+    /* Declared parameter names, which include mandatory ones and potentially
+     * the name of the variadic one. Number of these is given by
+     * (+ (abs argc) (if (< argc 0) 1 0)). 
+     */
+    Arr *params; // of *Symbol
+    // TODO replace by bitmask (and include variadic into it)
+    bool macro;
+    bool builtin;
+    union {
+        List *body;
+        builtin_apply_t apply; // function pointer to the built-in procedure
+    } logic;
+    // the enclosing environment in which this procedure was defined
+    /*const*/ MalEnv *env;
+} Proc;
+
+// generic method implementations
+uint Proc_type();
+void Proc_free(Proc *proc);
+bool Proc_eq(const Proc *a, const Proc *b);
+char *Proc_typename(const Proc *proc);
+Proc *Proc_copy(const Proc *proc);
+
+// Proc methods
+
+// constructor for language-defined procedures;
+// neither params nor body are copied
+Proc *Proc_new(
+        Symbol *name, 
+        int argc, bool variadic,
+        Arr *params, 
+        List *body, 
+        MalEnv *env);
+
+Proc *Proc_new_lambda(
+        int argc, bool variadic,
+        Arr *params,
+        List *body, 
+        MalEnv *env);
+
+// constructor for built-in procedures
+Proc *Proc_builtin(Symbol *name, int argc, bool variadic, const builtin_apply_t apply);
+
+bool Proc_isva(const Proc *proc);
+const Symbol *Proc_name(const Proc *proc);
+bool Proc_isnamed(const Proc *proc);
+bool Proc_ismacro(const Proc *proc);
+bool Proc_isbuiltin(const Proc *proc);
+
+void Proc_set_name(Proc *proc, Symbol *name);

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "types.h"
+#include "types_oop.h"
 #include "stdbool.h"
 
 /* This environment is an associative structure that maps identifiers to mal values */
 typedef struct MalEnv {
     // TODO replace Arr by a proper hashmap
-    Arr *ids;     // of MalDatum* representing symbols
-    Arr *datums;  // of MalDatum*
+    Arr *ids;     // of Symbol*
+    Arr *datums;  // of LispDatum*
     struct MalEnv *enclosing;
     long refc;    // reference count
 } MalEnv;
@@ -18,16 +18,16 @@ MalEnv *MalEnv_new(MalEnv *env);
 
 void MalEnv_free(MalEnv *env);
 
-/* Associates a MalDatum with an identifier.
+/* Associates a LispDatum with an identifier.
  * If the given identifier was already associated with some datum, returns that datum,
  * otherwise returns NULL.
  */
-MalDatum *MalEnv_put(MalEnv *env, MalDatum *id, MalDatum *datum);
-MalDatum *MalEnv_puts(MalEnv *env, const char *id, MalDatum *datum);
+LispDatum *MalEnv_put(MalEnv *env, Symbol *id, LispDatum *datum);
+LispDatum *MalEnv_puts(MalEnv *env, const char *id, LispDatum *datum);
 
-/* Returns the MalDatum associated with the given identifier or NULL. */
-MalDatum *MalEnv_get(const MalEnv *env, const MalDatum *id);
-MalDatum *MalEnv_gets(const MalEnv *env, const char *id);
+/* Returns the LispDatum associated with the given identifier or NULL. */
+LispDatum *MalEnv_get(const MalEnv *env, const Symbol *id);
+LispDatum *MalEnv_gets(const MalEnv *env, const char *id);
 
 // returns the top-most enclosing environment of the given one
 MalEnv *MalEnv_enclosing_root(MalEnv *env);

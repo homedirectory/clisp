@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "types_oop.h"
 #include "hashtbl.h"
+#include "env.h"
 
 /*
 //#define INVOKE(dtm, method, args...) \
@@ -140,16 +141,6 @@ LispDatum *LispDatum_copy(const LispDatum *dtm)
 {
     return LispDatum_methods(dtm)->copy(dtm);
 }
-
-// datum type identifiers
-enum {
-    SYMBOL,
-    LIST,
-    NUMBER,
-    STRING,
-    NIL, FALSE, TRUE,
-    TYPE_COUNT
-};
 
 // -----------------------------------------------------------------------------
 // Symbol < LispDatum
@@ -783,6 +774,164 @@ const True *True_get()
 }
 
 
+// -----------------------------------------------------------------------------
+// Proc < LispDatum
+
+// generic method implementations
+uint Proc_type()
+{
+    return PROCEDURE;
+}
+
+void Proc_free(Proc *proc)
+{
+    if (!proc->builtin) {
+        // free params
+        Arr_freep(proc->params, (free_t) LispDatum_rls_free);
+        // free body
+        List_free(proc->logic.body);
+    }
+
+    if (proc->name) 
+        LispDatum_rls_free((LispDatum*) proc->name);
+
+    MalEnv_release(proc->env);
+    MalEnv_free(proc->env);
+
+    _LispDatum_free(proc->super);
+
+    free(proc);
+}
+
+bool Proc_eq(const Proc *a, const Proc *b)
+{
+    return a == b;
+}
+
+char *Proc_typename(const Proc *proc)
+{
+    return dyn_strcpy("Procedure");
+}
+
+Proc *Proc_copy(const Proc *proc)
+{
+    // procedures are immutable
+    return (Proc*) proc;
+}
+
+// Proc methods
+
+static const DtmMethods Proc_methods = {
+    .type = (dtm_type_ft) Proc_type,
+    .free = (dtm_free_ft) Proc_free,
+    .eq = (dtm_eq_ft) Proc_eq,
+    .typename = (dtm_typename_ft) Proc_typename,
+    .copy = (dtm_copy_ft) Proc_copy,
+    .own = LispDatum_own_dflt,
+    .rls = LispDatum_rls_dflt
+};
+
+Proc *Proc_new(
+        Symbol *name, 
+        int argc, bool variadic,
+        Arr *params, 
+        List *body, 
+        MalEnv *env)
+{
+    Proc *proc = malloc(sizeof(Proc));
+
+    proc->name = name;
+    LispDatum_own((LispDatum*) name);
+
+    proc->argc = argc * (variadic ? -1 : 1);
+
+    proc->params = params;
+    Arr_foreach(proc->params, (unary_void_t) LispDatum_own);
+
+    proc->builtin = false;
+    proc->macro = false;
+
+    proc->logic.body = body;
+    LispDatum_own((LispDatum*) body);
+
+    proc->env = env;
+    MalEnv_own(env);
+
+    proc->super = _LispDatum_new(&Proc_methods);
+
+    return proc;
+}
+
+Proc *Proc_new_lambda(
+        int argc, bool variadic,
+        Arr *params,
+        List *body, 
+        MalEnv *env)
+{
+    return Proc_new(NULL, argc, variadic, params, body, env);
+}
+
+Proc *Proc_builtin(Symbol *name, int argc, bool variadic, const builtin_apply_t apply)
+{
+    Proc *proc = malloc(sizeof(Proc));
+
+    proc->name = name;
+    LispDatum_own((LispDatum*) name);
+
+    proc->argc = argc * (variadic ? -1 : 1);
+
+    proc->builtin = true;
+    proc->macro = false;
+
+    proc->logic.apply = apply;
+
+    proc->env = NULL;
+
+    proc->super = _LispDatum_new(&Proc_methods);
+
+    return proc;
+}
+
+bool Proc_isva(const Proc *proc)
+{
+    return proc->argc < 0;
+}
+
+const Symbol *Proc_name(const Proc *proc)
+{
+    if (proc == NULL)
+        FATAL("proc == NULL");
+
+    // TODO optimize by making *lambda* symbol static
+    const Symbol *name = proc->name ? proc->name : Symbol_intern("*lambda*");
+    return name;
+}
+
+bool Proc_isnamed(const Proc *proc)
+{
+    return proc->name != NULL;
+}
+
+bool Proc_ismacro(const Proc *proc)
+{
+    return proc->macro;
+}
+
+bool Proc_isbuiltin(const Proc *proc)
+{
+    return proc->builtin;
+}
+
+void Proc_set_name(Proc *proc, Symbol *name)
+{
+    if (proc->name) {
+        LispDatum_rls_free((LispDatum*) proc->name);
+    }
+    proc->name = name;
+    LispDatum_own((LispDatum*) name);
+}
+
+
 int main(int argc, char **argv) {
     init_symbol_table();
 
@@ -875,6 +1024,22 @@ int main(int argc, char **argv) {
         assert(1 == LispDatum_refc((LispDatum*) tru));
         LispDatum_own((LispDatum*) tru);
         assert(1 == LispDatum_refc((LispDatum*) tru));
+    }
+
+    // env
+    {
+        MalEnv *env = MalEnv_new(NULL);
+        Symbol *s_a = Symbol_intern("a");
+        Number *one = Number_new(1);
+
+        MalEnv_put(env, s_a, (LispDatum*) one);
+        assert((LispDatum*) one == MalEnv_get(env, s_a));
+
+        Number *two = Number_new(2);
+        MalEnv_put(env, s_a, (LispDatum*) two);
+        assert((LispDatum*) two == MalEnv_get(env, s_a));
+
+        MalEnv_free(env);
     }
 
     free_symbol_table();
