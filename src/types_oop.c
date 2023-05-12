@@ -93,6 +93,11 @@ void LispDatum_rls_free(LispDatum *dtm)
     _LispDatum_rls_free(_dtm);
 }
 
+uint LispDatum_type(const LispDatum *dtm)
+{
+    return LispDatum_methods(dtm)->type(dtm);
+}
+
 bool LispDatum_eq(const LispDatum *dtm1, const LispDatum *dtm2)
 {
     return dtm1 == dtm2 || LispDatum_methods(dtm1)->eq(dtm1, dtm2);
@@ -119,12 +124,20 @@ LispDatum *LispDatum_copy(const LispDatum *dtm)
     return LispDatum_methods(dtm)->copy(dtm);
 }
 
+// datum type identifiers
+enum {
+    SYMBOL,
+    LIST,
+    TYPE_COUNT
+};
+
 // -----------------------------------------------------------------------------
 // Symbol < LispDatum
 
 // Symbol constructor
 static Symbol* Symbol_new(const char *name) {
     static const DtmMethods symbol_methods = {
+        .type = (dtm_type_ft) Symbol_type,
         .free = (dtm_free_ft) Symbol_free,
         .eq = (dtm_eq_ft) Symbol_eq,
         .typename = (dtm_typename_ft) Symbol_typename,
@@ -135,6 +148,10 @@ static Symbol* Symbol_new(const char *name) {
     sym->name = dyn_strcpy(name);
     sym->super = _LispDatum_new(&symbol_methods);
     return sym;
+}
+
+uint Symbol_type() { 
+    return SYMBOL; 
 }
 
 static uint hash_str(const char *str)
@@ -209,7 +226,6 @@ Symbol *Symbol_intern(const char *name)
     }
 }
 
-
 bool Symbol_eq_str(const Symbol *sym, const char *str) 
 {
     if (sym == NULL) {
@@ -230,6 +246,10 @@ bool Symbol_eq_str(const Symbol *sym, const char *str)
 // singleton empty list
 static const List g_empty_list = { .len = 0, .head = NULL, .tail = NULL };
 const List *List_empty() { return &g_empty_list; }
+
+uint List_type() { 
+    return LIST; 
+}
 
 /* Frees the memory allocated for each Node of the list including the LispDatums they point to. */
 void List_free(List *list) {
@@ -291,6 +311,7 @@ List *List_copy(const List *list) {
 
 List *List_new() {
     static const DtmMethods list_methods = {
+        .type = (dtm_type_ft) List_type,
         .free = (dtm_free_ft) List_free,
         .eq = (dtm_eq_ft) List_eq,
         .typename = (dtm_typename_ft) List_typename,

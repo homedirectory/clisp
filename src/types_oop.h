@@ -24,9 +24,17 @@ void LispDatum_rls(LispDatum *);
 // LispDatum_release + LispDatum_free
 void LispDatum_rls_free(LispDatum *);
 
-// generic method declarations
-// these are part of the DtmMethods structure below and must be implemented
-// by concrete types
+// ---- generic method declarations ----
+// these are part of the DtmMethods structure below and must be implemented by
+// concrete types
+
+typedef unsigned int uint;
+typedef uint (*dtm_type_ft)(const LispDatum *);
+// returns a unique value identifying the runtime type of the datum;
+// instead of storing the type in the LispDatum struct (in a tag-like fashion),
+// the object itself responds to the message about its type 
+uint LispDatum_type(const LispDatum *);
+
 typedef void (*dtm_free_ft)(LispDatum *);
 void LispDatum_free(LispDatum *);
 
@@ -40,11 +48,13 @@ typedef LispDatum* (*dtm_copy_ft)(const LispDatum *);
 LispDatum *LispDatum_copy(const LispDatum *);
 
 typedef struct {
+    dtm_type_ft type;
     dtm_free_ft free;
     dtm_eq_ft eq;
     dtm_typename_ft typename;
     dtm_copy_ft copy;
 } DtmMethods;
+// --------
 
 // internal super-type;
 // each concrete type must declare its 1st member as a pointer to this type
@@ -73,6 +83,7 @@ typedef struct {
 } Symbol;
 
 // generic method implementations
+uint Symbol_type();
 void Symbol_free(Symbol *sym);
 bool Symbol_eq(const Symbol *s1, const Symbol *s2);
 char *Symbol_typename(const Symbol *sym);
@@ -99,6 +110,7 @@ typedef struct {
 } List;
 
 // generic method implementations
+uint List_type();
 void List_free(List *list);
 bool List_eq(const List *l1, const List *l2);
 char *List_typename(const List *list);
