@@ -129,6 +129,7 @@ enum {
     SYMBOL,
     LIST,
     NUMBER,
+    STRING,
     TYPE_COUNT
 };
 
@@ -533,6 +534,61 @@ long Number_tol(const Number *num)
     return num->val;
 }
 
+
+// -----------------------------------------------------------------------------
+// String < LispDatum
+
+// generic method implementations
+uint String_type()
+{
+    return STRING;
+}
+
+void String_free(String *string)
+{
+    free(string->str);
+    _LispDatum_free(string->super);
+    free(string);
+}
+
+bool String_eq(const String *a, const String *b)
+{
+    return strcmp(a->str, b->str) == 0;
+}
+
+char *String_typename(const String *string)
+{
+    return dyn_strcpy("String");
+}
+
+String *String_copy(const String *string)
+{
+    return String_new(string->str);
+}
+
+// String methods
+String *String_new(const char *s)
+{
+    static const DtmMethods string_methods = {
+        .type = (dtm_type_ft) String_type,
+        .free = (dtm_free_ft) String_free,
+        .eq = (dtm_eq_ft) String_eq,
+        .typename = (dtm_typename_ft) String_typename,
+        .copy = (dtm_copy_ft) String_copy
+    };
+
+    String *str = malloc(sizeof(String));
+    str->str = dyn_strcpy(s);
+    str->super = _LispDatum_new(&string_methods);
+    return str;
+}
+
+char *String_str(const String *string)
+{
+    return string->str;
+}
+
+
 int main(int argc, char **argv) {
     init_symbol_table();
 
@@ -584,11 +640,19 @@ int main(int argc, char **argv) {
     {
         Number *n1 = Number_new(123);
         Number *n2 = Number_new(8872);
-        Number *sum = Number_add(n1, n2);
+        Number *sum = Number_new(0);
+        Number_add(sum, n1);
+        Number_add(sum, n2);
         printf("%ld + %ld = %ld\n", Number_tol(n1), Number_tol(n2), Number_tol(sum));
         Number_free(n1);
         Number_free(n2);
         Number_free(sum);
+    }
+
+    {
+        String *str1 = String_new("hello world, it's me, the programmer");
+        printf("%s\n", String_str(str1));
+        LispDatum_free((LispDatum*) str1);
     }
 
     free_symbol_table();

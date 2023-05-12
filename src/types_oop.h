@@ -160,3 +160,23 @@ void Number_div(Number *a, const Number *b);
 void Number_mul(Number *a, const Number *b);
 
 long Number_tol(const Number *num);
+
+
+// -----------------------------------------------------------------------------
+// String < LispDatum
+
+typedef struct {
+    /*void*/ _LispDatum *super;
+    char *str;
+} String;
+
+// generic method implementations
+uint String_type();
+void String_free(String *string);
+bool String_eq(const String *a, const String *b);
+char *String_typename(const String *string);
+String *String_copy(const String *string);
+
+// String methods
+String *String_new(const char *s);
+char *String_str(const String *string);
