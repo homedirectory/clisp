@@ -154,11 +154,19 @@ void init_symbol_table()
     g_symbol_table = HashTbl_newc(256, (hashkey_t) hash_str);
 }
 
+// concerned with Symbol only, doesn't modify the symbol table
+static void _Symbol_free(Symbol *sym) 
+{
+    free(sym->name);
+    _LispDatum_free(sym->super);
+    free(sym);
+}
+
 static void noop(void *ptr) { }
 void free_symbol_table()
 {
     // key is the same pointer that's stored by a symbol, so we don't need to free keys
-    HashTbl_free(g_symbol_table, noop, (free_t) Symbol_free);
+    HashTbl_free(g_symbol_table, noop, (free_t) _Symbol_free);
 }
 
 static Symbol *sym_tbl_pop(const char *name)
@@ -166,14 +174,12 @@ static Symbol *sym_tbl_pop(const char *name)
     return HashTbl_pop(g_symbol_table, name, (keyeq_t) streq);
 }
 
+// frees the symbol and pops it from the symbol table
 void Symbol_free(Symbol *sym)
 {
     Symbol *popd = sym_tbl_pop(sym->name);
     assert(popd == sym);
-
-    free(sym->name);
-    _LispDatum_free(sym->super);
-    free(sym);
+    _Symbol_free(sym);
 }
 
 bool Symbol_eq(const Symbol *s1, const Symbol *s2)
