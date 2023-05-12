@@ -58,11 +58,6 @@ static void _LispDatum_rls(_LispDatum *_dtm)
     _dtm->refc -= 1;
 }
 
-static void _LispDatum_rls_free(_LispDatum *_dtm)
-{
-    _LispDatum_rls(_dtm);
-    _LispDatum_free(_dtm);
-}
 
 // -----------------------------------------------------------------------------
 // LispDatum
@@ -77,11 +72,21 @@ static const DtmMethods *LispDatum_methods(const LispDatum *dtm)
 
 void LispDatum_own(LispDatum *dtm)
 {
+    return LispDatum_methods(dtm)->own(dtm);
+}
+
+static void LispDatum_own_dflt(LispDatum *dtm)
+{
     _LispDatum *_dtm = *dtm;
     _LispDatum_own(_dtm);
 }
 
 void LispDatum_rls(LispDatum *dtm)
+{
+    return LispDatum_methods(dtm)->rls(dtm);
+}
+
+static void LispDatum_rls_dflt(LispDatum *dtm)
 {
     _LispDatum *_dtm = *dtm;
     _LispDatum_rls(_dtm);
@@ -89,8 +94,9 @@ void LispDatum_rls(LispDatum *dtm)
 
 void LispDatum_rls_free(LispDatum *dtm)
 {
-    _LispDatum *_dtm = *dtm;
-    _LispDatum_rls_free(_dtm);
+    const DtmMethods *methods = LispDatum_methods(dtm);
+    methods->rls(dtm);
+    methods->free(dtm);
 }
 
 uint LispDatum_type(const LispDatum *dtm)
@@ -130,6 +136,7 @@ enum {
     LIST,
     NUMBER,
     STRING,
+    NIL, FALSE, TRUE,
     TYPE_COUNT
 };
 
@@ -143,7 +150,9 @@ static Symbol* Symbol_new(const char *name) {
         .free = (dtm_free_ft) Symbol_free,
         .eq = (dtm_eq_ft) Symbol_eq,
         .typename = (dtm_typename_ft) Symbol_typename,
-        .copy = (dtm_copy_ft) Symbol_copy
+        .copy = (dtm_copy_ft) Symbol_copy,
+        .own = LispDatum_own_dflt,
+        .rls = LispDatum_rls_dflt
     };
 
     Symbol* sym = malloc(sizeof(Symbol));
@@ -317,7 +326,9 @@ List *List_new() {
         .free = (dtm_free_ft) List_free,
         .eq = (dtm_eq_ft) List_eq,
         .typename = (dtm_typename_ft) List_typename,
-        .copy = (dtm_copy_ft) List_copy
+        .copy = (dtm_copy_ft) List_copy,
+        .own = LispDatum_own_dflt,
+        .rls = LispDatum_rls_dflt
     };
 
     List *list = malloc(sizeof(List));
@@ -472,7 +483,9 @@ Number *Number_new(long val)
         .free = (dtm_free_ft) Number_free,
         .eq = (dtm_eq_ft) Number_eq,
         .typename = (dtm_typename_ft) Number_typename,
-        .copy = (dtm_copy_ft) Number_copy
+        .copy = (dtm_copy_ft) Number_copy,
+        .own = LispDatum_own_dflt,
+        .rls = LispDatum_rls_dflt
     };
 
     Number *num = malloc(sizeof(Number));
@@ -589,6 +602,176 @@ char *String_str(const String *string)
 }
 
 
+// -----------------------------------------------------------------------------
+// Singleton types: Nil, True, False
+
+// implementation of ref. management methods for these types is not needed
+static void LispDatum_noown(LispDatum *dtm) {}
+static void LispDatum_norls(LispDatum *dtm) {}
+
+// -----------------------------------------------------------------------------
+// Nil < LispDatum
+
+// generic method implementations
+uint Nil_type()
+{
+    return NIL;
+}
+
+void Nil_free(Nil *nil)
+{
+    ;
+}
+
+bool Nil_eq(const Nil *a, const Nil *b)
+{
+    return true;
+}
+
+char *Nil_typename(const Nil *nil)
+{
+    return dyn_strcpy("Nil");
+}
+
+Nil *Nil_copy(const Nil *nil)
+{
+    return (Nil*) nil;
+}
+
+// Nil methods
+const Nil *Nil_get()
+{
+    static const DtmMethods nil_methods = {
+        .type = (dtm_type_ft) Nil_type,
+        .free = (dtm_free_ft) Nil_free,
+        .eq = (dtm_eq_ft) Nil_eq,
+        .typename = (dtm_typename_ft) Nil_typename,
+        .copy = (dtm_copy_ft) Nil_copy,
+        .own = LispDatum_noown,
+        .rls = LispDatum_norls
+    };
+
+    static const _LispDatum super = {
+        .methods = &nil_methods,
+        .refc = 1
+    };
+
+    static const Nil nil = {
+        .super = (_LispDatum*) &super
+    };
+
+    return &nil;
+}
+
+// -----------------------------------------------------------------------------
+// False < LispDatum
+
+// generic method implementations
+uint False_type()
+{
+    return FALSE;
+}
+
+void False_free(False *fls)
+{
+    ;
+}
+
+bool False_eq(const False *a, const False *b)
+{
+    return true;
+}
+
+char *False_typename(const False *fls)
+{
+    return dyn_strcpy("False");
+}
+
+False *False_copy(const False *fls)
+{
+    return (False*) fls;
+}
+
+// False methods
+const False *False_get()
+{
+    static const DtmMethods false_methods = {
+        .type = (dtm_type_ft) False_type,
+        .free = (dtm_free_ft) False_free,
+        .eq = (dtm_eq_ft) False_eq,
+        .typename = (dtm_typename_ft) False_typename,
+        .copy = (dtm_copy_ft) False_copy,
+        .own = LispDatum_noown,
+        .rls = LispDatum_norls
+    };
+
+    static const _LispDatum super = {
+        .methods = &false_methods,
+        .refc = 1
+    };
+
+    static const False fls = {
+        .super = (_LispDatum*) &super
+    };
+
+    return &fls;
+}
+
+// -----------------------------------------------------------------------------
+// True < LispDatum
+
+// generic method implementations
+uint True_type()
+{
+    return TRUE;
+}
+
+void True_free(True *tru)
+{
+    ;
+}
+
+bool True_eq(const True *a, const True *b)
+{
+    return true;
+}
+
+char *True_typename(const True *tru)
+{
+    return dyn_strcpy("True");
+}
+
+True *True_copy(const True *tru)
+{
+    return (True*) tru;
+}
+
+// True methods
+const True *True_get()
+{
+    static const DtmMethods true_methods = {
+        .type = (dtm_type_ft) True_type,
+        .free = (dtm_free_ft) True_free,
+        .eq = (dtm_eq_ft) True_eq,
+        .typename = (dtm_typename_ft) True_typename,
+        .copy = (dtm_copy_ft) True_copy,
+        .own = LispDatum_noown,
+        .rls = LispDatum_norls
+    };
+
+    static const _LispDatum super = {
+        .methods = &true_methods,
+        .refc = 1
+    };
+
+    static const True tru = {
+        .super = (_LispDatum*) &super
+    };
+
+    return &tru;
+}
+
+
 int main(int argc, char **argv) {
     init_symbol_table();
 
@@ -653,6 +836,16 @@ int main(int argc, char **argv) {
         String *str1 = String_new("hello world, it's me, the programmer");
         printf("%s\n", String_str(str1));
         LispDatum_free((LispDatum*) str1);
+    }
+
+    // singletons
+    {
+        const Nil *nil = Nil_get();
+        assert(nil == Nil_get());
+        const True *tru = True_get();
+        assert(tru == True_get());
+        const False *fls = False_get();
+        assert(fls == False_get());
     }
 
     free_symbol_table();
