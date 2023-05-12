@@ -66,6 +66,9 @@ typedef struct {
 
 // LispDatum_release + LispDatum_free
 void LispDatum_rls_free(LispDatum *);
+
+// returns the ref. count of the given datum
+long LispDatum_refc(const LispDatum *dtm);
 // --------
 
 
@@ -78,6 +81,7 @@ typedef struct _LispDatum {
 } _LispDatum;
 
 static _LispDatum *_LispDatum_new(const DtmMethods *);
+static long _LispDatum_refc(const _LispDatum *_dtm);
 // default implementations of ref. management methods
 static void _LispDatum_free(_LispDatum *);
 static void _LispDatum_own(_LispDatum *);

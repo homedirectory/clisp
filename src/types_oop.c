@@ -58,6 +58,11 @@ static void _LispDatum_rls(_LispDatum *_dtm)
     _dtm->refc -= 1;
 }
 
+static long _LispDatum_refc(const _LispDatum *_dtm)
+{
+    return _dtm->refc;
+}
+
 
 // -----------------------------------------------------------------------------
 // LispDatum
@@ -97,6 +102,12 @@ void LispDatum_rls_free(LispDatum *dtm)
     const DtmMethods *methods = LispDatum_methods(dtm);
     methods->rls(dtm);
     methods->free(dtm);
+}
+
+long LispDatum_refc(const LispDatum *dtm)
+{
+    _LispDatum *_dtm = *dtm;
+    return _LispDatum_refc(_dtm);
 }
 
 uint LispDatum_type(const LispDatum *dtm)
@@ -846,6 +857,24 @@ int main(int argc, char **argv) {
         assert(tru == True_get());
         const False *fls = False_get();
         assert(fls == False_get());
+
+        assert(1 == LispDatum_refc((LispDatum*) nil));
+        LispDatum_free((LispDatum*) nil);
+        assert(1 == LispDatum_refc((LispDatum*) nil));
+        LispDatum_own((LispDatum*) nil);
+        assert(1 == LispDatum_refc((LispDatum*) nil));
+
+        assert(1 == LispDatum_refc((LispDatum*) fls));
+        LispDatum_free((LispDatum*) fls);
+        assert(1 == LispDatum_refc((LispDatum*) fls));
+        LispDatum_own((LispDatum*) fls);
+        assert(1 == LispDatum_refc((LispDatum*) fls));
+
+        assert(1 == LispDatum_refc((LispDatum*) tru));
+        LispDatum_free((LispDatum*) tru);
+        assert(1 == LispDatum_refc((LispDatum*) tru));
+        LispDatum_own((LispDatum*) tru);
+        assert(1 == LispDatum_refc((LispDatum*) tru));
     }
 
     free_symbol_table();
