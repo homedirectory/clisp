@@ -591,7 +591,9 @@ String *String_new(const char *s)
         .free = (dtm_free_ft) String_free,
         .eq = (dtm_eq_ft) String_eq,
         .typename = (dtm_typename_ft) String_typename,
-        .copy = (dtm_copy_ft) String_copy
+        .copy = (dtm_copy_ft) String_copy,
+        .own = LispDatum_own_dflt,
+        .rls = LispDatum_rls_dflt
     };
 
     String *str = malloc(sizeof(String));
@@ -1276,6 +1278,25 @@ int main(int argc, char **argv) {
         error("hey, that's an error!\n");
         assert(!didthrow());
     }
+
+    // ref count in fresh copies should be reset to 0,
+    // unless the datum is immutable (e.g., Symbol, Number) 
+    {
+        LispDatum *num = (LispDatum*) Number_new(20);
+        LispDatum_own(num);
+        assert(1 == LispDatum_refc(num));
+        LispDatum *num_cpy = LispDatum_copy(num);
+        assert(num == num_cpy);
+        assert(1 == LispDatum_refc(num_cpy));
+
+        LispDatum *string = (LispDatum*) String_new("hello world");
+        LispDatum_own(string);
+        assert(1 == LispDatum_refc(string));
+        LispDatum *string_cpy = LispDatum_copy(string);
+        assert(string != string_cpy);
+        assert(0 == LispDatum_refc(string_cpy));
+    }
+
 
     free_symbol_table();
 }
