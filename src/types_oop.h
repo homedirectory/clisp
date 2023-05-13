@@ -14,18 +14,30 @@ typedef struct _LispDatum _LispDatum;
 // which must have type _LispDatum*
 typedef _LispDatum* LispDatum;
 
+// datum type identifiers
+typedef enum LispType {
+    SYMBOL,
+    LIST,
+    NUMBER,
+    STRING,
+    NIL, FALSE, TRUE,
+    PROCEDURE,
+    ATOM,
+    EXCEPTION,
+    TYPE_COUNT
+} LispType;
+
 // ---- generic method declarations ----
 // these are part of the DtmMethods structure below and must be implemented by
 // concrete types; however, if a concrete type wishes not to implement a method,
 // the default implementation might be specified (if it exists of course) 
 // e.g., .own = LispDatum_own_dflt
 
-typedef unsigned int uint;
-typedef uint (*dtm_type_ft)(const LispDatum *);
+typedef LispType (*dtm_type_ft)(const LispDatum *);
 // returns a unique value identifying the runtime type of the datum;
 // instead of storing the type in the LispDatum struct (in a tag-like fashion),
 // the object itself responds to the message about its type 
-uint LispDatum_type(const LispDatum *);
+LispType LispDatum_type(const LispDatum *);
 
 typedef void (*dtm_free_ft)(LispDatum *);
 void LispDatum_free(LispDatum *);
@@ -62,7 +74,7 @@ typedef struct {
     dtm_rls_ft rls;
 } DtmMethods;
 
-// generic method declarations that are shared by concrete types,
+// -- generic method declarations that are shared by concrete types,
 // similar to Java final methods
 
 // LispDatum_release + LispDatum_free
@@ -89,19 +101,6 @@ typedef struct _LispDatum {
 //static void _LispDatum_own(_LispDatum *);
 //static void _LispDatum_rls(_LispDatum *);
 
-// datum type identifiers
-enum {
-    SYMBOL,
-    LIST,
-    NUMBER,
-    STRING,
-    NIL, FALSE, TRUE,
-    PROCEDURE,
-    ATOM,
-    EXCEPTION,
-    TYPE_COUNT
-};
-
 
 // -----------------------------------------------------------------------------
 // Symbol < LispDatum
@@ -115,7 +114,7 @@ typedef struct {
 } Symbol;
 
 // generic method implementations
-uint Symbol_type();
+LispType Symbol_type();
 void Symbol_free(Symbol *sym);
 bool Symbol_eq(const Symbol *s1, const Symbol *s2);
 char *Symbol_typename(const Symbol *sym);
@@ -142,7 +141,7 @@ typedef struct {
 } List;
 
 // generic method implementations
-uint List_type();
+LispType List_type();
 void List_free(List *list);
 bool List_eq(const List *l1, const List *l2);
 char *List_typename(const List *list);
@@ -178,7 +177,7 @@ typedef struct {
 } Number;
 
 // generic method implementations
-uint Number_type();
+LispType Number_type();
 void Number_free(Number *num);
 bool Number_eq(const Number *a, const Number *b);
 char *Number_typename(const Number *num);
@@ -203,7 +202,7 @@ typedef struct {
 } String;
 
 // generic method implementations
-uint String_type();
+LispType String_type();
 void String_free(String *string);
 bool String_eq(const String *a, const String *b);
 char *String_typename(const String *string);
@@ -222,7 +221,7 @@ typedef struct {
 } Nil;
 
 // generic method implementations
-uint Nil_type();
+LispType Nil_type();
 void Nil_free(Nil *nil);
 bool Nil_eq(const Nil *a, const Nil *b);
 char *Nil_typename(const Nil *nil);
@@ -240,7 +239,7 @@ typedef struct {
 } False;
 
 // generic method implementations
-uint False_type();
+LispType False_type();
 void False_free(False *fls);
 bool False_eq(const False *a, const False *b);
 char *False_typename(const False *fls);
@@ -258,7 +257,7 @@ typedef struct {
 } True;
 
 // generic method implementations
-uint True_type();
+LispType True_type();
 void True_free(True *tru);
 bool True_eq(const True *a, const True *b);
 char *True_typename(const True *tru);
@@ -306,7 +305,7 @@ typedef struct Proc {
 } Proc;
 
 // generic method implementations
-uint Proc_type();
+LispType Proc_type();
 void Proc_free(Proc *proc);
 bool Proc_eq(const Proc *a, const Proc *b);
 char *Proc_typename(const Proc *proc);
@@ -353,7 +352,7 @@ typedef struct Atom {
 } Atom;
 
 // generic method implementations
-uint Atom_type();
+LispType Atom_type();
 void Atom_free(Atom *atom);
 // 2 Atoms are equal only if they point to the same value
 bool Atom_eq(const Atom *a, const Atom *b);
@@ -374,7 +373,7 @@ typedef struct {
 } Exception;
 
 // generic method implementations
-uint Exception_type();
+LispType Exception_type();
 void Exception_free(Exception *exn);
 // 2 Exceptions are equal only if they point to the same value
 bool Exception_eq(const Exception *a, const Exception *b);

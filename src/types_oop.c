@@ -111,7 +111,7 @@ long LispDatum_refc(const LispDatum *dtm)
     return _LispDatum_refc(_dtm);
 }
 
-uint LispDatum_type(const LispDatum *dtm)
+LispType LispDatum_type(const LispDatum *dtm)
 {
     return LispDatum_methods(dtm)->type(dtm);
 }
@@ -163,7 +163,7 @@ static Symbol* Symbol_new(const char *name) {
     return sym;
 }
 
-uint Symbol_type() { 
+LispType Symbol_type() { 
     return SYMBOL; 
 }
 
@@ -261,7 +261,7 @@ bool Symbol_eq_str(const Symbol *sym, const char *str)
 static const List g_empty_list = { .len = 0, .head = NULL, .tail = NULL };
 const List *List_empty() { return &g_empty_list; }
 
-uint List_type() { 
+LispType List_type() { 
     return LIST; 
 }
 
@@ -499,7 +499,7 @@ Number *Number_new(long val)
 }
 
 // generic method implementations
-uint Number_type()
+LispType Number_type()
 {
     return NUMBER;
 }
@@ -556,7 +556,7 @@ long Number_tol(const Number *num)
 // String < LispDatum
 
 // generic method implementations
-uint String_type()
+LispType String_type()
 {
     return STRING;
 }
@@ -619,7 +619,7 @@ static void LispDatum_norls(LispDatum *dtm) {}
 // Nil < LispDatum
 
 // generic method implementations
-uint Nil_type()
+LispType Nil_type()
 {
     return NIL;
 }
@@ -673,7 +673,7 @@ const Nil *Nil_get()
 // False < LispDatum
 
 // generic method implementations
-uint False_type()
+LispType False_type()
 {
     return FALSE;
 }
@@ -727,7 +727,7 @@ const False *False_get()
 // True < LispDatum
 
 // generic method implementations
-uint True_type()
+LispType True_type()
 {
     return TRUE;
 }
@@ -782,7 +782,7 @@ const True *True_get()
 // Proc < LispDatum
 
 // generic method implementations
-uint Proc_type()
+LispType Proc_type()
 {
     return PROCEDURE;
 }
@@ -940,7 +940,7 @@ void Proc_set_name(Proc *proc, Symbol *name)
 // Atom < LispDatum
 
 // generic method implementations
-uint Atom_type()
+LispType Atom_type()
 {
     return ATOM;
 }
@@ -1019,7 +1019,7 @@ static const DtmMethods exception_methods = {
 };
 
 // generic method implementations
-uint Exception_type()
+LispType Exception_type()
 {
     return EXCEPTION;
 }
