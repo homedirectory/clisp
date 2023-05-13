@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 #include "common.h"
 #include "mem_debug.h"
 #include "utils.h"
@@ -996,11 +997,142 @@ void Atom_set(Atom *atom, LispDatum *dtm)
     LispDatum_own(dtm);
 }
 
-
 LispDatum *Atom_deref(const Atom *atom)
 {
     return atom->dtm;
 }
+
+
+// -----------------------------------------------------------------------------
+// Exception < LispDatum
+
+static const DtmMethods exception_methods = {
+    .type = (dtm_type_ft) Exception_type,
+    .free = (dtm_free_ft) Exception_free,
+    .eq = (dtm_eq_ft) Exception_eq,
+    .typename = (dtm_typename_ft) Exception_typename,
+    .copy = (dtm_copy_ft) Exception_copy,
+    .own = LispDatum_own_dflt,
+    .rls = LispDatum_rls_dflt
+};
+
+// generic method implementations
+uint Exception_type()
+{
+    return EXCEPTION;
+}
+
+void Exception_free(Exception *exn)
+{
+    LispDatum_rls_free(exn->dtm);
+    _LispDatum_free(exn->super);
+    free(exn);
+}
+
+// 2 Exceptions are equal only if they point to the same value
+bool Exception_eq(const Exception *a, const Exception *b)
+{
+    return LispDatum_eq(a->dtm, b->dtm);
+}
+
+char *Exception_typename(const Exception *exn)
+{
+    return dyn_strcpy("Exception");
+}
+
+Exception *Exception_copy(const Exception *exn)
+{
+    Exception *copy = malloc(sizeof(Exception));
+    copy->dtm = exn->dtm;
+
+    copy->super = _LispDatum_new(&exception_methods);
+
+    return copy;
+}
+
+// Exception methods
+
+// datum is copied
+Exception *Exception_new(const LispDatum *dtm)
+{
+    Exception *exn = malloc(sizeof(Exception));
+    LispDatum *dtm_cpy = LispDatum_copy(dtm);
+    LispDatum_own(dtm_cpy);
+    exn->dtm = dtm_cpy;
+
+    exn->super = _LispDatum_new(&exception_methods);
+
+    return exn;
+}
+
+// global last raised exception
+static const _LispDatum g_last_exn_super = {
+    .methods = &exception_methods,
+    .refc = 1
+};
+static Exception g_last_exn = {
+    .super = (_LispDatum*) &g_last_exn_super,
+    .dtm = NULL
+};
+
+Exception *thrown_copy()
+{
+    if (!g_last_exn.dtm)
+        LOG_NULL(g_last_exn.dtm);
+
+    return Exception_new(g_last_exn.dtm);
+}
+
+// we need to know the last thing that happened: error or exception?
+static enum LastFail {
+    LF_NONE,
+    LF_ERROR,
+    LF_EXCEPTION
+} g_lastfail = LF_NONE;
+
+bool didthrow()
+{
+    return g_lastfail == LF_EXCEPTION;
+}
+
+void throw(const LispDatum *dtm)
+{
+    g_lastfail = LF_EXCEPTION;
+
+    LispDatum *old = g_last_exn.dtm;
+    if (old)
+        LispDatum_rls_free(old);
+
+    LispDatum *copy = LispDatum_copy(dtm);
+    LispDatum_own(copy);
+    g_last_exn.dtm = copy;
+}
+
+void throwf(const char *fmt, ...)
+{
+    char buf[2048]; // TODO fix rigid limit
+
+    va_list va;
+    va_start(va, fmt);
+    vsprintf(buf, fmt, va);
+    va_end(va);
+
+    fprintf(stderr, buf);
+    fprintf(stderr, "\n");
+
+    throw((LispDatum*) String_new(buf));
+}
+
+void error(const char *fmt, ...)
+{
+    g_lastfail = LF_ERROR;
+
+    va_list va;
+    va_start(va, fmt);
+    vfprintf(stderr, fmt, va);
+    va_end(va);
+}
+
 
 
 int main(int argc, char **argv) {
@@ -1135,6 +1267,14 @@ int main(int argc, char **argv) {
         assert(55 == ((Number*)Atom_deref(atm1_cpy))->val);
 
         Atom_free(atm1_cpy);
+    }
+
+    // Exception
+    {
+        throw((LispDatum*) Symbol_intern("error"));
+        assert(didthrow());
+        error("hey, that's an error!\n");
+        assert(!didthrow());
     }
 
     free_symbol_table();

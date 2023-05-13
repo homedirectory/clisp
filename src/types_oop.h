@@ -98,6 +98,7 @@ enum {
     NIL, FALSE, TRUE,
     PROCEDURE,
     ATOM,
+    EXCEPTION,
     TYPE_COUNT
 };
 
@@ -363,3 +364,34 @@ Atom *Atom_copy(const Atom *atom);
 Atom *Atom_new(LispDatum *dtm);
 void Atom_set(Atom *atom, LispDatum *dtm);
 LispDatum *Atom_deref(const Atom *atom);
+
+
+// -----------------------------------------------------------------------------
+// Exception < LispDatum
+typedef struct {
+    /*void*/ _LispDatum *super;
+    LispDatum *dtm;
+} Exception;
+
+// generic method implementations
+uint Exception_type();
+void Exception_free(Exception *exn);
+// 2 Exceptions are equal only if they point to the same value
+bool Exception_eq(const Exception *a, const Exception *b);
+char *Exception_typename(const Exception *exn);
+// since Exception is immutable, this does not copy the underlying LispDatum
+Exception *Exception_copy(const Exception *exn);
+
+// Exception methods
+
+// datum is copied
+Exception *Exception_new(const LispDatum *);
+
+// returns a deep copy of the last thrown exception
+Exception *thrown_copy();
+
+bool didthrow();
+void throw(const LispDatum *);
+void throwf(const char *fmt, ...);
+
+void error(const char *fmt, ...);
