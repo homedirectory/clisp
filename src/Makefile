@@ -7,3 +7,6 @@ mylisp: mylisp.c printer.c reader.c types.c utils.c env.c core.c mem_debug.c has
 
 types_oop: types_oop.c env.c utils.c hashtbl.c
 	$(CC) $(CFLAGS) -o $@ $^
+
+reader: reader.c types_oop.c utils.c env.c hashtbl.c
+	$(CC) $(CFLAGS) -o $@ $^

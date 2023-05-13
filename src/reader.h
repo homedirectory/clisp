@@ -1,7 +1,7 @@
 #pragma once
 
 #include "utils.h"
-#include "types.h"
+#include "types_oop.h"
 
 typedef struct Reader {
     size_t pos;
@@ -14,4 +14,4 @@ const char *Reader_peek(const Reader *rdr);
 
 void Reader_free(Reader *rdr);
 
-MalDatum *read_form(Reader *rdr);
+LispDatum *read_form(Reader *rdr);

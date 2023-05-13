@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "utils.h"
-#include "reader.h"
-#include "types.h"
 #include <ctype.h>
 #include <stdbool.h>
-#include "common.h"
 #include <sys/types.h>
+
+#include "reader.h"
+#include "types_oop.h"
+#include "common.h"
+#include "utils.h"
 
 #define WHITESPACE_CHARS " \t\n\r"
 #define SYMBOL_INV_CHARS WHITESPACE_CHARS "[]{}('\"`,;)"
@@ -193,24 +194,24 @@ void Reader_free(Reader *rdr) {
     free(rdr);
 }
 
-static MalDatum *read_atom(const char *token) {
+static LispDatum *read_atom(const char *token) {
     //printf("read_atom token: %s\n", token);
     if (token == NULL || token[0] == '\0') return NULL;
 
-    // int
+    // Number
     if (isdigit(token[0]) || (token[0] == '-' && isdigit(token[1]))) {
-        int i = strtol(token, NULL, 10);
-        return MalDatum_new_int(i);
+        long l = strtol(token, NULL, 10);
+        return (LispDatum*) Number_new(l);
     }
-    // string
+    // String
     else if (token[0] == '"') {
-        char datum_form[strlen(token) - 2 + 1]; // 2 surrounding doublequotes
-        str_from_token(datum_form, token);
-        return MalDatum_new_string(datum_form);
+        char buf[strlen(token) - 2 + 1]; // 2 surrounding doublequotes
+        str_from_token(buf, token);
+        return (LispDatum*) String_new(buf);
     }
-    // symbol
+    // Symbol
     else if (strchr(SYMBOL_INV_CHARS, token[0]) == NULL) {
-        return MalDatum_symbol_get(token);
+        return (LispDatum*) Symbol_intern(token);
     }
     else {
         DEBUG("Unknown atom: %s", token);
@@ -219,7 +220,7 @@ static MalDatum *read_atom(const char *token) {
 }
 
 // current Reader token should be the next one after an open paren
-static MalDatum *read_list(Reader *rdr) {
+static List *read_list(Reader *rdr) {
     bool closed = false;
     List *list = List_new();
 
@@ -229,7 +230,7 @@ static MalDatum *read_list(Reader *rdr) {
             closed = true;
             break;
         }
-        MalDatum *form = read_form(rdr);
+        LispDatum *form = read_form(rdr);
         if (form == NULL) {
             List_free(list);
             DEBUG("Illegal form");
@@ -246,17 +247,18 @@ static MalDatum *read_list(Reader *rdr) {
     }
 
     Reader_next(rdr); // skip over closing paren
-    return List_isempty(list) ? (MalDatum*) MalDatum_empty_list() : MalDatum_new_list(list);
+
+    return list;
 }
 
-MalDatum *read_form(Reader *rdr) {
+LispDatum *read_form(Reader *rdr) {
     const char *token = Reader_next(rdr);
     if (!token) { // no more tokens
         return NULL;
     }
-    // list
+    // List
     else if (token[0] == '(') {
-        return read_list(rdr);
+        return (LispDatum*) read_list(rdr);
     } 
     else if (token[0] == ')') {
         ERROR("unbalanced closing paren '%c'", token[0]);
@@ -264,51 +266,51 @@ MalDatum *read_form(Reader *rdr) {
     }
     // quote macro
     else if (token[0] == QUOTE_MACRO_CHAR) {
-        MalDatum *next_form = read_form(rdr);
+        LispDatum *next_form = read_form(rdr);
         if (!next_form) {
             ERROR("bad syntax: stray quote (%c)", QUOTE_MACRO_CHAR);
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_symbol_get("quote"));
+        List_add(list, (LispDatum*) Symbol_intern("quote"));
         List_add(list, next_form);
-        return MalDatum_new_list(list);
+        return (LispDatum*) list;
     }
     // quasiquote macro
     else if (token[0] == QUASIQUOTE_MACRO_CHAR) {
-        MalDatum *next_form = read_form(rdr);
+        LispDatum *next_form = read_form(rdr);
         if (!next_form) {
             ERROR("bad syntax: stray quasiquote (%c)", QUASIQUOTE_MACRO_CHAR);
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_symbol_get("quasiquote"));
+        List_add(list, (LispDatum*) Symbol_intern("quasiquote"));
         List_add(list, next_form);
-        return MalDatum_new_list(list);
+        return (LispDatum*) list;
     }
     // splice-unquote macro
     else if (strcmp(token, SPLICE_UNQUOTE_MACRO_STR) == 0) {
-        MalDatum *next_form = read_form(rdr);
+        LispDatum *next_form = read_form(rdr);
         if (!next_form) {
             ERROR("bad syntax: stray splice-unquote (%s)", SPLICE_UNQUOTE_MACRO_STR);
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_symbol_get("splice-unquote"));
+        List_add(list, (LispDatum*) Symbol_intern("splice-unquote"));
         List_add(list, next_form);
-        return MalDatum_new_list(list);
+        return (LispDatum*) list;
     }
     // unquote macro
     else if (token[0] == UNQUOTE_MACRO_CHAR) {
-        MalDatum *next_form = read_form(rdr);
+        LispDatum *next_form = read_form(rdr);
         if (!next_form) {
             ERROR("bad syntax: stray unquote (%c)", UNQUOTE_MACRO_CHAR);
             return NULL;
         }
         List *list = List_new();
-        List_add(list, MalDatum_symbol_get("unquote"));
+        List_add(list, (LispDatum*) Symbol_intern("unquote"));
         List_add(list, next_form);
-        return MalDatum_new_list(list);
+        return (LispDatum*) list;
     }
     // atom
     // TODO allow multiple atoms (in a top-level expression)
