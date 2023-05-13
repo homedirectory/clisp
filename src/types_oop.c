@@ -213,7 +213,8 @@ void Symbol_free(Symbol *sym)
 
 bool Symbol_eq(const Symbol *s1, const Symbol *s2)
 {
-    return strcmp(s1->name, s2->name) == 0;
+    // since symbols are interned, their names must be unique 
+    return s1 == s2;
 }
 
 char *Symbol_typename(const Symbol *sym)
