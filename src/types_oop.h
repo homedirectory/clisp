@@ -27,6 +27,8 @@ typedef enum LispType {
     TYPE_COUNT
 } LispType;
 
+const char *LispType_name(LispType type);
+
 // ---- generic method declarations ----
 // these are part of the DtmMethods structure below and must be implemented by
 // concrete types; however, if a concrete type wishes not to implement a method,
@@ -38,6 +40,7 @@ typedef LispType (*dtm_type_ft)(const LispDatum *);
 // instead of storing the type in the LispDatum struct (in a tag-like fashion),
 // the object itself responds to the message about its type 
 LispType LispDatum_type(const LispDatum *);
+bool LispDatum_istype(const LispDatum *, LispType);
 
 typedef void (*dtm_free_ft)(LispDatum *);
 void LispDatum_free(LispDatum *);
@@ -166,6 +169,9 @@ List *List_rest_new(List *list);
 
 void List_append(List *dst, const List *src);
 
+// List functions
+const List *List_empty();
+
 
 // -----------------------------------------------------------------------------
 // Number < LispDatum
@@ -183,6 +189,7 @@ void Number_free(Number *num);
 bool Number_eq(const Number *a, const Number *b);
 char *Number_typename(const Number *num);
 Number *Number_copy(const Number *num);
+Number *Number_true_copy(const Number *num);
 
 // Number methods
 Number *Number_new(long val);
@@ -190,13 +197,18 @@ void Number_add(Number *a, const Number *b);
 void Number_sub(Number *a, const Number *b);
 void Number_div(Number *a, const Number *b);
 void Number_mul(Number *a, const Number *b);
+int Number_cmp(const Number *a, const Number *b);
+int Number_cmpl(const Number *a, long l);
+void Number_mod(Number *a, const Number *b);
 
 bool Number_isneg(const Number *num);
+bool Number_iseven(const Number *num);
 
 // Number length: amount of digits excluding the sign 
 size_t Number_len(const Number *num);
 long Number_tol(const Number *num);
 char *Number_sprint(const Number *num, char *dst);
+char *Number_tostr(const Number *num);
 
 
 // -----------------------------------------------------------------------------
@@ -272,6 +284,8 @@ True *True_copy(const True *tru);
 // True methods
 const True *True_get();
 
+// maps bool to either True or False
+const LispDatum *LispDatum_bool(bool b);
 
 // -----------------------------------------------------------------------------
 // Proc < LispDatum
@@ -342,6 +356,7 @@ const Symbol *Proc_name(const Proc *proc);
 bool Proc_isnamed(const Proc *proc);
 bool Proc_ismacro(const Proc *proc);
 bool Proc_isbuiltin(const Proc *proc);
+int Proc_argc(const Proc *proc);
 
 void Proc_set_name(Proc *proc, Symbol *name);
 
@@ -388,6 +403,7 @@ char *Exception_typename(const Exception *exn);
 Exception *Exception_copy(const Exception *exn);
 
 // Exception methods
+LispDatum *Exception_datum(const Exception *exn);
 
 // datum is copied
 Exception *Exception_new(const LispDatum *);

@@ -16,6 +16,25 @@
 */
 
 // -----------------------------------------------------------------------------
+// LispType
+
+const char *LispType_name(LispType type) {
+    static char* const names[] = {
+        "SYMBOL", 
+        "LIST", 
+        "NUMBER",
+        "STRING", 
+        "NIL", "FALSE", "TRUE", 
+        "PROCEDURE",
+        "ATOM",
+        "EXCEPTION",
+        "*undefined*"
+    };
+
+    return names[type];
+}
+
+// -----------------------------------------------------------------------------
 // _LispDatum
 
 // concrete types should call this function to allocate memory for the 1st member
@@ -114,6 +133,11 @@ long LispDatum_refc(const LispDatum *dtm)
 LispType LispDatum_type(const LispDatum *dtm)
 {
     return LispDatum_methods(dtm)->type(dtm);
+}
+
+bool LispDatum_istype(const LispDatum *dtm, LispType type)
+{
+    return LispDatum_type(dtm) == type;
 }
 
 bool LispDatum_eq(const LispDatum *dtm1, const LispDatum *dtm2)
@@ -530,6 +554,11 @@ Number *Number_copy(const Number *num)
     return (Number*) num;
 }
 
+Number *Number_true_copy(const Number *num)
+{
+    return Number_new(num->val);
+}
+
 // Number-specific methods
 void Number_add(Number *a, const Number *b)
 {
@@ -551,9 +580,31 @@ void Number_mul(Number *a, const Number *b)
     a->val *= b->val;
 }
 
+int Number_cmp(const Number *a, const Number *b)
+{
+    long d = a->val - b->val;
+    return d ? (d > 0 ? 1 : -1) : 0;
+}
+
+int Number_cmpl(const Number *a, long l)
+{
+    long d = a->val - l;
+    return d ? (d > 0 ? 1 : -1) : 0;
+}
+
+void Number_mod(Number *a, const Number *b)
+{
+    a->val %= b->val;
+}
+
 bool Number_isneg(const Number *num)
 {
     return num->val < 0;
+}
+
+bool Number_iseven(const Number *num)
+{
+    return !(num->val & 1);
 }
 
 long Number_tol(const Number *num)
@@ -576,6 +627,13 @@ char *Number_sprint(const Number *num, char *dst)
 {
     long l = num->val;
     return ltos(l, dst);
+}
+
+char *Number_tostr(const Number *num)
+{
+    char *s = malloc(Number_len(num) + 1);
+    Number_sprint(num, s);
+    return s;
 }
 
 // -----------------------------------------------------------------------------
@@ -803,6 +861,10 @@ const True *True_get()
     return &tru;
 }
 
+const LispDatum *LispDatum_bool(bool b)
+{
+    return (b ? (LispDatum*) True_get() : (LispDatum*) False_get());
+}
 
 // -----------------------------------------------------------------------------
 // Proc < LispDatum
@@ -952,6 +1014,11 @@ bool Proc_isbuiltin(const Proc *proc)
     return proc->builtin;
 }
 
+int Proc_argc(const Proc *proc)
+{
+    return proc->argc;
+}
+
 void Proc_set_name(Proc *proc, Symbol *name)
 {
     if (proc->name) {
@@ -1079,6 +1146,10 @@ Exception *Exception_copy(const Exception *exn)
 }
 
 // Exception methods
+LispDatum *Exception_datum(const Exception *exn)
+{
+    return exn->dtm;
+}
 
 // datum is copied
 Exception *Exception_new(const LispDatum *dtm)

@@ -16,3 +16,6 @@ printer: printer.c reader.c types_oop.c utils.c env.c hashtbl.c
 
 utils: utils.c
 	$(CC) $(CFLAGS) -o $@ $^
+
+core: core.c utils.c types_oop.c env.c printer.c hashtbl.c
+	$(CC) $(CFLAGS) -o $@ $^
