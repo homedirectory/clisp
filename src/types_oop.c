@@ -100,9 +100,8 @@ static void LispDatum_rls_dflt(LispDatum *dtm)
 
 void LispDatum_rls_free(LispDatum *dtm)
 {
-    const DtmMethods *methods = LispDatum_methods(dtm);
-    methods->rls(dtm);
-    methods->free(dtm);
+    LispDatum_rls(dtm);
+    LispDatum_free(dtm);
 }
 
 long LispDatum_refc(const LispDatum *dtm)
@@ -279,6 +278,7 @@ void List_free(List *list) {
         }
     }
 
+    _LispDatum_free(list->super);
     free(list);
 }
 
