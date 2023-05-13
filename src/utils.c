@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stddef.h>
+#include <assert.h>
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
@@ -247,7 +248,7 @@ char *str_escape(const char *src)
     return out;
 }
 
-char *str_join(char *strings[], size_t n, const char *sep)
+char *str_join(const char * const strings[], size_t n, const char *sep)
 {
     if (n == 0) {
         DEBUG("n == 0");
@@ -421,6 +422,66 @@ char *file_to_str(const char *path)
 
     return buf;
 }
+
+// -----------------------------------------------------------------------------
+// Miscellaneous ---------------------------------------------------------------
+char itoa(int i)
+{
+    assert(i >= 0 && i <= 9);
+    return i + 48;
+}
+
+void strnrev(char *s, size_t n)
+{
+    size_t i, j;
+    for (i = 0, j = n - 1; i < n / 2; i++, j--) {
+        char c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+char *ltos(long l, char *dst)
+{
+    if (l < 0) {
+        *dst++ = '-';
+        l *= -1;
+    }
+
+    char *s = dst;
+    size_t i = 0;
+
+    while (l != 0) {
+        *dst++ = itoa(l % 10);
+        l /= 10;
+        i++;
+    }
+
+    *dst = 0;
+    strnrev(s, i);
+
+    return dst;
+}
+
+// int main(int argc, char **argv)
+// {
+//     {
+//         char *s = dyn_strcpy("hello");
+//         strnrev(s, strlen(s));
+//         printf("%s\n", s);
+//     }
+
+//     {
+//         long l = 5435843;
+//         char buf[10];
+//         ltos(l, buf);
+//         printf("%ld == %s\n", l, buf);
+
+//         long nl = -5435843;
+//         ltos(nl, buf);
+//         printf("%ld == %s\n", nl, buf);
+//     }
+// }
 
 /*
 int main(int argc, char **argv) {

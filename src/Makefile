@@ -10,3 +10,9 @@ types_oop: types_oop.c env.c utils.c hashtbl.c
 
 reader: reader.c types_oop.c utils.c env.c hashtbl.c
 	$(CC) $(CFLAGS) -o $@ $^
+
+printer: printer.c reader.c types_oop.c utils.c env.c hashtbl.c
+	$(CC) $(CFLAGS) -o $@ $^
+
+utils: utils.c
+	$(CC) $(CFLAGS) -o $@ $^

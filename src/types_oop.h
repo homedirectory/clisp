@@ -123,6 +123,7 @@ Symbol *Symbol_copy(const Symbol *sym);
 // Symbol-specific methods
 Symbol* Symbol_intern(const char *name);
 bool Symbol_eq_str(const Symbol *sym, const char *str);
+const char *Symbol_name(const Symbol *sym);
 
 
 // -----------------------------------------------------------------------------
@@ -190,7 +191,12 @@ void Number_sub(Number *a, const Number *b);
 void Number_div(Number *a, const Number *b);
 void Number_mul(Number *a, const Number *b);
 
+bool Number_isneg(const Number *num);
+
+// Number length: amount of digits excluding the sign 
+size_t Number_len(const Number *num);
 long Number_tol(const Number *num);
+char *Number_sprint(const Number *num, char *dst);
 
 
 // -----------------------------------------------------------------------------

@@ -254,6 +254,11 @@ bool Symbol_eq_str(const Symbol *sym, const char *str)
     return strcmp(sym->name, str) == 0;
 }
 
+const char *Symbol_name(const Symbol *sym)
+{
+    return sym->name;
+}
+
 // -----------------------------------------------------------------------------
 // List < LispDatum
 
@@ -546,11 +551,32 @@ void Number_mul(Number *a, const Number *b)
     a->val *= b->val;
 }
 
+bool Number_isneg(const Number *num)
+{
+    return num->val < 0;
+}
+
 long Number_tol(const Number *num)
 {
     return num->val;
 }
 
+size_t Number_len(const Number *num)
+{
+    size_t sz = 0;
+    long val = num->val;
+    while (val != 0) {
+        val /= 10;
+        sz++;
+    }
+    return sz;
+}
+
+char *Number_sprint(const Number *num, char *dst)
+{
+    long l = num->val;
+    return ltos(l, dst);
+}
 
 // -----------------------------------------------------------------------------
 // String < LispDatum
