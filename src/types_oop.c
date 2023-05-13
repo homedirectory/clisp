@@ -1007,47 +1007,45 @@ int main(int argc, char **argv) {
     init_symbol_table();
 
     {
-        Symbol *sym1 = Symbol_intern("hello");
-        assert(sym1 == Symbol_intern("hello"));
+        Symbol *s_hello = Symbol_intern("hello");
+        assert(s_hello == Symbol_intern("hello"));
+        assert(LispDatum_eq((LispDatum*)s_hello, (LispDatum*)Symbol_intern("hello")));
 
-        Symbol *sym2 = Symbol_intern("hellz");
+        Symbol *s_hellz = Symbol_intern("hellz");
+        assert(!Symbol_eq(s_hello, s_hellz));
+        assert(!LispDatum_eq((LispDatum*)s_hello, (LispDatum*)s_hellz));
 
-        printf("%s\n", Symbol_eq(sym1, sym2) ? "true" : "false");
-        Symbol_free(sym1);
-        Symbol_free(sym2);
+        Symbol_free(s_hello);
+        Symbol_free(s_hellz);
     }
 
     {
-        LispDatum *dtm1 = (LispDatum*) Symbol_intern("hello");
-        LispDatum *dtm2 = (LispDatum*) Symbol_intern("hellz");
-        printf("%s\n", LispDatum_eq(dtm1, dtm2) ? "true" : "false");
-        LispDatum_free(dtm1);
-        LispDatum_free(dtm2);
+        LispDatum *dtm_s_hello = (LispDatum*) Symbol_intern("hello");
+        LispDatum *dtm_s_hellz = (LispDatum*) Symbol_intern("hellz");
+
+        assert(!LispDatum_eq(dtm_s_hello, dtm_s_hellz));
+
+        LispDatum_free(dtm_s_hello);
+        LispDatum_free(dtm_s_hellz);
     }
 
     {
         LispDatum *dtm = (LispDatum*) Symbol_intern("world");
         char *s = LispDatum_typename(dtm);
-        printf("%s\n", s);
+        assert(strcmp("Symbol", s) == 0);
         free(s);
         LispDatum_free(dtm);
     }
 
-    Symbol *s_hello = Symbol_intern("hello");
-    Symbol *s_world = Symbol_intern("world");
-
-    printf("%s\n", LispDatum_type((LispDatum*) s_hello) == SYMBOL ? "true" : "false");
-
     {
+        Symbol *s_hello = Symbol_intern("hello");
+        Symbol *s_world = Symbol_intern("world");
+
         List *list = List_new();
         List_add(list, (LispDatum*) s_hello);
         List_add(list, (LispDatum*) s_world);
-        for (struct Node *node = list->head; node; node = node->next) {
-            char *s = LispDatum_typename(node->value);
-            printf("%s\n", s);
-            free(s);
-        }
-        printf("%s\n", LispDatum_type((LispDatum*) list) == LIST ? "true" : "false");
+        assert(LIST == LispDatum_type((LispDatum*) list));
+        assert(2 == List_len(list));
         List_free(list);
     }
 
@@ -1057,7 +1055,7 @@ int main(int argc, char **argv) {
         Number *sum = Number_new(0);
         Number_add(sum, n1);
         Number_add(sum, n2);
-        printf("%ld + %ld = %ld\n", Number_tol(n1), Number_tol(n2), Number_tol(sum));
+        assert(123 + 8872 == Number_tol(sum));
         Number_free(n1);
         Number_free(n2);
         Number_free(sum);
@@ -1065,7 +1063,7 @@ int main(int argc, char **argv) {
 
     {
         String *str1 = String_new("hello world, it's me, the programmer");
-        printf("%s\n", String_str(str1));
+        assert(strcmp("hello world, it's me, the programmer", String_str(str1)) == 0);
         LispDatum_free((LispDatum*) str1);
     }
 
