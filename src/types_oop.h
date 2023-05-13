@@ -97,6 +97,7 @@ enum {
     STRING,
     NIL, FALSE, TRUE,
     PROCEDURE,
+    ATOM,
     TYPE_COUNT
 };
 
@@ -337,3 +338,28 @@ bool Proc_ismacro(const Proc *proc);
 bool Proc_isbuiltin(const Proc *proc);
 
 void Proc_set_name(Proc *proc, Symbol *name);
+
+
+// -----------------------------------------------------------------------------
+// Atom < LispDatum
+
+// An atom holds a reference to a LispDatum of any type; it supports
+// reading the pointed value and modifying the reference to point to another value.
+// Atoms are mutable.
+typedef struct Atom {
+    /*void*/ _LispDatum *super;
+    LispDatum *dtm;
+} Atom;
+
+// generic method implementations
+uint Atom_type();
+void Atom_free(Atom *atom);
+// 2 Atoms are equal only if they point to the same value
+bool Atom_eq(const Atom *a, const Atom *b);
+char *Atom_typename(const Atom *atom);
+Atom *Atom_copy(const Atom *atom);
+
+// Atom methods
+Atom *Atom_new(LispDatum *dtm);
+void Atom_set(Atom *atom, LispDatum *dtm);
+LispDatum *Atom_deref(const Atom *atom);

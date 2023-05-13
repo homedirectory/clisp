@@ -932,6 +932,76 @@ void Proc_set_name(Proc *proc, Symbol *name)
 }
 
 
+// -----------------------------------------------------------------------------
+// Atom < LispDatum
+
+// generic method implementations
+uint Atom_type()
+{
+    return ATOM;
+}
+
+void Atom_free(Atom *atom)
+{
+    LispDatum_rls_free(atom->dtm);
+    _LispDatum_free(atom->super);
+    free(atom);
+}
+
+// 2 Atoms are equal only if they point to the same value
+bool Atom_eq(const Atom *a, const Atom *b)
+{
+    return a->dtm == b->dtm;
+}
+
+char *Atom_typename(const Atom *atom)
+{
+    return dyn_strcpy("Atom");
+}
+
+Atom *Atom_copy(const Atom *atom)
+{
+    return Atom_new(atom->dtm);
+}
+
+// Atom methods
+Atom *Atom_new(LispDatum *dtm)
+{
+    static const DtmMethods atom_methods = {
+        .type = (dtm_type_ft) Atom_type,
+        .free = (dtm_free_ft) Atom_free,
+        .eq = (dtm_eq_ft) Atom_eq,
+        .typename = (dtm_typename_ft) Atom_typename,
+        .copy = (dtm_copy_ft) Atom_copy,
+        .own = LispDatum_own_dflt,
+        .rls = LispDatum_rls_dflt
+    };
+
+    Atom *atom = malloc(sizeof(Atom));
+    atom->dtm = dtm;
+    LispDatum_own(dtm);
+
+    atom->super = _LispDatum_new(&atom_methods);
+
+    return atom;
+}
+
+void Atom_set(Atom *atom, LispDatum *dtm)
+{
+    if (atom->dtm == dtm) return;
+
+    LispDatum_rls_free(atom->dtm);
+    atom->dtm = dtm;
+    LispDatum_own(dtm);
+}
+
+
+LispDatum *Atom_deref(const Atom *atom)
+{
+    return atom->dtm;
+}
+
+
 int main(int argc, char **argv) {
     init_symbol_table();
 
@@ -1040,6 +1110,32 @@ int main(int argc, char **argv) {
         assert((LispDatum*) two == MalEnv_get(env, s_a));
 
         MalEnv_free(env);
+    }
+
+    // atom
+    {
+        LispDatum *num = (LispDatum*) Number_new(55);
+        Atom *atm1 = Atom_new(num);
+        LispDatum *dtm1 = Atom_deref(atm1);
+        assert(NUMBER == LispDatum_type(dtm1));
+        assert(num == dtm1);
+        assert(1 == LispDatum_refc(num));
+
+        Atom *atm1_cpy = Atom_copy(atm1);
+        assert(2 == LispDatum_refc(num));
+
+        LispDatum *s_yes = (LispDatum*) Symbol_intern("yes");
+        Atom_set(atm1, s_yes);
+        assert(1 == LispDatum_refc(num));
+
+        assert(num == Atom_deref(atm1_cpy));
+
+        Atom_free(atm1);
+        assert(1 == LispDatum_refc(num));
+
+        assert(55 == ((Number*)Atom_deref(atm1_cpy))->val);
+
+        Atom_free(atm1_cpy);
     }
 
     free_symbol_table();
