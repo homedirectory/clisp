@@ -287,7 +287,30 @@ const char *Symbol_name(const Symbol *sym)
 // List < LispDatum
 
 // singleton empty list
-static const List g_empty_list = { .len = 0, .head = NULL, .tail = NULL };
+// has to declare its own methods to replace .own and .rls with noops
+
+// pre-declare
+static void LispDatum_noown(LispDatum *dtm);
+static void LispDatum_norls(LispDatum *dtm);
+
+static const DtmMethods empty_list_methods = {
+    .type = (dtm_type_ft) List_type,
+    .free = (dtm_free_ft) List_free,
+    .eq = (dtm_eq_ft) List_eq,
+    .typename = (dtm_typename_ft) List_typename,
+    .copy = (dtm_copy_ft) List_copy,
+    .own = LispDatum_noown,
+    .rls = LispDatum_norls
+};
+
+static const _LispDatum g_empty_list_super = {
+    .methods = &empty_list_methods,
+    .refc = 1
+};
+static const List g_empty_list = {
+    .super = (_LispDatum*) &g_empty_list_super,
+    .len = 0, .head = NULL, .tail = NULL 
+};
 const List *List_empty() { return &g_empty_list; }
 
 LispType List_type() { 
