@@ -935,7 +935,9 @@ Proc *Proc_new(
     proc->name = name;
     LispDatum_own((LispDatum*) name);
 
-    proc->argc = argc * (variadic ? -1 : 1);
+    proc->variadic = variadic;
+    // proc->argc = argc * (variadic ? -1 : 1);
+    proc->argc = argc;
 
     proc->params = params;
     Arr_foreach(proc->params, (unary_void_t) LispDatum_own);
@@ -970,8 +972,10 @@ Proc *Proc_builtin(Symbol *name, int argc, bool variadic, const builtin_apply_t 
     proc->name = name;
     LispDatum_own((LispDatum*) name);
 
-    proc->argc = argc * (variadic ? -1 : 1);
+    // proc->argc = argc * (variadic ? -1 : 1);
+    proc->argc = argc;
 
+    proc->variadic = variadic;
     proc->builtin = true;
     proc->macro = false;
 
@@ -986,7 +990,8 @@ Proc *Proc_builtin(Symbol *name, int argc, bool variadic, const builtin_apply_t 
 
 bool Proc_isva(const Proc *proc)
 {
-    return proc->argc < 0;
+    // return proc->argc < 0;
+    return proc->variadic;
 }
 
 const Symbol *Proc_name(const Proc *proc)

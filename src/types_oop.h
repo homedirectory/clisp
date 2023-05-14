@@ -306,8 +306,9 @@ typedef LispDatum* (*builtin_apply_t)(const Proc *proc, const Arr *args, MalEnv 
 typedef struct Proc {
     /*void*/ _LispDatum *super;
     Symbol *name; // NULL for lambdas
-    // number of mandatory arguments, if negative then it's also variadic
+    // number of mandatory arguments, (TODO optimise: if negative then it's also variadic)
     int argc;
+    bool variadic;
     /* Declared parameter names, which include mandatory ones and potentially
      * the name of the variadic one. Number of these is given by
      * (+ (abs argc) (if (< argc 0) 1 0)). 
