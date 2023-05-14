@@ -13,7 +13,7 @@
 typedef struct Arr {
     size_t len;
     size_t cap;
-    void *items[];
+    void **items;
 } Arr;
 
 Arr *Arr_new();
