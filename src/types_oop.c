@@ -956,7 +956,8 @@ Proc *Proc_new(
     Proc *proc = malloc(sizeof(Proc));
 
     proc->name = name;
-    LispDatum_own((LispDatum*) name);
+    if (name)
+        LispDatum_own((LispDatum*) name);
 
     proc->variadic = variadic;
     // proc->argc = argc * (variadic ? -1 : 1);

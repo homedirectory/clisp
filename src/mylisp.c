@@ -1206,14 +1206,14 @@ int main(int argc, char **argv) {
 
     core_def_procs(env);
 
-    // rep("(def! load-file\n"
-    //         // closing paren of 'do' must be on a separate line in case a file ends
-    //         // with a comment without a newline at the end
-    //         "(fn* (path) (eval (read-string (str \"(do \" (slurp path) \"\n)\")))\n"
-    //                     "(println \"loaded file\" path) nil))", 
-    //         env);
+    rep("(def! load-file\n"
+            // closing paren of 'do' must be on a separate line in case a file ends
+            // with a comment without a newline at the end
+            "(fn* (path) (eval (read-string (str \"(do \" (slurp path) \"\n)\")))\n"
+                        "(println \"loaded file\" path) nil))", 
+            env);
 
-    // rep("(load-file \"lisp/core.lisp\")", env);
+    rep("(load-file \"lisp/core.lisp\")", env);
 
     // TODO if the first arg is a filename, then eval (load-file <filename>)
     // TODO bind *ARGV* to command line arguments
