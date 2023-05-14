@@ -142,9 +142,9 @@ char *pr_list(const List *list, bool print_readably)
 char *pr_repr(const LispDatum *datum)
 {
     char *str = pr_str(datum, false);
-    const char *type_str = LispDatum_typename(datum);
+    char *type_str = LispDatum_typename(datum);
 
-    const char * const parts[] = { type_str, str };
+    char *parts[] = { type_str, str };
     char *out = str_join(parts, ARR_LEN(parts), " ");
     free(str);
 

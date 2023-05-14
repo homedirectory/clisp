@@ -248,7 +248,7 @@ char *str_escape(const char *src)
     return out;
 }
 
-char *str_join(const char * const strings[], size_t n, const char *sep)
+char *str_join(char *strings[], size_t n, const char *sep)
 {
     if (n == 0) {
         DEBUG("n == 0");

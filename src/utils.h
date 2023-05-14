@@ -52,7 +52,7 @@ ssize_t stridx(const char *str, char c);
 short escape_char(unsigned char c);
 unsigned char unescape_char(unsigned char c);
 char *str_escape(const char *src);
-char *str_join(const char * const strings[], size_t n, const char *sep);
+char *str_join(char *strings[], size_t n, const char *sep);
 char *addr_to_str(const void *ptr);
 bool streq(const char *s1, const char *s2);
 
