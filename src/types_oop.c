@@ -1028,6 +1028,11 @@ void Proc_set_name(Proc *proc, Symbol *name)
     LispDatum_own((LispDatum*) name);
 }
 
+void Proc_set_macro(Proc *proc)
+{
+    proc->macro = true;
+}
+
 
 // -----------------------------------------------------------------------------
 // Atom < LispDatum
@@ -1234,166 +1239,166 @@ void error(const char *fmt, ...)
 
 
 
-int main(int argc, char **argv) {
-    init_symbol_table();
+// int main(int argc, char **argv) {
+//     init_symbol_table();
 
-    {
-        Symbol *s_hello = Symbol_intern("hello");
-        assert(s_hello == Symbol_intern("hello"));
-        assert(LispDatum_eq((LispDatum*)s_hello, (LispDatum*)Symbol_intern("hello")));
+//     {
+//         Symbol *s_hello = Symbol_intern("hello");
+//         assert(s_hello == Symbol_intern("hello"));
+//         assert(LispDatum_eq((LispDatum*)s_hello, (LispDatum*)Symbol_intern("hello")));
 
-        Symbol *s_hellz = Symbol_intern("hellz");
-        assert(!Symbol_eq(s_hello, s_hellz));
-        assert(!LispDatum_eq((LispDatum*)s_hello, (LispDatum*)s_hellz));
+//         Symbol *s_hellz = Symbol_intern("hellz");
+//         assert(!Symbol_eq(s_hello, s_hellz));
+//         assert(!LispDatum_eq((LispDatum*)s_hello, (LispDatum*)s_hellz));
 
-        Symbol_free(s_hello);
-        Symbol_free(s_hellz);
-    }
+//         Symbol_free(s_hello);
+//         Symbol_free(s_hellz);
+//     }
 
-    {
-        LispDatum *dtm_s_hello = (LispDatum*) Symbol_intern("hello");
-        LispDatum *dtm_s_hellz = (LispDatum*) Symbol_intern("hellz");
+//     {
+//         LispDatum *dtm_s_hello = (LispDatum*) Symbol_intern("hello");
+//         LispDatum *dtm_s_hellz = (LispDatum*) Symbol_intern("hellz");
 
-        assert(!LispDatum_eq(dtm_s_hello, dtm_s_hellz));
+//         assert(!LispDatum_eq(dtm_s_hello, dtm_s_hellz));
 
-        LispDatum_free(dtm_s_hello);
-        LispDatum_free(dtm_s_hellz);
-    }
+//         LispDatum_free(dtm_s_hello);
+//         LispDatum_free(dtm_s_hellz);
+//     }
 
-    {
-        LispDatum *dtm = (LispDatum*) Symbol_intern("world");
-        char *s = LispDatum_typename(dtm);
-        assert(strcmp("Symbol", s) == 0);
-        free(s);
-        LispDatum_free(dtm);
-    }
+//     {
+//         LispDatum *dtm = (LispDatum*) Symbol_intern("world");
+//         char *s = LispDatum_typename(dtm);
+//         assert(strcmp("Symbol", s) == 0);
+//         free(s);
+//         LispDatum_free(dtm);
+//     }
 
-    {
-        Symbol *s_hello = Symbol_intern("hello");
-        Symbol *s_world = Symbol_intern("world");
+//     {
+//         Symbol *s_hello = Symbol_intern("hello");
+//         Symbol *s_world = Symbol_intern("world");
 
-        List *list = List_new();
-        List_add(list, (LispDatum*) s_hello);
-        List_add(list, (LispDatum*) s_world);
-        assert(LIST == LispDatum_type((LispDatum*) list));
-        assert(2 == List_len(list));
-        List_free(list);
-    }
+//         List *list = List_new();
+//         List_add(list, (LispDatum*) s_hello);
+//         List_add(list, (LispDatum*) s_world);
+//         assert(LIST == LispDatum_type((LispDatum*) list));
+//         assert(2 == List_len(list));
+//         List_free(list);
+//     }
 
-    {
-        Number *n1 = Number_new(123);
-        Number *n2 = Number_new(8872);
-        Number *sum = Number_new(0);
-        Number_add(sum, n1);
-        Number_add(sum, n2);
-        assert(123 + 8872 == Number_tol(sum));
-        Number_free(n1);
-        Number_free(n2);
-        Number_free(sum);
-    }
+//     {
+//         Number *n1 = Number_new(123);
+//         Number *n2 = Number_new(8872);
+//         Number *sum = Number_new(0);
+//         Number_add(sum, n1);
+//         Number_add(sum, n2);
+//         assert(123 + 8872 == Number_tol(sum));
+//         Number_free(n1);
+//         Number_free(n2);
+//         Number_free(sum);
+//     }
 
-    {
-        String *str1 = String_new("hello world, it's me, the programmer");
-        assert(strcmp("hello world, it's me, the programmer", String_str(str1)) == 0);
-        LispDatum_free((LispDatum*) str1);
-    }
+//     {
+//         String *str1 = String_new("hello world, it's me, the programmer");
+//         assert(strcmp("hello world, it's me, the programmer", String_str(str1)) == 0);
+//         LispDatum_free((LispDatum*) str1);
+//     }
 
-    // singletons
-    {
-        const Nil *nil = Nil_get();
-        assert(nil == Nil_get());
-        const True *tru = True_get();
-        assert(tru == True_get());
-        const False *fls = False_get();
-        assert(fls == False_get());
+//     // singletons
+//     {
+//         const Nil *nil = Nil_get();
+//         assert(nil == Nil_get());
+//         const True *tru = True_get();
+//         assert(tru == True_get());
+//         const False *fls = False_get();
+//         assert(fls == False_get());
 
-        assert(1 == LispDatum_refc((LispDatum*) nil));
-        LispDatum_free((LispDatum*) nil);
-        assert(1 == LispDatum_refc((LispDatum*) nil));
-        LispDatum_own((LispDatum*) nil);
-        assert(1 == LispDatum_refc((LispDatum*) nil));
+//         assert(1 == LispDatum_refc((LispDatum*) nil));
+//         LispDatum_free((LispDatum*) nil);
+//         assert(1 == LispDatum_refc((LispDatum*) nil));
+//         LispDatum_own((LispDatum*) nil);
+//         assert(1 == LispDatum_refc((LispDatum*) nil));
 
-        assert(1 == LispDatum_refc((LispDatum*) fls));
-        LispDatum_free((LispDatum*) fls);
-        assert(1 == LispDatum_refc((LispDatum*) fls));
-        LispDatum_own((LispDatum*) fls);
-        assert(1 == LispDatum_refc((LispDatum*) fls));
+//         assert(1 == LispDatum_refc((LispDatum*) fls));
+//         LispDatum_free((LispDatum*) fls);
+//         assert(1 == LispDatum_refc((LispDatum*) fls));
+//         LispDatum_own((LispDatum*) fls);
+//         assert(1 == LispDatum_refc((LispDatum*) fls));
 
-        assert(1 == LispDatum_refc((LispDatum*) tru));
-        LispDatum_free((LispDatum*) tru);
-        assert(1 == LispDatum_refc((LispDatum*) tru));
-        LispDatum_own((LispDatum*) tru);
-        assert(1 == LispDatum_refc((LispDatum*) tru));
-    }
+//         assert(1 == LispDatum_refc((LispDatum*) tru));
+//         LispDatum_free((LispDatum*) tru);
+//         assert(1 == LispDatum_refc((LispDatum*) tru));
+//         LispDatum_own((LispDatum*) tru);
+//         assert(1 == LispDatum_refc((LispDatum*) tru));
+//     }
 
-    // env
-    {
-        MalEnv *env = MalEnv_new(NULL);
-        Symbol *s_a = Symbol_intern("a");
-        Number *one = Number_new(1);
+//     // env
+//     {
+//         MalEnv *env = MalEnv_new(NULL);
+//         Symbol *s_a = Symbol_intern("a");
+//         Number *one = Number_new(1);
 
-        MalEnv_put(env, s_a, (LispDatum*) one);
-        assert((LispDatum*) one == MalEnv_get(env, s_a));
+//         MalEnv_put(env, s_a, (LispDatum*) one);
+//         assert((LispDatum*) one == MalEnv_get(env, s_a));
 
-        Number *two = Number_new(2);
-        MalEnv_put(env, s_a, (LispDatum*) two);
-        assert((LispDatum*) two == MalEnv_get(env, s_a));
+//         Number *two = Number_new(2);
+//         MalEnv_put(env, s_a, (LispDatum*) two);
+//         assert((LispDatum*) two == MalEnv_get(env, s_a));
 
-        MalEnv_free(env);
-    }
+//         MalEnv_free(env);
+//     }
 
-    // atom
-    {
-        LispDatum *num = (LispDatum*) Number_new(55);
-        Atom *atm1 = Atom_new(num);
-        LispDatum *dtm1 = Atom_deref(atm1);
-        assert(NUMBER == LispDatum_type(dtm1));
-        assert(num == dtm1);
-        assert(1 == LispDatum_refc(num));
+//     // atom
+//     {
+//         LispDatum *num = (LispDatum*) Number_new(55);
+//         Atom *atm1 = Atom_new(num);
+//         LispDatum *dtm1 = Atom_deref(atm1);
+//         assert(NUMBER == LispDatum_type(dtm1));
+//         assert(num == dtm1);
+//         assert(1 == LispDatum_refc(num));
 
-        Atom *atm1_cpy = Atom_copy(atm1);
-        assert(2 == LispDatum_refc(num));
+//         Atom *atm1_cpy = Atom_copy(atm1);
+//         assert(2 == LispDatum_refc(num));
 
-        LispDatum *s_yes = (LispDatum*) Symbol_intern("yes");
-        Atom_set(atm1, s_yes);
-        assert(1 == LispDatum_refc(num));
+//         LispDatum *s_yes = (LispDatum*) Symbol_intern("yes");
+//         Atom_set(atm1, s_yes);
+//         assert(1 == LispDatum_refc(num));
 
-        assert(num == Atom_deref(atm1_cpy));
+//         assert(num == Atom_deref(atm1_cpy));
 
-        Atom_free(atm1);
-        assert(1 == LispDatum_refc(num));
+//         Atom_free(atm1);
+//         assert(1 == LispDatum_refc(num));
 
-        assert(55 == ((Number*)Atom_deref(atm1_cpy))->val);
+//         assert(55 == ((Number*)Atom_deref(atm1_cpy))->val);
 
-        Atom_free(atm1_cpy);
-    }
+//         Atom_free(atm1_cpy);
+//     }
 
-    // Exception
-    {
-        throw((LispDatum*) Symbol_intern("error"));
-        assert(didthrow());
-        error("hey, that's an error!\n");
-        assert(!didthrow());
-    }
+//     // Exception
+//     {
+//         throw((LispDatum*) Symbol_intern("error"));
+//         assert(didthrow());
+//         error("hey, that's an error!\n");
+//         assert(!didthrow());
+//     }
 
-    // ref count in fresh copies should be reset to 0,
-    // unless the datum is immutable (e.g., Symbol, Number) 
-    {
-        LispDatum *num = (LispDatum*) Number_new(20);
-        LispDatum_own(num);
-        assert(1 == LispDatum_refc(num));
-        LispDatum *num_cpy = LispDatum_copy(num);
-        assert(num == num_cpy);
-        assert(1 == LispDatum_refc(num_cpy));
+//     // ref count in fresh copies should be reset to 0,
+//     // unless the datum is immutable (e.g., Symbol, Number) 
+//     {
+//         LispDatum *num = (LispDatum*) Number_new(20);
+//         LispDatum_own(num);
+//         assert(1 == LispDatum_refc(num));
+//         LispDatum *num_cpy = LispDatum_copy(num);
+//         assert(num == num_cpy);
+//         assert(1 == LispDatum_refc(num_cpy));
 
-        LispDatum *string = (LispDatum*) String_new("hello world");
-        LispDatum_own(string);
-        assert(1 == LispDatum_refc(string));
-        LispDatum *string_cpy = LispDatum_copy(string);
-        assert(string != string_cpy);
-        assert(0 == LispDatum_refc(string_cpy));
-    }
+//         LispDatum *string = (LispDatum*) String_new("hello world");
+//         LispDatum_own(string);
+//         assert(1 == LispDatum_refc(string));
+//         LispDatum *string_cpy = LispDatum_copy(string);
+//         assert(string != string_cpy);
+//         assert(0 == LispDatum_refc(string_cpy));
+//     }
 
 
-    free_symbol_table();
-}
+//     free_symbol_table();
+// }

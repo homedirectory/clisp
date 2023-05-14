@@ -359,6 +359,7 @@ bool Proc_isbuiltin(const Proc *proc);
 int Proc_argc(const Proc *proc);
 
 void Proc_set_name(Proc *proc, Symbol *name);
+void Proc_set_macro(Proc *proc);
 
 
 // -----------------------------------------------------------------------------
