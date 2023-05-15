@@ -5,6 +5,7 @@
 #include <readline/history.h>
 #include <string.h>
 #include <stddef.h>
+
 #include "reader.h"
 #include "types.h"
 #include "printer.h"
@@ -20,11 +21,11 @@
 #define BADSTX(fmt, ...) \
     error("bad syntax: " fmt "\n", ##__VA_ARGS__);
 
-MalDatum *eval(MalDatum *datum, MalEnv *env);
-MalDatum *eval_ast(const MalDatum *datum, MalEnv *env);
+LispDatum *eval(LispDatum *datum, MalEnv *env);
+LispDatum *eval_ast(const LispDatum *datum, MalEnv *env);
 List *eval_list(const List *list, MalEnv *env);
 
-static MalDatum *read(const char* in) {
+static LispDatum *read(const char* in) {
     Reader *rdr = read_str(in);
     OWN(rdr);
     if (rdr == NULL) return NULL;
@@ -33,7 +34,7 @@ static MalDatum *read(const char* in) {
         Reader_free(rdr);
         return NULL;
     }
-    MalDatum *form = read_form(rdr);
+    LispDatum *form = read_form(rdr);
     FREE(rdr);
     Reader_free(rdr);
     return form;
@@ -41,25 +42,25 @@ static MalDatum *read(const char* in) {
 
 static bool verify_proc_application(const Proc *proc, const Arr* args)
 {
-    char *proc_name = Proc_name(proc);
+    const Symbol *proc_name = Proc_name(proc);
 
     int argc = args->len;
-    if (argc < proc->argc /* too few? */
-            || (!proc->variadic && argc > proc->argc)) /* too much? */
+    int proc_argc = Proc_argc(proc);
+    if (argc < proc_argc /* too few? */
+            || (!Proc_isva(proc) && argc > proc_argc)) /* too much? */
     {
-        throwf("procedure application: %s expects at least %d arguments, but %d were given", 
-                proc_name, proc->argc, argc);
-        free(proc_name);
+        throwf(Symbol_name(proc_name),
+                "expected at least %d arguments, but %d were given", 
+                proc_argc, argc);
         return false;
     }
 
-    free(proc_name);
     return true;
 }
 
 // procedure application without TCO
-// args: array of *MalDatum (argument values)
-static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
+// args: array of *LispDatum (argument values)
+static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     if (!verify_proc_application(proc, args)) return NULL;
 
     if (proc->builtin) {
@@ -84,69 +85,76 @@ static MalDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     // 1. bind params to args in the local env
     // mandatory arguments
     for (int i = 0; i < proc->argc; i++) {
-        MalDatum *param = Arr_get(proc->params, i);
-        MalDatum *arg = Arr_get(args, i);
+        Symbol *param = Arr_get(proc->params, i);
+        LispDatum *arg = Arr_get(args, i);
         MalEnv_put(proc_env, param, arg); 
     }
 
     // if variadic, then bind the last param to the rest of arguments
-    if (proc->variadic) {
-        MalDatum *var_param = Arr_get(proc->params, proc->params->len - 1);
+    if (Proc_isva(proc)) {
+        Symbol *var_param = Arr_get(proc->params, proc->params->len - 1);
         List *var_args = List_new();
         for (size_t i = proc->argc; i < args->len; i++) {
-            MalDatum *arg = Arr_get(args, i);
+            LispDatum *arg = Arr_get(args, i);
             List_add(var_args, arg);
         }
 
-        MalEnv_put(proc_env, var_param, MalDatum_new_list(var_args));
+        MalEnv_put(proc_env, var_param, (LispDatum*) var_args);
     }
 
     // 2. evaluate the body
-    const Arr *body = proc->logic.body;
+    const List *body = proc->logic.body;
     // the body must not be empty at this point
-    if (body->len == 0) FATAL("empty body");
+    if (List_isempty(body)) FATAL("empty body");
     // evalute each expression and return the result of the last one
-    for (int i = 0; i < body->len - 1; i++) {
-        MalDatum *dtm = body->items[i];
-        // TODO check NULL
-        MalDatum_free(eval(dtm, proc_env));
+    struct Node *node;
+    // for all except last last 
+    for (node = body->head; node->next != NULL; node = node->next) {
+        LispDatum *dtm = node->value;
+        LispDatum *evaled = eval(dtm, proc_env);
+        LispDatum_free(evaled);
     }
-    MalDatum *out = eval(body->items[body->len - 1], proc_env);
+    LispDatum *out = eval(node->value, proc_env);
 
     // a hack to prevent the return value of a procedure to be freed
-    MalDatum_own(out); // hack own
+    if (out) 
+        LispDatum_own(out); // hack own
 
     FREE(proc_env);
     MalEnv_free(proc_env);
 
-    MalDatum_release(out); // hack release
+    if (out) 
+        LispDatum_rls(out); // hack release
 
     return out;
 }
 
-static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv *env)
+static LispDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv *env)
 {
     if (!verify_proc_application(proc, args)) return NULL;
 
     for (size_t i = 0; i < args->len; i++) {
-        MalDatum *param = Arr_get(proc->params, i);
+        Symbol *param = Arr_get(proc->params, i);
         MalEnv_put(env, param, args->items[i]);
     }
 
-    Arr *body = proc->logic.body;
+    const List *body = proc->logic.body;
     // eval body except for the last expression 
     // (TODO transform into 'do' special form)
-    for (size_t i = 0; i < body->len - 1; i++) {
-        MalDatum *evaled = eval(body->items[i], env);
+    struct Node *node;
+    // for all except last
+    for (node = body->head; node->next; node = node->next) {
+        LispDatum *body_part = node->value;
+        LispDatum *evaled = eval(body_part, env);
         if (evaled)
-            MalDatum_free(evaled);
+            LispDatum_free(evaled);
         else {
             LOG_NULL(evaled);
             return NULL;
         }
     }
 
-    MalDatum *body_last = body->items[body->len - 1];
+    LispDatum *body_last = node->value;
     return body_last;
 }
 
@@ -156,7 +164,7 @@ static MalDatum *eval_application_tco(const Proc *proc, const Arr* args, MalEnv 
  * 2. (if cond if-true)
  * return eval(cond) ? eval(if-true) : nil
  */
-static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
+static LispDatum *eval_if(const List *ast_list, MalEnv *env) {
     // 1. validate the AST
     int argc = List_len(ast_list) - 1;
     if (argc < 2) {
@@ -168,19 +176,19 @@ static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
         return NULL;
     }
 
-    MalDatum *ev_cond = eval(List_ref(ast_list, 1), env);
+    LispDatum *ev_cond = eval(List_ref(ast_list, 1), env);
     if (ev_cond == NULL) return NULL;
     OWN(ev_cond);
 
     // eval(cond) is true if it's neither 'nil' nor 'false'
-    if (!MalDatum_isnil(ev_cond) && !MalDatum_isfalse(ev_cond)) {
+    if (!LispDatum_istype(ev_cond, NIL) && !LispDatum_istype(ev_cond, FALSE)) {
         return List_ref(ast_list, 2);
     } 
     else if (argc == 3) {
         return List_ref(ast_list, 3);
     } 
     else {
-        return (MalDatum*) MalDatum_nil();
+        return (LispDatum*) Nil_get();
     }
 }
 
@@ -188,7 +196,7 @@ static MalDatum *eval_if(const List *ast_list, MalEnv *env) {
  * (do expr ...)
  * return expr.map(eval).last
  */
-static MalDatum *eval_do(const List *list, MalEnv *env) {
+static LispDatum *eval_do(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc == 0) {
         BADSTX("do expects at least 1 argument");
@@ -197,10 +205,10 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
 
     struct Node *node;
     for (node = list->head->next; node->next != NULL; node = node->next) {
-        MalDatum *ev = eval(node->value, env);
+        LispDatum *ev = eval(node->value, env);
         if (ev == NULL) return NULL;
         FREE(ev);
-        MalDatum_free(ev);
+        LispDatum_free(ev);
     }
 
     return eval(node->value, env);
@@ -215,7 +223,7 @@ static MalDatum *eval_do(const List *list, MalEnv *env) {
  * var-params := (& rest) | (param ... & rest)
  * rest is then bound to the list of the remaining arguments
  */
-static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
+static LispDatum *eval_fnstar(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc < 2) {
         BADSTX("fn*: cannot have empty body");
@@ -225,32 +233,31 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
     // 1. validate params
     List *params;
     {
-        MalDatum *snd = List_ref(list, 1);
-        if (!MalDatum_islist(snd)) {
+        LispDatum *snd = List_ref(list, 1);
+        if (!LispDatum_istype(snd, LIST)) {
             BADSTX("fn*: bad syntax at parameter declaration");
             return NULL;
         }
-        params = snd->value.list;
+        params = (List*) snd;
     }
 
     // all parameters should be symbols
     for (struct Node *node = params->head; node != NULL; node = node->next) {
-        MalDatum *par = node->value;
-        if (!MalDatum_istype(par, SYMBOL)) {
+        LispDatum *par = node->value;
+        if (!LispDatum_istype(par, SYMBOL)) {
             BADSTX("fn* bad parameter list: expected a list of symbols, but %s was found in the list",
-                    MalType_tostr(par->type));
+                    LispType_name(LispDatum_type(par)));
             return NULL;
         }
     }
 
     size_t proc_argc = 0; // mandatory arg count
     bool variadic = false;
-    Arr *param_names_symbols = Arr_newn(List_len(params)); // of MalDatum*
+    Arr *param_names_symbols = Arr_newn(List_len(params)); // of Symbol*
     OWN(param_names_symbols);
 
     for (struct Node *node = params->head; node != NULL; node = node->next) {
-        MalDatum *dtm_sym = node->value;
-        const Symbol *sym = dtm_sym->value.sym;
+        Symbol *sym = (Symbol*) node->value;
 
         // '&' is a special symbol that marks a variadic procedure
         // exactly one parameter is expected after it
@@ -260,124 +267,118 @@ static MalDatum *eval_fnstar(const List *list, MalEnv *env) {
                 BADSTX("fn* bad parameter list: 1 parameter expected after '&'");
                 return NULL;
             }
-            MalDatum *last_dtm_sym = node->next->value;
+            Symbol *last_dtm_sym = (Symbol*) node->next->value;
             Arr_add(param_names_symbols, last_dtm_sym); // no need to copy
             variadic = true;
             break;
         }
         else {
             proc_argc++;
-            Arr_add(param_names_symbols, dtm_sym); // no need to copy
+            Arr_add(param_names_symbols, sym); // no need to copy
         }
     }
 
     // 2. construct the Procedure
     // body
-    int body_len = argc - 1;
-    // array of *MalDatum
-    Arr *body = Arr_newn(body_len);
-    OWN(body);
-    for (struct Node *node = list->head->next->next; node != NULL; node = node->next) {
-        Arr_add(body, node->value);
+    // TODO replace by List_slice
+    List *body = List_new();
+    for (struct Node *node = list->head->next->next; node; node = node->next) {
+        List_add(body, node->value);
     }
 
     Proc *proc = Proc_new_lambda(proc_argc, variadic, param_names_symbols, body, env);
 
-    FREE(param_names_symbols);
-    Arr_free(param_names_symbols);
-    FREE(body);
-    Arr_free(body);
-
-    return MalDatum_new_proc(proc);
+    return (LispDatum*) proc;
 }
 
-// (def! id <MalDatum>)
-static MalDatum *eval_def(const List *list, MalEnv *env) {
+// (def! id <LispDatum>)
+static LispDatum *eval_def(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc != 2) {
         BADSTX("def! expects 2 arguments, but %d were given", argc);
         return NULL;
     }
 
-    MalDatum *snd = List_ref(list, 1);
-    if (snd->type != SYMBOL) {
+    LispDatum *snd = List_ref(list, 1);
+    if (LispDatum_type(snd) != SYMBOL) {
         BADSTX("def! expects a symbol as a 2nd argument, but %s was given",
-                MalType_tostr(snd->type));
+                LispType_name(LispDatum_type(snd)));
         return NULL;
     }
-    const Symbol *id = snd->value.sym;
+    Symbol *id = (Symbol*) snd;
 
-    MalDatum *new_assoc = eval(List_ref(list, 2), env);
+    LispDatum *new_assoc = eval(List_ref(list, 2), env);
     if (new_assoc == NULL) {
         return NULL;
     }
 
     // if id is being bound to an unnamed procedure, then set id as its name
-    if (MalDatum_istype(new_assoc, PROCEDURE)) {
-        Proc *proc = new_assoc->value.proc;
-        if (!proc->name) {
-            proc->name = dyn_strcpy(id->name);
-        }
+    if (LispDatum_istype(new_assoc, PROCEDURE)) {
+        Proc *proc = (Proc*) new_assoc;
+        if (!Proc_isnamed(proc))
+            Proc_set_name(proc, id);
     }
 
-    MalEnv_put(env, snd, new_assoc);
+    MalEnv_put(env, id, new_assoc);
 
     return new_assoc;
 }
 
 // (defmacro! id <fn*-expr>)
-static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
+static LispDatum *eval_defmacro(const List *list, MalEnv *env) {
     size_t argc = List_len(list) - 1;
     if (argc != 2) {
         BADSTX("defmacro! expects 2 arguments, but %zu were given", argc);
         return NULL;
     }
 
-    MalDatum *arg1 = List_ref(list, 1);
-    if (!(MalDatum_istype(arg1, SYMBOL))) {
-        BADSTX("defmacro!: 1st arg must be a symbol, but was %s", MalType_tostr(arg1->type));
+    LispDatum *arg1 = List_ref(list, 1);
+    if (!(LispDatum_istype(arg1, SYMBOL))) {
+        BADSTX("defmacro!: 1st arg must be a symbol, but was %s", LispType_name(LispDatum_type(arg1)));
         return NULL;
     }
+    Symbol *id = (Symbol*) arg1;
 
-    MalDatum *macro_datum = NULL;
+    LispDatum *macro_datum = NULL;
     {
-        MalDatum *arg2 = List_ref(list, 2);
-        if (!MalDatum_islist(arg2)) {
+        LispDatum *arg2 = List_ref(list, 2);
+        if (!LispDatum_istype(arg2, LIST)) {
             BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
 
-        const List *arg2_list = arg2->value.list;
+        const List *arg2_list = (List*) arg2;
         if (List_isempty(arg2_list)) {
             BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
-        const MalDatum *arg2_list_ref0 = List_ref(arg2_list, 0);
-        if (!MalDatum_istype(arg2_list_ref0, SYMBOL)) {
+        const LispDatum *arg2_list_ref0 = List_ref(arg2_list, 0);
+        if (!LispDatum_istype(arg2_list_ref0, SYMBOL)) {
             BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
-        const Symbol *sym = arg2_list_ref0->value.sym;
+        const Symbol *sym = (Symbol*) arg2_list_ref0;
         if (!Symbol_eq_str(sym, "fn*")) {
             BADSTX("defmacro!: 2nd arg must be an fn* expression");
             return NULL;
         }
-        MalDatum *evaled = eval(arg2, env);
-        if (!evaled) return NULL;
-        if (!MalDatum_istype(evaled, PROCEDURE)) {
-            MalDatum_free(evaled);
+        LispDatum *evaled = eval(arg2, env);
+        if (!evaled) 
+            return NULL;
+        if (!LispDatum_istype(evaled, PROCEDURE)) {
+            LispDatum_free(evaled);
             BADSTX("defmacro!: 2nd arg must evaluate to a procedure");
             return NULL;
         }
         macro_datum = evaled;
     }
 
-    if (!macro_datum) return NULL;
+    if (!macro_datum) 
+        return NULL;
 
-    Proc *macro_proc = macro_datum->value.proc;
-    macro_proc->macro = true;
+    Proc_set_macro((Proc*) macro_datum);
 
-    MalEnv_put(env, arg1, macro_datum);
+    MalEnv_put(env, id, macro_datum);
 
     return macro_datum;
 }
@@ -385,7 +386,7 @@ static MalDatum *eval_defmacro(const List *list, MalEnv *env) {
 /* (let* (bindings) expr) 
  * bindings := ((id val) ...)
  */
-static MalDatum *eval_letstar(const List *list, MalEnv *env) {
+static LispDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
     int argc = List_len(list) - 1;
     if (argc != 2) {
@@ -393,35 +394,35 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
         return NULL;
     }
 
-    MalDatum *snd = List_ref(list, 1);
-    if (snd->type != LIST) {
+    LispDatum *snd = List_ref(list, 1);
+    if (LispDatum_type(snd) != LIST) {
         BADSTX("let* expects a list as a 2nd argument, but %s was given",
-                MalType_tostr(snd->type));
+                LispType_name(LispDatum_type(snd)));
         return NULL;
     }
 
-    List *bindings = snd->value.list;
+    List *bindings = (List*) snd;
     if (List_isempty(bindings)) {
         BADSTX("let* expects a non-empty list of bindings");
         return NULL;
     }
 
-    MalDatum *expr = List_ref(list, 2);
+    LispDatum *expr = List_ref(list, 2);
 
     // 2. initialise the let* environment 
     MalEnv *let_env = MalEnv_new(env);
     OWN(let_env);
     // step = 2
     for (struct Node *bind_node = bindings->head; bind_node; bind_node = bind_node->next) {
-        const MalDatum *dtm = bind_node->value;
+        const LispDatum *dtm = bind_node->value;
         // bind_node must be a List
-        if (!MalDatum_istype(dtm, LIST)) {
+        if (!LispDatum_istype(dtm, LIST)) {
             BADSTX("let*: expected a list of bindings");
             FREE(let_env);
             MalEnv_free(let_env);
             return NULL;
         }
-        List *bind = dtm->value.list;
+        List *bind = (List*) dtm;
         // must be a list of length 2
         if (List_len(bind) != 2) { 
             char *s = pr_list(bind, true);
@@ -432,10 +433,10 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             return NULL;
         }
         // must be headed by a symbol
-        MalDatum *bind_sym = List_ref(bind, 0);
-        if (!MalDatum_istype(bind_sym, SYMBOL)) {
+        LispDatum *bind_sym = List_ref(bind, 0);
+        if (!LispDatum_istype(bind_sym, SYMBOL)) {
             BADSTX("let*: bad binding form (expected a symbol to be bound, but was %s)", 
-                    MalType_tostr(bind_sym->type));
+                    LispType_name(LispDatum_type(bind_sym)));
             FREE(let_env);
             MalEnv_free(let_env);
             return NULL;
@@ -443,7 +444,7 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
 
         // it's important to evaluate the bound value using the let* env,
         // so that previous bindings can be used during evaluation
-        MalDatum *val = eval(List_ref(bind, 1), let_env);
+        LispDatum *val = eval(List_ref(bind, 1), let_env);
         OWN(val);
         if (val == NULL) {
             FREE(let_env);
@@ -451,42 +452,44 @@ static MalDatum *eval_letstar(const List *list, MalEnv *env) {
             return NULL;
         }
 
-        MalEnv_put(let_env, bind_sym, val);
+        MalEnv_put(let_env, (Symbol*) bind_sym, val);
     }
 
     // 3. evaluate the expr using the let* env
-    MalDatum *out = eval(expr, let_env);
+    LispDatum *out = eval(expr, let_env);
 
     // this is a hack
     // if the returned value was computed in let* bindings,
     // then we don't want it to be freed when we free the let_env,
     // so we increment its ref count only to decrement it after let_env is freed
-    MalDatum_own(out);
+    if (out)
+        LispDatum_own(out);
 
     // discard the let* env
     FREE(let_env);
     MalEnv_free(let_env);
 
     // the hack cont.
-    MalDatum_release(out);
+    if (out)
+        LispDatum_rls(out);
 
     return out;
 }
 
 // quote : this special form returns its argument without evaluating it
-static MalDatum *eval_quote(const List *list, MalEnv *env) {
+static LispDatum *eval_quote(const List *list, MalEnv *env) {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
         BADSTX("quote expects 1 argument, but %zd were given", argc);
         return NULL;
     }
 
-    MalDatum *arg1 = List_ref(list, 1);
+    LispDatum *arg1 = List_ref(list, 1);
     return arg1;
 }
 
 // helper function for eval_quasiquote_list
-static MalDatum *eval_unquote(const List *list, MalEnv *env) 
+static LispDatum *eval_unquote(const List *list, MalEnv *env) 
 {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
@@ -494,7 +497,7 @@ static MalDatum *eval_unquote(const List *list, MalEnv *env)
         return NULL;
     }
 
-    MalDatum *arg1 = List_ref(list, 1);
+    LispDatum *arg1 = List_ref(list, 1);
     return eval(arg1, env);
 }
 
@@ -507,28 +510,28 @@ static List *eval_splice_unquote(const List *list, MalEnv *env)
         return NULL;
     }
 
-    MalDatum *arg1 = List_ref(list, 1);
-    MalDatum *evaled = eval(arg1, env);
-    if (!MalDatum_islist(evaled)) {
+    LispDatum *arg1 = List_ref(list, 1);
+    LispDatum *evaled = eval(arg1, env);
+    if (!LispDatum_istype(evaled, LIST)) {
         BADSTX("splice-unquote: resulting value must be a list, but was %s",
-                MalType_tostr(evaled->type));
-        MalDatum_free(evaled);
+                LispType_name(LispDatum_type(evaled)));
+        LispDatum_free(evaled);
         return NULL;
     }
     else {
-        return evaled->value.list;
+        return (List*) evaled;
     }
 }
 
 // helper function for eval_quasiquote
-static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splice)
+static LispDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splice)
 {
     if (List_isempty(list)) 
-        return (MalDatum*) MalDatum_empty_list();
+        return (LispDatum*) List_empty();
 
-    MalDatum *ref0 = List_ref(list, 0);
-    if (MalDatum_istype(ref0, SYMBOL)) {
-        const Symbol *sym = ref0->value.sym;
+    LispDatum *ref0 = List_ref(list, 0);
+    if (LispDatum_istype(ref0, SYMBOL)) {
+        const Symbol *sym = (Symbol*) ref0;
 
         if (Symbol_eq_str(sym, "unquote")) {
             return eval_unquote(list, env);
@@ -540,7 +543,7 @@ static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splic
             } 
             else {
                 *splice = true;
-                return MalDatum_new_list(evaled);
+                return (LispDatum*) evaled;
             }
         }
     }
@@ -548,17 +551,17 @@ static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splic
     List *out_list = List_new();
 
     for (struct Node *node = list->head; node != NULL; node = node->next) {
-        MalDatum *dtm = node->value;
+        LispDatum *dtm = node->value;
 
-        if (MalDatum_islist(dtm)) { // recurse
+        if (LispDatum_istype(dtm, LIST)) { // recurse
             bool _splice = false;
-            MalDatum *evaled = eval_quasiquote_list(dtm->value.list, env, &_splice);
+            LispDatum *evaled = eval_quasiquote_list((List*) dtm, env, &_splice);
             if (!evaled) {
                 List_free(out_list);
                 return NULL;
             }
             if (_splice) {
-                List_append(out_list, evaled->value.list);
+                List_append(out_list, (List*) evaled);
             }
             else {
                 List_add(out_list, evaled);
@@ -569,7 +572,7 @@ static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splic
         }
     }
 
-    return MalDatum_new_list(out_list);
+    return (LispDatum*) out_list;
 }
 
 // quasiquote : This allows a quoted list to have internal elements of the list
@@ -586,7 +589,7 @@ static MalDatum *eval_quasiquote_list(const List *list, MalEnv *env, bool *splic
 // splice-unquote may only appear in an enclosing list form:
 // (quasiquote (splice-unquote (list 1 2)))   -> ERROR!
 // (quasiquote ((splice-unquote (list 1 2)))) -> (1 2)
-static MalDatum *eval_quasiquote(const List *list, MalEnv *env) 
+static LispDatum *eval_quasiquote(const List *list, MalEnv *env) 
 {
     size_t argc = List_len(list) - 1;
     if (argc != 1) {
@@ -594,25 +597,25 @@ static MalDatum *eval_quasiquote(const List *list, MalEnv *env)
         return NULL;
     }
 
-    MalDatum *ast = List_ref(list, 1);
-    if (!MalDatum_islist(ast))
+    LispDatum *ast = List_ref(list, 1);
+    if (!LispDatum_istype(ast, LIST))
         return ast;
 
-    const List *ast_list = ast->value.list;
+    const List *ast_list = (List*) ast;
     if (List_isempty(ast_list)) 
         return ast;
 
     // splice-unquote may only appear in an enclosing list form
-    MalDatum *ast0 = List_ref(ast_list, 0);
-    if (MalDatum_istype(ast0, SYMBOL)) {
-        const Symbol *sym = ast0->value.sym;
+    LispDatum *ast0 = List_ref(ast_list, 0);
+    if (LispDatum_istype(ast0, SYMBOL)) {
+        const Symbol *sym = (Symbol*) ast0;
         if (Symbol_eq_str(sym, "splice-unquote")) {
             BADSTX("splice-unquote: illegal context within quasiquote (nothing to splice into)");
             return NULL;
         }
     }
 
-    MalDatum *out = eval_quasiquote_list(ast_list, env, NULL);
+    LispDatum *out = eval_quasiquote_list(ast_list, env, NULL);
     return out;
 }
 
@@ -630,7 +633,7 @@ List *eval_list(const List *list, MalEnv *env) {
     List *out = List_new();
     struct Node *node = list->head;
     while (node) {
-        MalDatum *evaled = eval(node->value, env);
+        LispDatum *evaled = eval(node->value, env);
         if (evaled == NULL) {
             LOG_NULL(evaled);
             FREE(out);
@@ -644,53 +647,57 @@ List *eval_list(const List *list, MalEnv *env) {
     return out;
 }
 
-MalDatum *eval_ast(const MalDatum *datum, MalEnv *env) {
-    MalDatum *out = NULL;
+LispDatum *eval_ast(const LispDatum *datum, MalEnv *env) {
+    LispDatum *out = NULL;
 
-    switch (datum->type) {
+    switch (LispDatum_type(datum)) {
         case SYMBOL:
-            MalDatum *assoc = MalEnv_get(env, datum);
+            Symbol *sym = (Symbol*) datum;
+            LispDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
-                throwf("symbol binding '%s' not found", datum->value.sym->name);
+                throwf(NULL, "symbol binding '%s' not found", Symbol_name(sym));
             } else {
                 out = assoc;;
             }
             break;
         case LIST:
-            List *elist = eval_list(datum->value.list, env);
+            List *elist = eval_list((List*) datum, env);
             if (elist == NULL) {
                 LOG_NULL(elist);
             } else {
-                out = MalDatum_new_list(elist);
+                out = (LispDatum*) elist;
             }
             break;
         default:
             // STRING | INT
-            out = MalDatum_copy(datum);
+            out = LispDatum_copy(datum);
             break;
     }
 
     return out;
 }
 
-static MalDatum *macroexpand_single(MalDatum *ast, MalEnv *env)
+static LispDatum *macroexpand_single(LispDatum *ast, MalEnv *env)
 {
-    if (!MalDatum_islist(ast)) return ast;
+    if (!LispDatum_istype(ast, LIST)) return ast;
 
-    List *ast_list = ast->value.list;
+    List *ast_list = (List*) ast;
     if (List_isempty(ast_list)) return ast;
 
     // this is a macro call if the first list element is a symbol that's bound to a macro procedure
     const Proc *macro = NULL;
     {
-        MalDatum *ref0 = List_ref(ast_list, 0);
-        if (!MalDatum_istype(ref0, SYMBOL)) return ast;
+        LispDatum *ref0 = List_ref(ast_list, 0);
+        if (!LispDatum_istype(ref0, SYMBOL)) 
+            return ast;
 
-        const MalDatum *datum = MalEnv_get(env, ref0);
-        if (datum && MalDatum_istype(datum, PROCEDURE)) {
-            const Proc *proc = datum->value.proc;
-            if (!Proc_is_macro(proc)) return ast;
-            else macro = proc; 
+        const LispDatum *datum = MalEnv_get(env, (Symbol*) ref0);
+        if (datum && LispDatum_istype(datum, PROCEDURE)) {
+            const Proc *proc = (Proc*) datum;
+            if (!Proc_ismacro(proc)) 
+                return ast;
+            else 
+                macro = proc; 
         }
         else return ast;
     }
@@ -700,21 +707,23 @@ static MalDatum *macroexpand_single(MalDatum *ast, MalEnv *env)
         Arr_add(args, node->value);
     }
 
-    MalDatum *out = apply_proc(macro, args, env);
+    LispDatum *out = apply_proc(macro, args, env);
 
-    if (out) MalDatum_own(out); // hack own
+    if (out) 
+        LispDatum_own(out); // hack own
     Arr_free(args);
-    if (out) MalDatum_release(out); // hack release
+    if (out) 
+        LispDatum_rls(out); // hack release
 
     return out;
 }
 
-static MalDatum *macroexpand(MalDatum *ast, MalEnv *env)
+static LispDatum *macroexpand(LispDatum *ast, MalEnv *env)
 {
-    MalDatum *out = ast;
+    LispDatum *out = ast;
 
     while (1) {
-        MalDatum *expanded = macroexpand_single(out, env);
+        LispDatum *expanded = macroexpand_single(out, env);
         if (!expanded) return NULL;
         else if (expanded == out) return out;
         else out = expanded;
@@ -724,7 +733,7 @@ static MalDatum *macroexpand(MalDatum *ast, MalEnv *env)
 }
 
 // 'macroexpand' special form
-static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
+static LispDatum *eval_macroexpand(List *ast_list, MalEnv *env)
 {
     size_t argc = List_len(ast_list) - 1;
     if (argc != 1) {
@@ -732,7 +741,7 @@ static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
         return NULL;
     }
 
-    MalDatum *arg1 = List_ref(ast_list, 1);
+    LispDatum *arg1 = List_ref(ast_list, 1);
     return macroexpand(arg1, env);
 }
 
@@ -740,7 +749,7 @@ static MalDatum *eval_macroexpand(List *ast_list, MalEnv *env)
 // (try* <expr1> (catch* <symbol> <expr2>))
 // if <expr1> throws an exception, then the exception is bound to <symbol> 
 // and <expr2> is evaluated
-static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
+static LispDatum *eval_try_star(List *ast_list, MalEnv *env)
 {
     size_t argc = List_len(ast_list) - 1;
     if (argc != 2) {
@@ -748,17 +757,17 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
         return NULL;
     }
 
-    MalDatum *expr1 = List_ref(ast_list, 1);
-    MalDatum *catch_form = List_ref(ast_list, 2);
+    LispDatum *expr1 = List_ref(ast_list, 1);
+    LispDatum *catch_form = List_ref(ast_list, 2);
     // validate catch_form
-    MalDatum *catch_sym = 0;
-    MalDatum *expr2 = NULL;
+    LispDatum *catch_sym = 0;
+    LispDatum *expr2 = NULL;
     {
-        if (!MalDatum_islist(catch_form)) {
+        if (!LispDatum_istype(catch_form, LIST)) {
             BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
-        List *catch_list = catch_form->value.list;
+        List *catch_list = (List*) catch_form;
 
         if (List_len(catch_list) != 3) {
             BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
@@ -766,16 +775,16 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
         }
 
         // validate (catch* ...)
-        MalDatum *catch0 = List_ref(catch_list, 0);
-        if (!MalDatum_istype(catch0, SYMBOL) 
-                || !Symbol_eq_str(catch0->value.sym, "catch*")) 
+        LispDatum *catch0 = List_ref(catch_list, 0);
+        if (!LispDatum_istype(catch0, SYMBOL) 
+                || !Symbol_eq_str((Symbol*) catch0, "catch*")) 
         {
             BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
 
         catch_sym = List_ref(catch_list, 1);
-        if (!MalDatum_istype(catch_sym, SYMBOL)) {
+        if (!LispDatum_istype(catch_sym, SYMBOL)) {
             BADSTX("try* expects (catch* SYMBOL EXPR) as 2nd arg");
             return NULL;
         }
@@ -783,17 +792,19 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
         expr2 = List_ref(catch_list, 2);
     }
 
-    MalDatum *expr1_rslt = eval(expr1, env);
+    LispDatum *expr1_rslt = eval(expr1, env);
     if (expr1_rslt == NULL && didthrow()) {
         MalEnv *catch_env = MalEnv_new(env);
         Exception *exn = thrown_copy();
-        MalEnv_put(catch_env, catch_sym, MalDatum_new_exn(exn));
+        MalEnv_put(catch_env, (Symbol*) catch_sym, (LispDatum*) exn);
 
-        MalDatum *expr2_rslt = eval(expr2, catch_env);
+        LispDatum *expr2_rslt = eval(expr2, catch_env);
 
-        if (expr2_rslt) MalDatum_own(expr2_rslt); // hack own
+        if (expr2_rslt)
+            LispDatum_own(expr2_rslt); // hack own
         MalEnv_free(catch_env);
-        if (expr2_rslt) MalDatum_release(expr2_rslt); // hack release
+        if (expr2_rslt) 
+            LispDatum_rls(expr2_rslt); // hack release
 
         return expr2_rslt;
     }
@@ -806,7 +817,7 @@ static MalDatum *eval_try_star(List *ast_list, MalEnv *env)
 static int eval_stack_depth = 0; 
 #endif
 
-MalDatum *eval(MalDatum *ast, MalEnv *env) {
+LispDatum *eval(LispDatum *ast, MalEnv *env) {
 #ifdef EVAL_STACK_DEPTH
     eval_stack_depth++;
     printf("ENTER eval, stack depth: %d\n", eval_stack_depth);
@@ -815,13 +826,13 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
     // because of TCO, ast might be the last body part of a procedure, so we might need 
     // apply_env created in the previous loop cycle to evaluate ast
     MalEnv *apply_env = env;
-    MalDatum *out = NULL;
+    LispDatum *out = NULL;
 
     while (ast) {
-        if (MalDatum_islist(ast)) {
-            MalDatum *expanded = macroexpand(ast, env);
+        if (LispDatum_istype(ast, LIST)) {
+            LispDatum *expanded = macroexpand(ast, env);
             if (!expanded) break;
-            else if (expanded != ast && !MalDatum_islist(expanded)) {
+            else if (expanded != ast && !LispDatum_istype(expanded, LIST)) {
                 out = eval_ast(expanded, env);
                 break;
             }
@@ -830,17 +841,17 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 ast = expanded;
             }
 
-            List *ast_list = ast->value.list;
+            List *ast_list = (List*) ast;
             if (List_isempty(ast_list)) {
-                out = (MalDatum*) MalDatum_empty_list();
+                out = (LispDatum*) List_empty();
                 break;
             }
 
-            MalDatum *head = List_ref(ast_list, 0);
+            LispDatum *head = List_ref(ast_list, 0);
             // handle special forms: def!, let*, if, do, fn*, quote, quasiquote,
             // defmacro!, macroexpand, try*/catch*
-            if (MalDatum_istype(head, SYMBOL)) {
-                const Symbol *sym = head->value.sym;
+            if (LispDatum_istype(head, SYMBOL)) {
+                const Symbol *sym = (Symbol*) head;
                 if (Symbol_eq_str(sym, "def!")) {
                     out = eval_def(ast_list, apply_env);
                     break;
@@ -898,22 +909,22 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
             OWN(evaled_list);
             // 2. make sure that the 1st element is a procedure
-            MalDatum *first = List_ref(evaled_list, 0);
-            if (!MalDatum_istype(first, PROCEDURE)) {
-                throwf("application: expected a procedure");
+            LispDatum *first = List_ref(evaled_list, 0);
+            if (!LispDatum_istype(first, PROCEDURE)) {
+                throwf(NULL, "application: expected a procedure");
                 out = NULL;
                 FREE(evaled_list);
                 List_free(evaled_list);
                 break;
             }
 
-            Proc *proc = first->value.proc;
+            Proc *proc = (Proc*) first;
 
             Arr *args = Arr_newn(List_len(evaled_list) - 1);
             OWN(args);
             for (struct Node *node = evaled_list->head->next; node != NULL; node = node->next) {
                 Arr_add(args, node->value);
-                // MalDatum_own(node->value); // hold onto argument values
+                // LispDatum_own(node->value); // hold onto argument values
             }
 
             // previous application's env is no longer needed after we have argument values
@@ -923,14 +934,14 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
             }
 
             // 3. apply TCO only if it's a non-lambda MAL procedure
-            if (!proc->builtin && Proc_is_named(proc)) {
+            if (!proc->builtin && Proc_isnamed(proc)) {
                 // args will be put into apply_env
                 apply_env = MalEnv_new(proc->env);
                 ast = eval_application_tco(proc, args, apply_env);
 
                 // release and free args
                 FREE(args);
-                // Arr_freep(args, (free_t) MalDatum_release_free);
+                // Arr_freep(args, (free_t) LispDatum_rls_free);
                 Arr_free(args);
 
                 FREE(evaled_list);
@@ -941,16 +952,18 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
                 // builtin procedures do not get TCO
                 // unnamed procedures cannot be called recursively apriori
                 out = apply_proc(proc, args, env);
-                if (out) MalDatum_own(out); // hack own
+                if (out) 
+                    LispDatum_own(out); // hack own
 
                 FREE(args);
-                // Arr_freep(args, (free_t) MalDatum_release_free);
+                // Arr_freep(args, (free_t) LispDatum_rls_free);
                 Arr_free(args);
 
                 FREE(evaled_list);
                 List_free(evaled_list);
 
-                if (out) MalDatum_release(out); // hack release
+                if (out) 
+                    LispDatum_rls(out); // hack release
                 break;
             }
         }
@@ -963,12 +976,14 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
     // we might need to free the application env of the last tail call 
     if (apply_env && apply_env != env) {
         // a hack to prevent the return value of a procedure to be freed (similar to let* hack)
-        if (out) MalDatum_own(out); // hack own
+        if (out) 
+            LispDatum_own(out); // hack own
 
         FREE(apply_env);
         MalEnv_free(apply_env);
 
-        if (out) MalDatum_release(out); // hack release
+        if (out) 
+            LispDatum_rls(out); // hack release
     }
 
 #ifdef EVAL_STACK_DEPTH
@@ -979,7 +994,7 @@ MalDatum *eval(MalDatum *ast, MalEnv *env) {
     return out;
 }
 
-static char *print(MalDatum *datum) {
+static char *print(LispDatum *datum) {
     if (datum == NULL) {
         return NULL;
     }
@@ -990,16 +1005,16 @@ static char *print(MalDatum *datum) {
 
 static void rep(const char *str, MalEnv *env) {
     // read
-    MalDatum *r = read(str);
+    LispDatum *r = read(str);
     if (r == NULL) return;
 
     // eval
     // TODO implement a stack trace of error messages
-    MalDatum *e = eval(r, env);
+    LispDatum *e = eval(r, env);
     if (!e) return;
-    MalDatum_own(e); // prevent from being freed before printing
+    LispDatum_own(e); // prevent from being freed before printing
 
-    MalDatum_free(r);
+    LispDatum_free(r);
 
     // print
     char *p = print(e);
@@ -1010,7 +1025,7 @@ static void rep(const char *str, MalEnv *env) {
 
     // the evaled value can be either discarded (e.g., (+ 1 2) => 3)
     // or owned by something (e.g., (def! x 5) => 5)
-    MalDatum_release_free(e);
+    LispDatum_rls_free(e);
 }
 
 // TODO reorganise file structure and move to core.c
@@ -1019,18 +1034,17 @@ static void rep(const char *str, MalEnv *env) {
  * if <interm> (intermediate arguments) are present, they are simply consed onto arg-list;
  * for example: (apply f a b '(c d)) <=> (apply f '(a b c d))
  * */
-static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
+static LispDatum *lisp_apply(const Proc *proc, const Arr *args, MalEnv *env)
 {
-    const MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, PROCEDURE);
-    if (!arg0) return NULL;
-    const Proc *f = arg0->value.proc;
+    const Proc *f = verify_proc_arg_type(proc, args, 0, PROCEDURE);
+    if (!f) return NULL;
 
-    const MalDatum *arg_last = Arr_last(args);
-    if (!MalDatum_islist(arg_last)) {
-        throwf("apply: bad last arg: expected a list");
+    const LispDatum *arg_last = Arr_last(args);
+    if (!LispDatum_istype(arg_last, LIST)) {
+        throwf("apply", "bad last arg: expected a list");
         return NULL;
     }
-    const List *arg_list = arg_last->value.list;
+    const List *arg_list = (List*) arg_last;
 
     size_t interm_argc = args->len - 2;
 
@@ -1048,7 +1062,7 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
         Arr_add(args_arr, node->value);
     }
 
-    MalDatum *rslt = apply_proc(f, args_arr, env);
+    LispDatum *rslt = apply_proc(f, args_arr, env);
 
     FREE(args_arr);
     Arr_free(args_arr);
@@ -1058,16 +1072,16 @@ static MalDatum *mal_apply(const Proc *proc, const Arr *args, MalEnv *env)
 
 // read-string : takes a Mal string and reads it as if it were entered into the prompt,
 // transforming it into a raw AST. Essentially, exposes the internal READ function
-static MalDatum *mal_read_string(const Proc *proc, const Arr *args, MalEnv *env) 
+static LispDatum *lisp_read_string(const Proc *proc, const Arr *args, MalEnv *env) 
 {
-    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
-    if (!arg0) return NULL;
+    String *string = verify_proc_arg_type(proc, args, 0, STRING);
+    if (!string) return NULL;
 
-    const char *string = arg0->value.string;
-    MalDatum *ast = read(string);
+    const char *str = String_str(string);
+    LispDatum *ast = read(str);
 
     if (ast == NULL) {
-        throwf("read-string: could not parse bad syntax");
+        throwf("read-string", "could not parse bad syntax");
         return NULL;
     }
 
@@ -1075,34 +1089,34 @@ static MalDatum *mal_read_string(const Proc *proc, const Arr *args, MalEnv *env)
 }
 
 // slurp : takes a file name (string) and returns the contents of the file as a string
-static MalDatum *mal_slurp(const Proc *proc, const Arr *args, MalEnv *env) 
+static LispDatum *lisp_slurp(const Proc *proc, const Arr *args, MalEnv *env) 
 {
-    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, STRING);
-    if (!arg0) return NULL;
+    String *string = verify_proc_arg_type(proc, args, 0, STRING);
+    if (!string) return NULL;
 
-    const char *path = arg0->value.string;
+    const char *path = String_str(string);
     if (!file_readable(path)) {
-        throwf("slurp: can't read file %s", path);
+        throwf("slurp", "can't read file %s", path);
         return NULL;
     }
 
     char *contents = file_to_str(path);
     if (!contents) {
-        throwf("slurp: failed to read file %s", path);
+        throwf("slurp", "failed to read file %s", path);
         return NULL;
     }
 
-    MalDatum *out = MalDatum_new_string(contents);
+    String *out = String_new(contents);
     free(contents);
 
-    return out;
+    return (LispDatum*) out;
 }
 
 // eval : takes an AST and evaluates it in the top-level environment
 // local environments are not taken into account by eval
-static MalDatum *mal_eval(const Proc *proc, const Arr *args, MalEnv *env) 
+static LispDatum *lisp_eval(const Proc *proc, const Arr *args, MalEnv *env) 
 {
-    MalDatum *arg0 = Arr_get(args, 0);
+    LispDatum *arg0 = Arr_get(args, 0);
     MalEnv *top_env = MalEnv_enclosing_root(env);
     return eval(arg0, top_env);
 }
@@ -1111,36 +1125,28 @@ static MalDatum *mal_eval(const Proc *proc, const Arr *args, MalEnv *env)
 // atom's value is modified to the result of applying the function with the atom's
 // value as the first argument and the optionally given function arguments as the
 // rest of the arguments. The new atom's value is returned.
-static MalDatum *mal_swap_bang(const Proc *proc, const Arr *args, MalEnv *env) {
-    Atom *atom;
-    {
-        MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, ATOM);
-        if (!arg0) return NULL;
-        atom = arg0->value.atom;
-    }
+static LispDatum *lisp_swap_bang(const Proc *proc, const Arr *args, MalEnv *env) {
+    Atom *atom = verify_proc_arg_type(proc, args, 0, ATOM);
+    if (!atom) return NULL;
 
-    const Proc *applied_proc;
-    {
-        MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, PROCEDURE);
-        if (!arg1) return NULL;
-        applied_proc = arg1->value.proc;
-    }
+    const Proc *applied_proc = verify_proc_arg_type(proc, args, 1, PROCEDURE);
+    if (!applied_proc) return NULL;
 
-    Arr *proc_args = Arr_newn(1 + args->len - 2); // of *MalDatum
+    Arr *proc_args = Arr_newn(1 + args->len - 2); // of *LispDatum
     OWN(proc_args);
 
     // use atom's value as the 1st argument 
-    Arr_add(proc_args, atom->datum);
+    Arr_add(proc_args, Atom_deref(atom));
 
     for (size_t i = 2; i < args->len; i++) {
         Arr_add(proc_args, args->items[i]);
     }
 
-    MalDatum *rslt = NULL;
+    LispDatum *rslt = NULL;
 
     if (verify_proc_application(applied_proc, proc_args)) {
         rslt = apply_proc(applied_proc, proc_args, env);
-        Atom_reset(atom, rslt);
+        Atom_set(atom, rslt);
     }
 
     FREE(proc_args);
@@ -1151,18 +1157,16 @@ static MalDatum *mal_swap_bang(const Proc *proc, const Arr *args, MalEnv *env) {
 
 // map : maps over a list/vector using a procedure
 // TODO accept multiple lists/vectors
-static MalDatum *mal_map(const Proc *proc, const Arr *args, MalEnv *env) 
+static LispDatum *lisp_map(const Proc *proc, const Arr *args, MalEnv *env) 
 {
-    MalDatum *arg0 = verify_proc_arg_type(proc, args, 0, PROCEDURE);
-    if (!arg0) return NULL;
-    Proc *mapper = arg0->value.proc;
+    Proc *mapper = verify_proc_arg_type(proc, args, 0, PROCEDURE);
+    if (!mapper) return NULL;
 
-    MalDatum *arg1 = verify_proc_arg_type(proc, args, 1, LIST);
-    if (!arg1) return NULL;
-    List *list = arg1->value.list;
+    List *list = verify_proc_arg_type(proc, args, 1, LIST);
+    if (!list) return NULL;
 
     if (List_isempty(list)) {
-        return (MalDatum*) MalDatum_empty_list();
+        return (LispDatum*) List_empty();
     }
 
     List *out = List_new();
@@ -1171,10 +1175,10 @@ static MalDatum *mal_map(const Proc *proc, const Arr *args, MalEnv *env)
     Arr_add(mapper_args, NULL); // to increase length to 1
 
     for (struct Node *node = list->head; node != NULL; node = node->next) {
-        MalDatum *list_elt = node->value;
+        LispDatum *list_elt = node->value;
 
         Arr_replace(mapper_args, 0, list_elt);
-        MalDatum *new_elt = apply_proc(mapper, mapper_args, env);
+        LispDatum *new_elt = apply_proc(mapper, mapper_args, env);
         if (!new_elt) {
             List_free(out);
             Arr_free(mapper_args);
@@ -1186,7 +1190,7 @@ static MalDatum *mal_map(const Proc *proc, const Arr *args, MalEnv *env)
 
     Arr_free(mapper_args);
 
-    return MalDatum_new_list(out);
+    return (LispDatum*) out;
 }
 
 int main(int argc, char **argv) {
@@ -1196,26 +1200,22 @@ int main(int argc, char **argv) {
     OWN(env);
     MalEnv_own(env);
 
-    // FIXME memory leak
-    MalEnv_put(env, MalDatum_symbol_get("nil"), (MalDatum*) MalDatum_nil());
-    MalEnv_put(env, MalDatum_symbol_get("true"), (MalDatum*) MalDatum_true());
-    MalEnv_put(env, MalDatum_symbol_get("false"), (MalDatum*) MalDatum_false());
+    MalEnv_put(env, Symbol_intern("nil"),   (LispDatum*) Nil_get());
+    MalEnv_put(env, Symbol_intern("true"),  (LispDatum*) True_get());
+    MalEnv_put(env, Symbol_intern("false"), (LispDatum*) False_get());
 
-    MalEnv_put(env, MalDatum_symbol_get("apply"), MalDatum_new_proc(
-                Proc_builtin("apply", 2, true, mal_apply)));
+#define ENV_PUT_PROC(name, arity, variadic, funp) \
+    { \
+        Symbol *_s = Symbol_intern(name); \
+        MalEnv_put(env, _s, (LispDatum*) Proc_builtin(_s, arity, variadic, funp)); \
+    }
 
-    MalEnv_put(env, MalDatum_symbol_get("read-string"), MalDatum_new_proc(
-            Proc_builtin("read-string", 1, false, mal_read_string)));
-    MalEnv_put(env, MalDatum_symbol_get("slurp"), MalDatum_new_proc(
-            Proc_builtin("slurp", 1, false, mal_slurp)));
-    MalEnv_put(env, MalDatum_symbol_get("eval"), MalDatum_new_proc(
-            Proc_builtin("eval", 1, false, mal_eval)));
-
-    MalEnv_put(env, MalDatum_symbol_get("swap!"), MalDatum_new_proc(
-            Proc_builtin("swap!", 2, true, mal_swap_bang)));
-
-    MalEnv_put(env, MalDatum_symbol_get("map"), MalDatum_new_proc(
-            Proc_builtin("map", 2, false, mal_map)));
+    ENV_PUT_PROC("apply", 2, true, lisp_apply);
+    ENV_PUT_PROC("read-string", 1, false, lisp_read_string);
+    ENV_PUT_PROC("slurp", 1, false, lisp_slurp);
+    ENV_PUT_PROC("eval", 1, false, lisp_eval);
+    ENV_PUT_PROC("swap!", 2, true, lisp_swap_bang);
+    ENV_PUT_PROC("map", 2, false, lisp_map);
 
     core_def_procs(env);
 

@@ -138,9 +138,12 @@ void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq)
         return Bucket_find(bkt, key, keyeq);
 }
 
-void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
+void *HashTbl_put(HashTbl *tbl, const void *key, const void *val, const keyeq_t keyeq)
 {
     try_grow(tbl);
+
+    // TODO optimise: compute hash only once
+    void *popd = HashTbl_pop(tbl, key, keyeq);
 
     Bucket *bkt_new = Bucket_new(key, val);
 
@@ -154,6 +157,8 @@ void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
     }
 
     tbl->size += 1;
+
+    return popd;
 }
 
 void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)
@@ -186,6 +191,35 @@ void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)
     }
 
     return (void*) val_out;
+}
+
+unsigned int HashTbl_size(const HashTbl *tbl)
+{
+    return tbl->size;
+}
+
+void HashTbl_keys(const HashTbl *tbl, void **arr)
+{
+    for (uint i = 0; i < tbl->cap; i++) {
+        Bucket *bkt = tbl->buckets[i];
+        if (bkt == NULL)
+            continue;
+        for (Bucket *b = bkt; b != NULL; b = b->next) {
+            *arr++ = (void*) b->key;
+        }
+    }
+}
+
+void HashTbl_values(const HashTbl *tbl, void **arr)
+{
+    for (uint i = 0; i < tbl->cap; i++) {
+        Bucket *bkt = tbl->buckets[i];
+        if (bkt == NULL)
+            continue;
+        for (Bucket *b = bkt; b != NULL; b = b->next) {
+            *arr++ = (void*) b->val;
+        }
+    }
 }
 
 void HashTbl_print(const HashTbl *tbl, const printkey_t printkey, const printval_t printval)

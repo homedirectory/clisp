@@ -1,40 +1,45 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+
 #include "printer.h"
 #include "reader.h"
 #include "utils.h"
 #include "types.h"
-#include <string.h>
-#include <stdlib.h>
 #include "common.h"
 
 // When print_readably is true, doublequotes, newlines, and backslashes are
 // translated into their printed representations (the reverse of the reader).
 // In other words, print escapes as 2 characters
-char *pr_str(const MalDatum *datum, bool print_readably) 
+char *pr_str(const LispDatum *datum, bool print_readably) 
 {
     if (datum == NULL) return NULL;
 
     char *str = NULL;
 
-    switch (datum->type) {
-        case INT:
-            str = malloc(MAX_INT_DIGITS + 1);
-            sprintf(str, "%d", datum->value.i);
+    StrAsm sa;
+
+    switch (LispDatum_type(datum)) {
+        case NUMBER:
+            const Number *num = (Number*) datum;
+            str = malloc(Number_len(num) + 1 + (Number_isneg(num) ? 1 : 0));
+            Number_sprint(num, str);
             break;
         case SYMBOL:
             // TODO symbols with spaces
-            str = dyn_strcpy(datum->value.sym->name);
+            str = dyn_strcpy(Symbol_name((Symbol*) datum));
             break;
         case LIST:
-            str = pr_list(datum->value.list, print_readably);
+            str = pr_list((List*) datum, print_readably);
             break;
         case STRING:
-            char *string = datum->value.string;
-            if (string == NULL) break;
+            char *s = String_str((String*) datum);
+            assert(s != NULL);
 
             if (print_readably) {
                 // TODO optimise
-                char *escaped = str_escape(string);
+                char *escaped = str_escape(s);
                 size_t esc_len = strlen(escaped);
 
                 char *out = calloc(esc_len + 2 + 1, sizeof(char));
@@ -47,7 +52,7 @@ char *pr_str(const MalDatum *datum, bool print_readably)
                 free(escaped);
             }
             else
-                str = dyn_strcpy(string);
+                str = dyn_strcpy(s);
             break;
         case NIL:
             str = dyn_strcpy("nil");
@@ -59,26 +64,33 @@ char *pr_str(const MalDatum *datum, bool print_readably)
             str = dyn_strcpy("false");
             break;
         case PROCEDURE:
-            Proc *proc = datum->value.proc;
+            const Proc *proc = (Proc*) datum;
 
-            StrAsm sa;
             StrAsm_init(&sa);
 
             StrAsm_add(&sa, "#<");
-            StrAsm_add(&sa, Proc_is_macro(proc) ? "macro" : "procedure");
-            if (proc->name) {
+            StrAsm_add(&sa, Proc_ismacro(proc) ? "macro" : "procedure");
+            if (Proc_isnamed(proc)) {
                 StrAsm_addc(&sa, ':');
-                StrAsm_add(&sa, proc->name);
+                const Symbol *s_name = Proc_name(proc);
+                StrAsm_add(&sa, Symbol_name(s_name));
             }
             StrAsm_addc(&sa, '>');
 
             str = StrAsm_str(&sa);
             break;
         case ATOM:
-            Atom *atom = datum->value.atom;
-            char *dtm_str = pr_str(atom->datum, print_readably);
-            char *parts[] = { "(atom ", dtm_str, ")" };
-            str = str_join(parts, ARR_LEN(parts), "");
+            Atom *atom = (Atom*) datum;
+
+            StrAsm_init(&sa);
+
+            char *dtm_str = pr_str(atom->dtm, print_readably);
+            StrAsm_add(&sa, "(atom ");
+            StrAsm_add(&sa, dtm_str);
+            StrAsm_addc(&sa, ')');
+
+            str = StrAsm_str(&sa);
+
             free(dtm_str);
             break;
         case EXCEPTION:
@@ -93,7 +105,7 @@ char *pr_str(const MalDatum *datum, bool print_readably)
             // }
             break;
         default:
-            DEBUG("Unknown MalType %s", MalType_tostr(datum->type));
+            FATAL("Unknown LispType");
             str = NULL;
             break;
     }
@@ -127,10 +139,10 @@ char *pr_list(const List *list, bool print_readably)
     return StrAsm_str(&sa);
 }
 
-char *pr_repr(const MalDatum *datum)
+char *pr_repr(const LispDatum *datum)
 {
     char *str = pr_str(datum, false);
-    char *type_str = MalType_tostr(datum->type);
+    char *type_str = LispDatum_typename(datum);
 
     char *parts[] = { type_str, str };
     char *out = str_join(parts, ARR_LEN(parts), " ");

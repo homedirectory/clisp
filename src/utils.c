@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stddef.h>
+#include <assert.h>
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>
@@ -282,7 +283,7 @@ char *str_join(char *strings[], size_t n, const char *sep)
     return out;
 }
 
-char *addr_to_str(void *ptr)
+char *addr_to_str(const void *ptr)
 {
     // each byte is 2 hex chars + 2 for "0x" prefix
     size_t n = sizeof(ptr) * 2 + 2;
@@ -295,6 +296,15 @@ char *addr_to_str(void *ptr)
 bool streq(const char *s1, const char *s2)
 {
     return strcmp(s1, s2) == 0;
+}
+
+unsigned int hash_simple_str(const char *s)
+{
+    // simple and works (unique hash for each unique string)
+    // collisions might happen only if str is longer than (2^32 - 1) / (2^8 - 1) = 16843009 bytes
+    unsigned int h = *(s++);
+    while (*s) h += *s++;
+    return h;
 }
 
 // String assembler
@@ -421,6 +431,66 @@ char *file_to_str(const char *path)
 
     return buf;
 }
+
+// -----------------------------------------------------------------------------
+// Miscellaneous ---------------------------------------------------------------
+char itoa(int i)
+{
+    assert(i >= 0 && i <= 9);
+    return i + 48;
+}
+
+void strnrev(char *s, size_t n)
+{
+    size_t i, j;
+    for (i = 0, j = n - 1; i < n / 2; i++, j--) {
+        char c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+char *ltos(long l, char *dst)
+{
+    if (l < 0) {
+        *dst++ = '-';
+        l *= -1;
+    }
+
+    char *s = dst;
+    size_t i = 0;
+
+    while (l != 0) {
+        *dst++ = itoa(l % 10);
+        l /= 10;
+        i++;
+    }
+
+    *dst = 0;
+    strnrev(s, i);
+
+    return dst;
+}
+
+// int main(int argc, char **argv)
+// {
+//     {
+//         char *s = dyn_strcpy("hello");
+//         strnrev(s, strlen(s));
+//         printf("%s\n", s);
+//     }
+
+//     {
+//         long l = 5435843;
+//         char buf[10];
+//         ltos(l, buf);
+//         printf("%ld == %s\n", l, buf);
+
+//         long nl = -5435843;
+//         ltos(nl, buf);
+//         printf("%ld == %s\n", nl, buf);
+//     }
+// }
 
 /*
 int main(int argc, char **argv) {
