@@ -465,23 +465,31 @@ static LispDatum *lisp_type(const Proc *proc, const Arr *args, MalEnv *env)
 // FIXME once MalEnv becomes a first-class type
 static LispDatum *lisp_env(const Proc *proc, const Arr *args, MalEnv *env)
 {
-    Arr *ids = env->ids;
-    Arr *datums = env->datums;
-
-    if (ids->len == 0) {
+    unsigned int size = HashTbl_size(env->binds);
+    if (size == 0) {
         return (LispDatum*) List_empty();
     }
     else {
-        List *list = List_new();
+        void **keys = malloc(sizeof(*keys) * size);
+        HashTbl_keys(env->binds, keys);
 
-        for (size_t i = 0; i < ids->len; i++) {
+        void **values = malloc(sizeof(*keys) * size);
+        HashTbl_values(env->binds, values);
+
+        List *list = List_new();
+        for (unsigned int i = 0; i < size; i++) {
             List *pair = List_new();
-            LispDatum *id = ids->items[i];
-            LispDatum *dtm = datums->items[i];
+            // LispDatum *id = ids->items[i];
+            // LispDatum *dtm = datums->items[i];
+            LispDatum *id = keys[i];
+            LispDatum *dtm = values[i];
             List_add(pair, id);
             List_add(pair, dtm);
             List_add(list, (LispDatum*) pair);
         }
+
+        free(keys);
+        free(values);
 
         return (LispDatum*) list;
     }

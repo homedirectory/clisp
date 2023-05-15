@@ -298,6 +298,15 @@ bool streq(const char *s1, const char *s2)
     return strcmp(s1, s2) == 0;
 }
 
+unsigned int hash_simple_str(const char *s)
+{
+    // simple and works (unique hash for each unique string)
+    // collisions might happen only if str is longer than (2^32 - 1) / (2^8 - 1) = 16843009 bytes
+    unsigned int h = *(s++);
+    while (*s) h += *s++;
+    return h;
+}
+
 // String assembler
 #define STR_ASM_DEF_CAP 128
 #define STR_ASM_GROW_RAT 1.75

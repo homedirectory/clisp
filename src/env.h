@@ -2,12 +2,11 @@
 
 #include "types.h"
 #include "stdbool.h"
+#include "hashtbl.h"
 
 /* This environment is an associative structure that maps identifiers to mal values */
 typedef struct MalEnv {
-    // TODO replace Arr by a proper hashmap
-    Arr *ids;     // of Symbol*
-    Arr *datums;  // of LispDatum*
+    HashTbl *binds; // Symbol* -> LispDatum*
     struct MalEnv *enclosing;
     long refc;    // reference count
 } MalEnv;

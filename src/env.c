@@ -1,14 +1,22 @@
 #include <stdlib.h>
 #include <assert.h>
+
 #include "types.h"
 #include "utils.h"
 #include "env.h"
 #include "common.h"
+#include "hashtbl.h"
+
+static uint hash_symbol(const Symbol *sym)
+{
+    const char *name = Symbol_name(sym);
+    uint h = hash_simple_str(name);
+    return h;
+}
 
 MalEnv *MalEnv_new(MalEnv *enclosing) {
     MalEnv *env = malloc(sizeof(MalEnv));
-    env->ids = Arr_newn(32);
-    env->datums = Arr_newn(32);
+    env->binds = HashTbl_new((hashkey_t) hash_symbol);
     env->enclosing = enclosing;
     if (enclosing)
         MalEnv_own(enclosing);
@@ -28,8 +36,7 @@ void MalEnv_free(MalEnv *env) {
 
     DEBUG("freeing MalEnv (refc = %ld)", env->refc);
 
-    Arr_freep(env->ids, (free_t) LispDatum_rls_free);
-    Arr_freep(env->datums, (free_t) LispDatum_rls_free);
+    HashTbl_free(env->binds, (free_t) LispDatum_rls_free, (free_t) LispDatum_rls_free);
     // the enclosing env should not be freed, but simply released
     if (env->enclosing)
         MalEnv_release(env->enclosing);
@@ -52,18 +59,11 @@ LispDatum *MalEnv_put(MalEnv *env, Symbol *id, LispDatum *datum) {
         }
     }
 
-    int idx = Arr_findf(env->ids, id, (equals_t) Symbol_eq);
-    if (idx == -1) { // new identifier
-        Arr_add(env->ids, (void*) id);
-        LispDatum_own((LispDatum*) id);
-        Arr_add(env->datums, datum);
-        return NULL;
-    } else { // existing identifier
-        LispDatum *old_dtm = Arr_replace(env->datums, idx, datum);
-        // FIXME rls_free ?
-        LispDatum_rls(old_dtm);
-        return old_dtm;
-    }
+    LispDatum *old = HashTbl_pop(env->binds, id, (keyeq_t) Symbol_eq);
+    if (old != NULL)
+        LispDatum_rls(old);
+    HashTbl_put(env->binds, id, datum, (keyeq_t) Symbol_eq);
+    return old;
 }
 
 LispDatum *MalEnv_get(const MalEnv *env, const Symbol *id) {
@@ -71,15 +71,13 @@ LispDatum *MalEnv_get(const MalEnv *env, const Symbol *id) {
         FATAL("env == NULL");
 
     const MalEnv *e = env;
-    int idx = -1;
-    while (e != NULL) {
-        idx = Arr_findf(e->ids, id, (equals_t) Symbol_eq);
-        if (idx != -1)
-            return e->datums->items[idx];
+    LispDatum *dtm = NULL;
+    while (e != NULL && dtm == NULL) {
+        dtm = HashTbl_get(e->binds, id, (keyeq_t) Symbol_eq);
         e = e->enclosing;
     }
 
-    return NULL;
+    return dtm;
 }
 
 MalEnv *MalEnv_enclosing_root(MalEnv *env) 

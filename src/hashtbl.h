@@ -18,6 +18,12 @@ void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq);
 void HashTbl_put(HashTbl *tbl, const void *key, const void *val);
 void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq);
 
+unsigned int HashTbl_size(const HashTbl *tbl);
+// populates arr with hash table keys, arr must be large enough
+void HashTbl_keys(const HashTbl *tbl, void **arr);
+// populates arr with hash table keys, arr must be large enough
+void HashTbl_values(const HashTbl *tbl, void **arr);
+
 typedef void (*printkey_t)(const void*);
 typedef void (*printval_t)(const void*);
 void HashTbl_print(const HashTbl *tbl, const printkey_t printkey, const printval_t printval);

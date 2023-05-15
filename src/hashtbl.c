@@ -188,6 +188,35 @@ void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)
     return (void*) val_out;
 }
 
+unsigned int HashTbl_size(const HashTbl *tbl)
+{
+    return tbl->size;
+}
+
+void HashTbl_keys(const HashTbl *tbl, void **arr)
+{
+    for (uint i = 0; i < tbl->cap; i++) {
+        Bucket *bkt = tbl->buckets[i];
+        if (bkt == NULL)
+            continue;
+        for (Bucket *b = bkt; b != NULL; b = b->next) {
+            *arr++ = (void*) b->key;
+        }
+    }
+}
+
+void HashTbl_values(const HashTbl *tbl, void **arr)
+{
+    for (uint i = 0; i < tbl->cap; i++) {
+        Bucket *bkt = tbl->buckets[i];
+        if (bkt == NULL)
+            continue;
+        for (Bucket *b = bkt; b != NULL; b = b->next) {
+            *arr++ = (void*) b->val;
+        }
+    }
+}
+
 void HashTbl_print(const HashTbl *tbl, const printkey_t printkey, const printval_t printval)
 {
     for (size_t i = 0; i < tbl->cap; i++) {

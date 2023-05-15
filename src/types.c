@@ -194,21 +194,12 @@ LispType Symbol_type() {
     return SYMBOL; 
 }
 
-static uint hash_str(const char *str)
-{
-    // simple and works (unique hash for each unique string)
-    // collisions might happen only if str is longer than (2^32 - 1) / (2^8 - 1) = 16843009 bytes
-    uint h = *(str++);
-    while (*str) h += *str++;
-    return h;
-}
-
 // key char*, value Symbol*
 static HashTbl *g_symbol_table;
 
 void init_symbol_table()
 {
-    g_symbol_table = HashTbl_newc(256, (hashkey_t) hash_str);
+    g_symbol_table = HashTbl_newc(256, (hashkey_t) hash_simple_str);
 }
 
 // concerned with Symbol only, doesn't modify the symbol table

@@ -55,6 +55,7 @@ char *str_escape(const char *src);
 char *str_join(char *strings[], size_t n, const char *sep);
 char *addr_to_str(const void *ptr);
 bool streq(const char *s1, const char *s2);
+unsigned int hash_simple_str(const char *s);
 
 // string assembler ------------------------------------------------------------
 typedef struct StrAsm {
