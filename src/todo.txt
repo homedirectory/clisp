@@ -1,13 +1,14 @@
-- refactor using OOP and compare performance
-    - add 'time-ms' procedure
 - access procedure bodies
-- FFI
 - sizeof
 - exception stack trace
-- laziness
 - bignums
+    - add 'time-ms' procedure
 - double-linked list
 - base 16 and 8 notations
 
 + refactor List structure
 + intern symbols (use a proper hash-table)
++ laziness
++ refactor using OOP
+
+- FFI
