@@ -117,12 +117,14 @@ static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     LispDatum *out = eval(node->value, proc_env);
 
     // a hack to prevent the return value of a procedure to be freed
-    LispDatum_own(out); // hack own
+    if (out) 
+        LispDatum_own(out); // hack own
 
     FREE(proc_env);
     MalEnv_free(proc_env);
 
-    LispDatum_rls(out); // hack release
+    if (out) 
+        LispDatum_rls(out); // hack release
 
     return out;
 }
@@ -460,14 +462,16 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
     // if the returned value was computed in let* bindings,
     // then we don't want it to be freed when we free the let_env,
     // so we increment its ref count only to decrement it after let_env is freed
-    LispDatum_own(out);
+    if (out)
+        LispDatum_own(out);
 
     // discard the let* env
     FREE(let_env);
     MalEnv_free(let_env);
 
     // the hack cont.
-    LispDatum_rls(out);
+    if (out)
+        LispDatum_rls(out);
 
     return out;
 }
@@ -705,9 +709,11 @@ static LispDatum *macroexpand_single(LispDatum *ast, MalEnv *env)
 
     LispDatum *out = apply_proc(macro, args, env);
 
-    if (out) LispDatum_own(out); // hack own
+    if (out) 
+        LispDatum_own(out); // hack own
     Arr_free(args);
-    if (out) LispDatum_rls(out); // hack release
+    if (out) 
+        LispDatum_rls(out); // hack release
 
     return out;
 }
@@ -794,9 +800,11 @@ static LispDatum *eval_try_star(List *ast_list, MalEnv *env)
 
         LispDatum *expr2_rslt = eval(expr2, catch_env);
 
-        if (expr2_rslt) LispDatum_own(expr2_rslt); // hack own
+        if (expr2_rslt)
+            LispDatum_own(expr2_rslt); // hack own
         MalEnv_free(catch_env);
-        if (expr2_rslt) LispDatum_rls(expr2_rslt); // hack release
+        if (expr2_rslt) 
+            LispDatum_rls(expr2_rslt); // hack release
 
         return expr2_rslt;
     }
@@ -944,7 +952,8 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
                 // builtin procedures do not get TCO
                 // unnamed procedures cannot be called recursively apriori
                 out = apply_proc(proc, args, env);
-                if (out) LispDatum_own(out); // hack own
+                if (out) 
+                    LispDatum_own(out); // hack own
 
                 FREE(args);
                 // Arr_freep(args, (free_t) LispDatum_rls_free);
@@ -953,7 +962,8 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
                 FREE(evaled_list);
                 List_free(evaled_list);
 
-                if (out) LispDatum_rls(out); // hack release
+                if (out) 
+                    LispDatum_rls(out); // hack release
                 break;
             }
         }
@@ -966,12 +976,14 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
     // we might need to free the application env of the last tail call 
     if (apply_env && apply_env != env) {
         // a hack to prevent the return value of a procedure to be freed (similar to let* hack)
-        if (out) LispDatum_own(out); // hack own
+        if (out) 
+            LispDatum_own(out); // hack own
 
         FREE(apply_env);
         MalEnv_free(apply_env);
 
-        if (out) LispDatum_rls(out); // hack release
+        if (out) 
+            LispDatum_rls(out); // hack release
     }
 
 #ifdef EVAL_STACK_DEPTH
