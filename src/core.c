@@ -140,6 +140,13 @@ static LispDatum *lisp_evenp(const Proc *proc, const Arr *args, MalEnv *env)
     return (LispDatum*) LispDatum_bool(Number_iseven(arg0));
 }
 
+// number?
+static LispDatum *lisp_numberp(const Proc *proc, const Arr *args, MalEnv *env) 
+{
+    const LispDatum *arg0 = Arr_get(args, 0);
+    return (LispDatum*) LispDatum_bool(LispDatum_istype(arg0, NUMBER));
+}
+
 // symbol : string to symbol 
 static LispDatum *lisp_symbol(const Proc *proc, const Arr *args, MalEnv *env) 
 {
@@ -618,6 +625,7 @@ void core_def_procs(MalEnv *env)
     DEF(">", 2, false, lisp_gt);
     DEF("%", 2, false, lisp_mod);
     DEF("even?", 1, false, lisp_evenp);
+    DEF("number?", 1, false, lisp_numberp);
 
     DEF("symbol", 1, false, lisp_symbol);
     DEF("symbol?", 1, false, lisp_symbolp);
