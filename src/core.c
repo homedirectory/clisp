@@ -15,8 +15,8 @@ void *verify_proc_arg_type(const Proc *proc, const Arr *args, size_t arg_idx,
     LispDatum *arg = Arr_get(args, arg_idx);
     if (!LispDatum_istype(arg, expect_type)) {
         const char *proc_name = Symbol_name(Proc_name(proc));
-        throwf("%s: bad arg no. %zd: expected a %s", 
-                proc_name, arg_idx + 1, LispType_name(expect_type));
+        throwf(proc_name, "bad arg no. %zd: expected a %s", 
+               arg_idx + 1, LispType_name(expect_type));
         return NULL;
     }
 
@@ -211,7 +211,7 @@ static LispDatum *lisp_emptyp(const Proc *proc, const Arr *args, MalEnv *env) {
 //     else if (LispDatum_islist(arg))
 //         len = List_len(arg->value.list);
 //     else {
-//         throwf("count: expected a list, but got %s instead", LispType_tostr(arg->type));
+//         throwf("count", "expected a list, but got %s instead", LispType_tostr(arg->type));
 //         return NULL;
 //     }
 
@@ -226,14 +226,14 @@ static LispDatum *lisp_list_ref(const Proc *proc, const Arr *args, MalEnv *env)
     if (!idx) return NULL;
 
     if (Number_isneg(idx)) {
-        throwf("list-ref: expected non-negative index");
+        throwf("list-ref", "expected non-negative index");
         return NULL;
     }
 
     size_t list_len = List_len(list);
     if (Number_cmpl(idx, list_len) >= 0) {
         char *s = Number_tostr(idx);
-        throwf("list-ref: index too large (%s >= %zu)", s, list_len);
+        throwf("list-ref", "index too large (%s >= %zu)", s, list_len);
         free(s);
         return NULL;
     }
@@ -247,7 +247,7 @@ static LispDatum *lisp_list_rest(const Proc *proc, const Arr *args, MalEnv *env)
     if (!list) return NULL;
 
     if (List_isempty(list)) {
-        throwf("list-rest: received an empty list");
+        throwf("list-rest", "received an empty list");
         return NULL;
     }
 
@@ -267,7 +267,7 @@ static LispDatum *lisp_nth(const Proc *proc, const Arr *args, MalEnv *env)
     //     return lisp_vec_ref(proc, args, env);
     // }
     else {
-        throwf("nth: bad 1st arg: expected LIST or VECTOR, but was %s",
+        throwf("nth", "bad 1st arg: expected LIST or VECTOR, but was %s",
                 LispType_name(LispDatum_type(arg0)));
         return NULL;
     }
@@ -286,7 +286,7 @@ static LispDatum *lisp_rest(const Proc *proc, const Arr *args, MalEnv *env)
     //     return lisp_vec_rest(proc, args, env);
     // }
     else {
-        throwf("rest: bad 1st arg: expected LIST or VECTOR, but was %s",
+        throwf("rest", "bad 1st arg: expected LIST or VECTOR, but was %s",
                 LispType_name(LispDatum_type(arg0)));
         return NULL;
     }
@@ -594,6 +594,14 @@ static LispDatum *lisp_exn_datum(const Proc *proc, const Arr *args, MalEnv *env)
     return Exception_datum(exn);
 }
 
+// throw : throws an exception
+static LispDatum *lisp_throw(const Proc *proc, const Arr *args, MalEnv *env)
+{
+    const LispDatum *arg0 = Arr_get(args, 0);
+    throw(NULL, arg0);
+    return NULL;
+}
+
 void core_def_procs(MalEnv *env) 
 {
 #define DEF(name, arity, variadic, funp) \
@@ -656,4 +664,5 @@ void core_def_procs(MalEnv *env)
     DEF("exn", 1, false, lisp_exn);
     DEF("exn?", 1, false, lisp_exnp);
     DEF("exn-datum", 1, false, lisp_exn_datum);
+    DEF("throw", 1, false, lisp_throw);
 }

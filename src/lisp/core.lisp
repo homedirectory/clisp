@@ -11,5 +11,3 @@
          ~(if (empty? tail)
               `nil
               (apply cond tail)))))
-
-(def! throw exn)

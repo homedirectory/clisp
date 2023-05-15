@@ -9,6 +9,7 @@
 #include "types_oop.h"
 #include "hashtbl.h"
 #include "env.h"
+#include "printer.h"
 
 /*
 //#define INVOKE(dtm, method, args...) \
@@ -1228,7 +1229,7 @@ bool didthrow()
     return g_lastfail == LF_EXCEPTION;
 }
 
-void throw(const LispDatum *dtm)
+void throw(const char *src, const LispDatum *dtm)
 {
     g_lastfail = LF_EXCEPTION;
 
@@ -1239,9 +1240,16 @@ void throw(const LispDatum *dtm)
     LispDatum *copy = LispDatum_copy(dtm);
     LispDatum_own(copy);
     g_last_exn.dtm = copy;
+
+    char *s = pr_str(dtm, true);
+    if (src != NULL)
+        fprintf(stderr, "exception in %s: %s\n", src, s);
+    else 
+        fprintf(stderr, "exception: %s\n", s);
+    free(s);
 }
 
-void throwf(const char *fmt, ...)
+void throwf(const char *src, const char *fmt, ...)
 {
     char buf[2048]; // TODO fix rigid limit
 
@@ -1250,10 +1258,7 @@ void throwf(const char *fmt, ...)
     vsprintf(buf, fmt, va);
     va_end(va);
 
-    fprintf(stderr, buf);
-    fprintf(stderr, "\n");
-
-    throw((LispDatum*) String_new(buf));
+    throw(src, (LispDatum*) String_new(buf));
 }
 
 void error(const char *fmt, ...)
@@ -1404,7 +1409,7 @@ void error(const char *fmt, ...)
 
 //     // Exception
 //     {
-//         throw((LispDatum*) Symbol_intern("error"));
+//         throw(NULL, (LispDatum*) Symbol_intern("error"));
 //         assert(didthrow());
 //         error("hey, that's an error!\n");
 //         assert(!didthrow());

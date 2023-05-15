@@ -414,7 +414,7 @@ Exception *Exception_new(const LispDatum *);
 Exception *thrown_copy();
 
 bool didthrow();
-void throw(const LispDatum *);
-void throwf(const char *fmt, ...);
+void throw(const char *src, const LispDatum *dtm);
+void throwf(const char *src, const char *fmt, ...);
 
 void error(const char *fmt, ...);

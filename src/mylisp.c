@@ -49,8 +49,9 @@ static bool verify_proc_application(const Proc *proc, const Arr* args)
     if (argc < proc_argc /* too few? */
             || (!Proc_isva(proc) && argc > proc_argc)) /* too much? */
     {
-        throwf("procedure application: %s expects at least %d arguments, but %d were given", 
-                Symbol_name(proc_name), proc_argc, argc);
+        throwf(Symbol_name(proc_name),
+                "expected at least %d arguments, but %d were given", 
+                proc_argc, argc);
         return false;
     }
 
@@ -650,7 +651,7 @@ LispDatum *eval_ast(const LispDatum *datum, MalEnv *env) {
             Symbol *sym = (Symbol*) datum;
             LispDatum *assoc = MalEnv_get(env, sym);
             if (assoc == NULL) {
-                throwf("symbol binding '%s' not found", Symbol_name(sym));
+                throwf(NULL, "symbol binding '%s' not found", Symbol_name(sym));
             } else {
                 out = assoc;;
             }
@@ -902,7 +903,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
             // 2. make sure that the 1st element is a procedure
             LispDatum *first = List_ref(evaled_list, 0);
             if (!LispDatum_istype(first, PROCEDURE)) {
-                throwf("application: expected a procedure");
+                throwf(NULL, "application: expected a procedure");
                 out = NULL;
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -1028,7 +1029,7 @@ static LispDatum *lisp_apply(const Proc *proc, const Arr *args, MalEnv *env)
 
     const LispDatum *arg_last = Arr_last(args);
     if (!LispDatum_istype(arg_last, LIST)) {
-        throwf("apply: bad last arg: expected a list");
+        throwf("apply", "bad last arg: expected a list");
         return NULL;
     }
     const List *arg_list = (List*) arg_last;
@@ -1068,7 +1069,7 @@ static LispDatum *lisp_read_string(const Proc *proc, const Arr *args, MalEnv *en
     LispDatum *ast = read(str);
 
     if (ast == NULL) {
-        throwf("read-string: could not parse bad syntax");
+        throwf("read-string", "could not parse bad syntax");
         return NULL;
     }
 
@@ -1083,13 +1084,13 @@ static LispDatum *lisp_slurp(const Proc *proc, const Arr *args, MalEnv *env)
 
     const char *path = String_str(string);
     if (!file_readable(path)) {
-        throwf("slurp: can't read file %s", path);
+        throwf("slurp", "can't read file %s", path);
         return NULL;
     }
 
     char *contents = file_to_str(path);
     if (!contents) {
-        throwf("slurp: failed to read file %s", path);
+        throwf("slurp", "failed to read file %s", path);
         return NULL;
     }
 
