@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <stdint.h>
+
 #include "common.h"
 #include "mem_debug.h"
 #include "utils.h"
@@ -533,7 +535,7 @@ void List_append(List *dst, const List *src)
 // -----------------------------------------------------------------------------
 // Number < LispDatum
 
-Number *Number_new(long val)
+Number *Number_new(int64_t val)
 {
     static const DtmMethods number_methods = {
         .type = (dtm_type_ft) Number_type,
@@ -606,7 +608,7 @@ void Number_mul(Number *a, const Number *b)
 
 int Number_cmp(const Number *a, const Number *b)
 {
-    long d = a->val - b->val;
+    int64_t d = a->val - b->val;
     return d ? (d > 0 ? 1 : -1) : 0;
 }
 
@@ -639,7 +641,7 @@ long Number_tol(const Number *num)
 size_t Number_len(const Number *num)
 {
     size_t sz = 0;
-    long val = num->val;
+    int64_t val = num->val;
     while (val != 0) {
         val /= 10;
         sz++;
@@ -647,10 +649,31 @@ size_t Number_len(const Number *num)
     return sz;
 }
 
+static char *_Number_val_tos(int64_t val, char *dst)
+{
+    if (val < 0) {
+        *dst++ = '-';
+        val *= -1;
+    }
+
+    char *s = dst;
+    size_t i = 0;
+
+    while (val != 0) {
+        *dst++ = itoa(val % 10);
+        val /= 10;
+        i++;
+    }
+
+    *dst = 0;
+    strnrev(s, i);
+
+    return dst;
+}
+
 char *Number_sprint(const Number *num, char *dst)
 {
-    long l = num->val;
-    return ltos(l, dst);
+    return _Number_val_tos(num->val, dst);
 }
 
 char *Number_tostr(const Number *num)

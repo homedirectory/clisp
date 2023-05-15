@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
+
 #include "utils.h"
 
 
@@ -180,7 +182,7 @@ const List *List_empty();
 // TODO support floating point numbers (potentially as another type)
 typedef struct {
     /*void*/ _LispDatum *super;
-    long val;
+    int64_t val;
 } Number;
 
 // generic method implementations
@@ -192,7 +194,7 @@ Number *Number_copy(const Number *num);
 Number *Number_true_copy(const Number *num);
 
 // Number methods
-Number *Number_new(long val);
+Number *Number_new(int64_t val);
 void Number_add(Number *a, const Number *b);
 void Number_sub(Number *a, const Number *b);
 void Number_div(Number *a, const Number *b);
