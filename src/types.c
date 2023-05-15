@@ -253,7 +253,7 @@ Symbol *Symbol_intern(const char *name)
         return sym;
     else {
         Symbol *symnew = Symbol_new(name);
-        HashTbl_put(g_symbol_table, symnew->name, symnew);
+        HashTbl_put(g_symbol_table, symnew->name, symnew, (keyeq_t) streq);
         return symnew;
     }
 }

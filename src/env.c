@@ -59,10 +59,9 @@ LispDatum *MalEnv_put(MalEnv *env, Symbol *id, LispDatum *datum) {
         }
     }
 
-    LispDatum *old = HashTbl_pop(env->binds, id, (keyeq_t) Symbol_eq);
+    LispDatum *old = HashTbl_put(env->binds, id, datum, (keyeq_t) Symbol_eq);
     if (old != NULL)
         LispDatum_rls(old);
-    HashTbl_put(env->binds, id, datum, (keyeq_t) Symbol_eq);
     return old;
 }
 

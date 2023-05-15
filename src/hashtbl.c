@@ -138,9 +138,12 @@ void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq)
         return Bucket_find(bkt, key, keyeq);
 }
 
-void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
+void *HashTbl_put(HashTbl *tbl, const void *key, const void *val, const keyeq_t keyeq)
 {
     try_grow(tbl);
+
+    // TODO optimise: compute hash only once
+    void *popd = HashTbl_pop(tbl, key, keyeq);
 
     Bucket *bkt_new = Bucket_new(key, val);
 
@@ -154,6 +157,8 @@ void HashTbl_put(HashTbl *tbl, const void *key, const void *val)
     }
 
     tbl->size += 1;
+
+    return popd;
 }
 
 void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq)

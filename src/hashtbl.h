@@ -15,7 +15,7 @@ HashTbl *HashTbl_newc(uint cap, hashkey_t);
 void HashTbl_free(HashTbl *tbl, free_t keyfree, free_t valfree);
 
 void *HashTbl_get(const HashTbl *tbl, const void *key, const keyeq_t keyeq);
-void HashTbl_put(HashTbl *tbl, const void *key, const void *val);
+void *HashTbl_put(HashTbl *tbl, const void *key, const void *val, const keyeq_t keyeq);
 void *HashTbl_pop(HashTbl *tbl, const void *key, const keyeq_t keyeq);
 
 unsigned int HashTbl_size(const HashTbl *tbl);
