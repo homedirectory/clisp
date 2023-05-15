@@ -15,3 +15,21 @@
          ~(if (empty? tail)
               `nil
               (apply cond tail)))))
+
+(defmacro! thunk (fn* (& body)
+                      `(fn* () ~@body)))
+
+;; --- lazy values
+;; behold the power of LISP that allows you to avoid performing unnecessary checks to
+;; know whether the value has been already computed
+(def! thunk->lazy (fn* (f)
+                       (let* ((h (fn* () 
+                                      (let* ((val (f)))
+                                        (do
+                                          (atom-set! g (fn* () val))
+                                          val))))
+                              (g (atom h)))
+                         (fn* ()
+                              ((deref g))))))
+(defmacro! lazy (fn* (& body)
+                     `(make-lazy-thunk (fn* () ~@body))))
