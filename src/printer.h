@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types_oop.h"
+#include "types.h"
 #include "stdbool.h"
 
 char *pr_str(const LispDatum *datum, bool print_readably);

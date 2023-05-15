@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 #include "reader.h"
-#include "types_oop.h"
+#include "types.h"
 #include "printer.h"
 #include "env.h"
 #include "common.h"

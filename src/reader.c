@@ -6,7 +6,7 @@
 #include <sys/types.h>
 
 #include "reader.h"
-#include "types_oop.h"
+#include "types.h"
 #include "common.h"
 #include "utils.h"
 

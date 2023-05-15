@@ -1,7 +1,7 @@
 #pragma once
 
 #include "utils.h"
-#include "types_oop.h"
+#include "types.h"
 
 typedef struct Reader {
     size_t pos;

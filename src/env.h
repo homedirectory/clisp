@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types_oop.h"
+#include "types.h"
 #include "stdbool.h"
 
 /* This environment is an associative structure that maps identifiers to mal values */

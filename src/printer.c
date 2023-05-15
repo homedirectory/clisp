@@ -6,7 +6,7 @@
 #include "printer.h"
 #include "reader.h"
 #include "utils.h"
-#include "types_oop.h"
+#include "types.h"
 #include "common.h"
 
 // When print_readably is true, doublequotes, newlines, and backslashes are

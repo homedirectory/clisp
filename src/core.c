@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
 #include "common.h"
-#include "types_oop.h"
+#include "types.h"
 #include "utils.h"
 #include "core.h"
 #include "env.h"

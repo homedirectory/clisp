@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <assert.h>
-#include "types_oop.h"
+#include "types.h"
 #include "utils.h"
 #include "env.h"
 #include "common.h"
