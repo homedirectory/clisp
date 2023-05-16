@@ -512,6 +512,9 @@ static List *eval_splice_unquote(const List *list, MalEnv *env)
 
     LispDatum *arg1 = List_ref(list, 1);
     LispDatum *evaled = eval(arg1, env);
+    if (!evaled)
+        return NULL;
+
     if (!LispDatum_istype(evaled, LIST)) {
         BADSTX("splice-unquote: resulting value must be a list, but was %s",
                 LispType_name(LispDatum_type(evaled)));
