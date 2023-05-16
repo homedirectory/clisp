@@ -34,3 +34,4 @@ MalEnv *MalEnv_enclosing_root(MalEnv *env);
 // reference counting
 void MalEnv_own(MalEnv *env);
 void MalEnv_release(MalEnv *env);
+void MalEnv_rls_free(MalEnv *env);

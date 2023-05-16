@@ -106,3 +106,9 @@ void MalEnv_release(MalEnv *env)
 
     env->refc -= 1;
 }
+
+void MalEnv_rls_free(MalEnv *env)
+{
+    MalEnv_release(env);
+    MalEnv_free(env);
+}

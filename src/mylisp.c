@@ -80,6 +80,7 @@ static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     // But here the result of this application will be a procedure that should
     // "remember" about x = 10, so the local env should be preserved. 
     MalEnv *proc_env = MalEnv_new(proc->env);
+    MalEnv_own(proc_env);
     OWN(proc_env);
 
     // 1. bind params to args in the local env
@@ -114,7 +115,7 @@ static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
         LispDatum *evaled = eval(dtm, proc_env);
         if (!evaled) {
             FREE(proc_env);
-            MalEnv_free(proc_env);
+            MalEnv_rls_free(proc_env);
             return NULL;
         }
         LispDatum_free(evaled);
@@ -126,7 +127,7 @@ static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
         LispDatum_own(out); // hack own
 
     FREE(proc_env);
-    MalEnv_free(proc_env);
+    MalEnv_rls_free(proc_env);
 
     if (out) 
         LispDatum_rls(out); // hack release
@@ -414,6 +415,7 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
 
     // 2. initialise the let* environment 
     MalEnv *let_env = MalEnv_new(env);
+    MalEnv_own(let_env);
     OWN(let_env);
     // step = 2
     for (struct Node *bind_node = bindings->head; bind_node; bind_node = bind_node->next) {
@@ -422,7 +424,7 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
         if (!LispDatum_istype(dtm, LIST)) {
             BADSTX("let*: expected a list of bindings");
             FREE(let_env);
-            MalEnv_free(let_env);
+            MalEnv_rls_free(let_env);
             return NULL;
         }
         List *bind = (List*) dtm;
@@ -432,7 +434,7 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
             BADSTX("let*: bad binding form: %s", s);
             free(s);
             FREE(let_env);
-            MalEnv_free(let_env);
+            MalEnv_rls_free(let_env);
             return NULL;
         }
         // must be headed by a symbol
@@ -441,7 +443,7 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
             BADSTX("let*: bad binding form (expected a symbol to be bound, but was %s)", 
                     LispType_name(LispDatum_type(bind_sym)));
             FREE(let_env);
-            MalEnv_free(let_env);
+            MalEnv_rls_free(let_env);
             return NULL;
         }
 
@@ -451,7 +453,7 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
         OWN(val);
         if (val == NULL) {
             FREE(let_env);
-            MalEnv_free(let_env);
+            MalEnv_rls_free(let_env);
             return NULL;
         }
 
@@ -475,7 +477,7 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
 
     // discard the let* env
     FREE(let_env);
-    MalEnv_free(let_env);
+    MalEnv_rls_free(let_env);
 
     // the hack cont.
     if (out)
@@ -806,6 +808,7 @@ static LispDatum *eval_try_star(List *ast_list, MalEnv *env)
     LispDatum *expr1_rslt = eval(expr1, env);
     if (expr1_rslt == NULL && didthrow()) {
         MalEnv *catch_env = MalEnv_new(env);
+        MalEnv_own(catch_env);
         Exception *exn = thrown_copy();
         MalEnv_put(catch_env, (Symbol*) catch_sym, (LispDatum*) exn);
 
@@ -813,7 +816,7 @@ static LispDatum *eval_try_star(List *ast_list, MalEnv *env)
 
         if (expr2_rslt)
             LispDatum_own(expr2_rslt); // hack own
-        MalEnv_free(catch_env);
+        MalEnv_rls_free(catch_env);
         if (expr2_rslt) 
             LispDatum_rls(expr2_rslt); // hack release
 
@@ -941,7 +944,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
 
             // previous application's env is no longer needed after we have argument values
             if (apply_env != env) {
-                MalEnv_free(apply_env);
+                MalEnv_rls_free(apply_env);
                 apply_env = NULL;
             }
 
@@ -949,6 +952,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
             if (!proc->builtin && Proc_isnamed(proc)) {
                 // args will be put into apply_env
                 apply_env = MalEnv_new(proc->env);
+                MalEnv_own(apply_env);
                 ast = eval_application_tco(proc, args, apply_env);
 
                 // release and free args
@@ -992,7 +996,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
             LispDatum_own(out); // hack own
 
         FREE(apply_env);
-        MalEnv_free(apply_env);
+        MalEnv_rls_free(apply_env);
 
         if (out) 
             LispDatum_rls(out); // hack release
