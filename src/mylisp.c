@@ -73,10 +73,10 @@ static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     // since we don't know whether the environment of this particular application
     // (with all the arguments) will be needed after its applied.
     // Example where it won't be needed and thus can be safely discarded:
-    // ((fn* (x) x) 10) => 10
+    // ((lambda (x) x) 10) => 10
     // Here a local env { x = 10 } with enclosing one set to the global env will be created
     // and discarded immediately after the result (10) is obtained.
-    // (((fn* (x) (fn* () x)) 10)) => 10
+    // (((lambda (x) (lambda () x)) 10)) => 10
     // But here the result of this application will be a procedure that should
     // "remember" about x = 10, so the local env should be preserved. 
     MalEnv *proc_env = MalEnv_new(proc->env);
@@ -214,19 +214,19 @@ static LispDatum *eval_do(const List *list, MalEnv *env) {
     return eval(node->value, env);
 }
 
-/* 'fn*' expression is like the 'lambda' expression, it creates and returns a function
+/* 'lambda' expression is like the 'lambda' expression, it creates and returns a function
  * it comes in 2 forms:
- * 1. (fn* params body)
+ * 1. (lambda params body)
  * params := () | (param ...)
  * param := SYMBOL
- * 2. (fn* var-params body)
+ * 2. (lambda var-params body)
  * var-params := (& rest) | (param ... & rest)
  * rest is then bound to the list of the remaining arguments
  */
 static LispDatum *eval_fnstar(const List *list, MalEnv *env) {
     int argc = List_len(list) - 1;
     if (argc < 2) {
-        BADSTX("fn*: cannot have empty body");
+        BADSTX("lambda: cannot have empty body");
         return NULL;
     }
 
@@ -235,7 +235,7 @@ static LispDatum *eval_fnstar(const List *list, MalEnv *env) {
     {
         LispDatum *snd = List_ref(list, 1);
         if (!LispDatum_istype(snd, LIST)) {
-            BADSTX("fn*: bad syntax at parameter declaration");
+            BADSTX("lambda: bad syntax at parameter declaration");
             return NULL;
         }
         params = (List*) snd;
@@ -245,7 +245,7 @@ static LispDatum *eval_fnstar(const List *list, MalEnv *env) {
     for (struct Node *node = params->head; node != NULL; node = node->next) {
         LispDatum *par = node->value;
         if (!LispDatum_istype(par, SYMBOL)) {
-            BADSTX("fn* bad parameter list: expected a list of symbols, but %s was found in the list",
+            BADSTX("lambda bad parameter list: expected a list of symbols, but %s was found in the list",
                     LispType_name(LispDatum_type(par)));
             return NULL;
         }
@@ -264,7 +264,7 @@ static LispDatum *eval_fnstar(const List *list, MalEnv *env) {
         // NOTE: we allow that parameter to also be named '&'
         if (Symbol_eq_str(sym, "&")) {
             if (node->next == NULL || node->next->next != NULL) {
-                BADSTX("fn* bad parameter list: 1 parameter expected after '&'");
+                BADSTX("lambda bad parameter list: 1 parameter expected after '&'");
                 return NULL;
             }
             Symbol *last_dtm_sym = (Symbol*) node->next->value;
@@ -324,7 +324,7 @@ static LispDatum *eval_def(const List *list, MalEnv *env) {
     return new_assoc;
 }
 
-// (defmacro! id <fn*-expr>)
+// (defmacro! id <lambda-expr>)
 static LispDatum *eval_defmacro(const List *list, MalEnv *env) {
     size_t argc = List_len(list) - 1;
     if (argc != 2) {
@@ -343,23 +343,23 @@ static LispDatum *eval_defmacro(const List *list, MalEnv *env) {
     {
         LispDatum *arg2 = List_ref(list, 2);
         if (!LispDatum_istype(arg2, LIST)) {
-            BADSTX("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an lambda expression");
             return NULL;
         }
 
         const List *arg2_list = (List*) arg2;
         if (List_isempty(arg2_list)) {
-            BADSTX("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an lambda expression");
             return NULL;
         }
         const LispDatum *arg2_list_ref0 = List_ref(arg2_list, 0);
         if (!LispDatum_istype(arg2_list_ref0, SYMBOL)) {
-            BADSTX("defmacro!: 2nd arg must be an fn* expression");
+            BADSTX("defmacro!: 2nd arg must be an lambda expression");
             return NULL;
         }
         const Symbol *sym = (Symbol*) arg2_list_ref0;
-        if (!Symbol_eq_str(sym, "fn*")) {
-            BADSTX("defmacro!: 2nd arg must be an fn* expression");
+        if (!Symbol_eq_str(sym, "lambda")) {
+            BADSTX("defmacro!: 2nd arg must be an lambda expression");
             return NULL;
         }
         LispDatum *evaled = eval(arg2, env);
@@ -849,7 +849,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
             }
 
             LispDatum *head = List_ref(ast_list, 0);
-            // handle special forms: def!, let*, if, do, fn*, quote, quasiquote,
+            // handle special forms: def!, let*, if, do, lambda, quote, quasiquote,
             // defmacro!, macroexpand, try*/catch*
             if (LispDatum_istype(head, SYMBOL)) {
                 const Symbol *sym = (Symbol*) head;
@@ -878,7 +878,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
                     out = eval_do(ast_list, apply_env);
                     break;
                 }
-                else if (Symbol_eq_str(sym, "fn*")) {
+                else if (Symbol_eq_str(sym, "lambda")) {
                     out = eval_fnstar(ast_list, apply_env);
                     break;
                 }
@@ -1223,7 +1223,7 @@ int main(int argc, char **argv) {
     rep("(def! load-file\n"
             // closing paren of 'do' must be on a separate line in case a file ends
             // with a comment without a newline at the end
-            "(fn* (path) (eval (read-string (str \"(do \" (slurp path) \"\n)\")))\n"
+            "(lambda (path) (eval (read-string (str \"(do \" (slurp path) \"\n)\")))\n"
                         "(println \"loaded file\" path) nil))", 
             env);
 
