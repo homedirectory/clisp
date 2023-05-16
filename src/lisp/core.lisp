@@ -23,13 +23,12 @@
 ;; behold the power of LISP that allows you to avoid performing unnecessary checks to
 ;; know whether the value has been already computed
 (def! thunk->lazy (lambda (f)
-                       (let* ((h (lambda () 
-                                      (let* ((val (f)))
-                                        (do
-                                          (atom-set! g (lambda () val))
-                                          val))))
-                              (g (atom h)))
-                         (lambda ()
-                              ((deref g))))))
+                    (let* ((h (lambda () 
+                                (let* ((val (f)))
+                                  (atom-set! g (lambda () val))
+                                  val)))
+                           (g (atom h)))
+                      (lambda ()
+                        ((deref g))))))
 (defmacro! lazy (lambda (& body)
                      `(make-lazy-thunk (lambda () ~@body))))

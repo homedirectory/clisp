@@ -388,14 +388,14 @@ static LispDatum *eval_defmacro(const List *list, MalEnv *env) {
     return macro_datum;
 }
 
-/* (let* (bindings) expr) 
+/* (let* (bindings) expr ...) 
  * bindings := ((id val) ...)
  */
 static LispDatum *eval_letstar(const List *list, MalEnv *env) {
     // 1. validate the list
     int argc = List_len(list) - 1;
-    if (argc != 2) {
-        BADSTX("let* expects 2 arguments, but %d were given", argc);
+    if (argc < 2) {
+        BADSTX("let* expects at least 2 arguments, but %d were given", argc);
         return NULL;
     }
 
@@ -411,8 +411,6 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
         BADSTX("let* expects a non-empty list of bindings");
         return NULL;
     }
-
-    LispDatum *expr = List_ref(list, 2);
 
     // 2. initialise the let* environment 
     MalEnv *let_env = MalEnv_new(env);
@@ -460,8 +458,13 @@ static LispDatum *eval_letstar(const List *list, MalEnv *env) {
         MalEnv_put(let_env, (Symbol*) bind_sym, val);
     }
 
-    // 3. evaluate the expr using the let* env
-    LispDatum *out = eval(expr, let_env);
+    // 3. evaluate expressions using let* env
+    LispDatum *out = NULL;
+    for (struct Node *node = list->head->next->next; node; node = node->next) {
+        out = eval(node->value, let_env);
+        if (out == NULL)
+            break;
+    }
 
     // this is a hack
     // if the returned value was computed in let* bindings,
