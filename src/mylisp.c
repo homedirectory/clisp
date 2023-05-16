@@ -843,7 +843,8 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
 
             List *ast_list = (List*) ast;
             if (List_isempty(ast_list)) {
-                out = (LispDatum*) List_empty();
+                BADSTX("empty application ()");
+                out = NULL;
                 break;
             }
 
