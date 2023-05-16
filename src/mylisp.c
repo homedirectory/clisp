@@ -112,6 +112,11 @@ static LispDatum *apply_proc(const Proc *proc, const Arr *args, MalEnv *env) {
     for (node = body->head; node->next != NULL; node = node->next) {
         LispDatum *dtm = node->value;
         LispDatum *evaled = eval(dtm, proc_env);
+        if (!evaled) {
+            FREE(proc_env);
+            MalEnv_free(proc_env);
+            return NULL;
+        }
         LispDatum_free(evaled);
     }
     LispDatum *out = eval(node->value, proc_env);
