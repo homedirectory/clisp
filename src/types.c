@@ -642,7 +642,12 @@ size_t Number_len(const Number *num)
 
 static char *_Number_val_tos(int64_t val, char *dst)
 {
-    if (val < 0) {
+    if (val == 0) {
+        dst[0] = '0';
+        dst[1] = 0;
+        return dst;
+    }
+    else if (val < 0) {
         *dst++ = '-';
         val *= -1;
     }
