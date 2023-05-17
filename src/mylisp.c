@@ -731,14 +731,27 @@ static LispDatum *macroexpand_single(LispDatum *ast, MalEnv *env)
     return out;
 }
 
+// recursively expands a macro
 static LispDatum *macroexpand(LispDatum *ast, MalEnv *env)
 {
     LispDatum *out = ast;
 
+    // memory allocated for intermediate expansions (exp0 ... expn) has to be freed
+    // ast -> exp0 -> ... -> expn -> out
     while (1) {
         LispDatum *expanded = macroexpand_single(out, env);
-        if (!expanded) return NULL;
-        else if (expanded == out) return out;
+        // no expansion?
+        if (expanded == out) return out;
+        // if @out is an intermediate expansions, free it
+        if (out != ast) {
+            LispDatum_own(expanded);
+            LispDatum_free(out);
+            out = NULL;
+            LispDatum_rls(expanded);
+        }
+        // expansion failed?
+        if (expanded == NULL) return NULL;
+        // expansion succeeded
         else out = expanded;
     }
 
@@ -845,13 +858,19 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
     while (ast) {
         if (LispDatum_istype(ast, LIST)) {
             LispDatum *expanded = macroexpand(ast, env);
-            if (!expanded) break;
+            if (expanded == NULL) break;
             else if (expanded != ast && !LispDatum_istype(expanded, LIST)) {
                 out = eval_ast(expanded, env);
+                if (out) LispDatum_own(out);
+                LispDatum_free(expanded);
+                if (out) LispDatum_rls(out);
                 break;
             }
             else {
                 // expanded == ast OR expanded is a list
+                LispDatum_own(expanded);
+                LispDatum_free(ast);
+                LispDatum_rls(expanded);
                 ast = expanded;
             }
 
@@ -883,7 +902,11 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
                 }
                 else if (Symbol_eq_str(sym, "if")) {
                     // eval the condition and replace AST with the AST of the branched part
-                    ast = eval_if(ast_list, apply_env);
+                    LispDatum* new_ast = eval_if(ast_list, apply_env);
+                    if (new_ast) LispDatum_own(new_ast);
+                    LispDatum_free(ast);
+                    if (new_ast) LispDatum_rls(new_ast);
+                    ast = new_ast;
                     continue;
                 }
                 else if (Symbol_eq_str(sym, "do")) {
@@ -939,7 +962,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
             OWN(args);
             for (struct Node *node = evaled_list->head->next; node != NULL; node = node->next) {
                 Arr_add(args, node->value);
-                // LispDatum_own(node->value); // hold onto argument values
+                LispDatum_own(node->value); // hold onto argument values
             }
 
             // previous application's env is no longer needed after we have argument values
@@ -953,12 +976,16 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
                 // args will be put into apply_env
                 apply_env = MalEnv_new(proc->env);
                 MalEnv_own(apply_env);
-                ast = eval_application_tco(proc, args, apply_env);
+
+                LispDatum *new_ast = eval_application_tco(proc, args, apply_env);
+                if (new_ast) LispDatum_own(new_ast);
+                LispDatum_free(ast);
+                if (new_ast) LispDatum_rls(new_ast);
+                ast = new_ast;
 
                 // release and free args
                 FREE(args);
-                // Arr_freep(args, (free_t) LispDatum_rls_free);
-                Arr_free(args);
+                Arr_freep(args, (free_t) LispDatum_rls_free);
 
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -972,8 +999,7 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
                     LispDatum_own(out); // hack own
 
                 FREE(args);
-                // Arr_freep(args, (free_t) LispDatum_rls_free);
-                Arr_free(args);
+                Arr_freep(args, (free_t) LispDatum_rls_free);
 
                 FREE(evaled_list);
                 List_free(evaled_list);
@@ -988,6 +1014,8 @@ LispDatum *eval(LispDatum *ast, MalEnv *env) {
             break;
         }
     } // end while
+
+    if (ast) LispDatum_free(ast);
 
     // we might need to free the application env of the last tail call 
     if (apply_env && apply_env != env) {
@@ -1023,14 +1051,17 @@ static void rep(const char *str, MalEnv *env) {
     // read
     LispDatum *r = read(str);
     if (r == NULL) return;
+    LispDatum_own(r);
 
     // eval
     // TODO implement a stack trace of error messages
     LispDatum *e = eval(r, env);
-    if (!e) return;
+    if (e == NULL) {
+        LispDatum_rls_free(r);
+        return;
+    }
     LispDatum_own(e); // prevent from being freed before printing
-
-    LispDatum_free(r);
+    LispDatum_rls_free(r);
 
     // print
     char *p = print(e);
