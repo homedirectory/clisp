@@ -68,6 +68,13 @@ void LispDatum_own(LispDatum *);
 typedef void (*dtm_rls_ft)(LispDatum *);
 void LispDatum_rls(LispDatum *);
 
+#define LispDatum_guard(var, expr) do { \
+    if (var) LispDatum_own(var); \
+    { \
+        expr; \
+    } \
+    if (var) LispDatum_rls(var); \
+} while (0);
 
 typedef struct {
     dtm_type_ft type;
