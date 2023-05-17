@@ -60,8 +60,10 @@ LispDatum *MalEnv_put(MalEnv *env, Symbol *id, LispDatum *datum) {
     }
 
     LispDatum *old = HashTbl_put(env->binds, id, datum, (keyeq_t) Symbol_eq);
-    if (old != NULL)
+    if (old != NULL) // Symbol id is being bound to a different datum
         LispDatum_rls(old);
+    else // first time entering Symbol id into this env, so let's own it
+        LispDatum_own((LispDatum*) id);
     return old;
 }
 
